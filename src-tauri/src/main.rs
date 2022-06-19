@@ -243,7 +243,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
     let local_is_paused = is_paused.clone();
     app_handle.listen_global("toggle_bot", move |_| {
-        local_is_paused.store(!local_is_paused.load(Ordering::Relaxed), Ordering::Relaxed);
+        let was_paused = local_is_paused.load(Ordering::Relaxed);
+        local_is_paused.store(!was_paused, Ordering::Relaxed);
     });
 
     let local_is_paused = is_paused.clone();
@@ -276,6 +277,9 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             // Make sure the window is focused
             let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
             if focused_hwnd as isize != hwnd.0 {
+                app_handle
+                    .emit_all("frontend_info", &frontend_info)
+                    .unwrap();
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 continue;
             }
