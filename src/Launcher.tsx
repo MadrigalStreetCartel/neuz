@@ -1,6 +1,5 @@
 import styled from 'styled-components'
 import { WebviewWindow } from '@tauri-apps/api/window'
-import { invoke } from '@tauri-apps/api'
 
 import FlyffLogo from './assets/logo.png'
 import LauncherBackground from './assets/launcher_background_ice.png'
@@ -22,7 +21,6 @@ const Launcher = ({ className }: Props) => {
     
         webview.once('tauri://created', function () {
             webview.show()
-            invoke('start_bot')
             setIsLaunched(true)
         })
 

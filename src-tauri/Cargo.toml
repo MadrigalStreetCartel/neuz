@@ -26,6 +26,7 @@ base64 = "0.13.0"
 win-screenshot = "1.0.2"
 mouse-rs = "0.4.2"
 winput = "0.2.5"
+winapi = "0.3.9"
 # webview2-com = "0.16.0"
 
 # Linux platform support

@@ -1,6 +1,7 @@
 import styled from "styled-components"
 import { listen } from '@tauri-apps/api/event'
-import { useEffect, useState } from "react"
+import { invoke } from '@tauri-apps/api'
+import { useEffect, useReducer, useState } from "react"
 
 type Props = {
     className?: string,
@@ -11,6 +12,12 @@ const BotVisualizer = ({ className }: Props) => {
     const [enemyTags, setEnemyTags] = useState<{x: number, y: number}[]>([])
     const [enemyBounds, setEnemyBounds] = useState<{x: number, y: number, w: number, h: number}[]>([])
     const [attackTargets, setAttackTargets] = useState<{x: number, y: number}[]>([])
+    const [showStartBtn, freezeStartBtn] = useReducer(() => false, true);
+
+    const handleStart = () => {
+        freezeStartBtn()
+        invoke('start_bot')
+    }
 
     useEffect(() => {
         listen<string>('bot_visualizer_update', event => {
@@ -53,6 +60,9 @@ const BotVisualizer = ({ className }: Props) => {
                     <div className="enemy-target" style={{ left: `${x}px`, top: `${y}px` }} />
                 ))}
             </div>
+            <div className="footer">
+                {showStartBtn && <div className="btn" onClick={handleStart}>Start Bot</div>}
+            </div>
         </div>
     )
 }
@@ -63,8 +73,11 @@ export default styled(BotVisualizer)`
     display: flex;
     justify-content: center;
     align-items: center;
-
+    position: relative;
+    overflow: hidden;
+    
     & .container {
+        overflow: hidden;
         position: relative;
     }
 
@@ -103,5 +116,40 @@ export default styled(BotVisualizer)`
         border-radius: 10rem;
         background-color: white;
         z-index: 3000;
+    }
+
+    & .footer {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 1rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9000;
+
+        & .btn {
+            cursor: pointer;
+            user-select: none;
+            padding: .25rem .5rem;
+            width: calc(min(500px, max(250px, 40vw)));
+            text-align: center;
+            border-radius: 0.25rem;
+            color: white;
+            background: hsla(203, 100%, 0%, .75);
+            backdrop-filter: blur(.5rem);
+            transition: all .1s linear;
+            box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1);
+            border: 1px solid hsl(0,0%,10%);
+            font-size: 1.5rem;
+
+            &:hover {
+                background: hsla(203, 100%, 45%, .5);
+                border: 1px solid hsl(0,0%,10%);
+                box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1), 0 .5rem 2rem 0 hsla(0,0%,0%,.25), 0 2rem 2rem 0 hsla(0,0%,0%,.25);
+            }
+        }
     }
 `

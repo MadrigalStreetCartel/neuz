@@ -183,20 +183,24 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob]) -> &'a Mob {
 #[tauri::command]
 async fn start_bot(app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
-    let hwnd = window.hwnd().unwrap().0;
+    let hwnd = window.hwnd().unwrap();
 
     std::thread::spawn(move || {
         let mut state = BotState::SearchingForEnemy;
         let mut rng = rand::thread_rng();
         let mouse = mouse_rs::Mouse::new();
 
-        println!("Waiting for login to complete...");
-        std::thread::sleep(std::time::Duration::from_secs(5));
-
         loop {
+            // Make sure that window is focused
+            let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
+            if focused_hwnd as isize != hwnd.0 {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                continue;
+            }
+
             // Capture the window
             let image = {
-                if let Ok(image) = capture_screenshot(hwnd) {
+                if let Ok(image) = capture_screenshot(hwnd.0) {
                     image
                 } else {
                     continue;
