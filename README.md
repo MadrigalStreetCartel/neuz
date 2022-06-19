@@ -1,6 +1,8 @@
 # Neuz
 > Flyff Universe Client and Bot
 
+Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/msi)
+
 ## Bot Usage
 
 **Requirements**
