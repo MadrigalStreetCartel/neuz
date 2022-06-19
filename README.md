@@ -1,46 +1,52 @@
-# Getting Started with Create React App
+# Neuz
+> Flyff Universe Client and Bot
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Bot Usage
 
-## Available Scripts
+**Requirements**
 
-In the project directory, you can run:
+1. Use default theme
+2. Enable single-click to attack in options
+3. Put food item of your choice into slot 1
 
-### `yarn start`
+## Changelog
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+**0.2.0**
+- Improved user interface (added bot starts and pause/resume button)
+- Improved retargeting behavior when target marker is gone
+- Added automatic foodie consumption
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+**0.1.0**
+- Initial release
 
-### `yarn test`
+## Mechanics
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+**Attack Logic**
 
-### `yarn build`
+1. Detects targets (passive and aggro)
+2. Finds closest target, preferring aggros even if they're further away
+3. Clicks target to initiate attack
+4. Detects target marker to confirm attack status
+5. Keeps attacking till the target marker is gone (enemy or player is dead)
+6. Back to step 1
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+If no enemy is in range:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Initiates one of multiple predefined movement patterns
+2. Checks for targets again after movement pattern is complete
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+If the enemy is killed:
 
-### `yarn eject`
+1. Initiates short idle pattern with a certain probability
+2. Checks for targets again after idle pattern is complete
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+**Regeneration Logic**
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Foodie is consumed every 5 seconds after an attack started
+2. New attacks reset the counter, so no reg between attacks
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Notes:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- The algorithm assumes that it's easy enough to kill the enemy if it takes less than 5 seconds
+- In case the attack takes longer, it assumes that consuming one food item every 5 seconds is enough
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).

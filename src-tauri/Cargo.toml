@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -24,12 +24,14 @@ base64 = "0.13.0"
 
 # Windows platform support
 win-screenshot = "1.0.2"
-mouse-rs = "0.4.2"
-winput = "0.2.5"
 winapi = "0.3.9"
+winput = "0.2.5"
 # webview2-com = "0.16.0"
 
 # Linux platform support
+
+# Cross platform
+mouse-rs = "0.4.2"
 
 [features]
 # by default Tauri runs in production mode

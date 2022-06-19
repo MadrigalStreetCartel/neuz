@@ -7,8 +7,15 @@ use algo::Bounds;
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops;
 use image::ColorType;
-use rand::Rng;
 use rand::prelude::SliceRandom;
+use rand::Rng;
+use serde::Deserialize;
+use serde::Serialize;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::Duration;
+use std::time::Instant;
 use tauri::Manager;
 
 mod algo;
@@ -112,7 +119,7 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
     // Reference colors
     let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
     let ref_color_agg: [u8; 3] = [0xd3, 0x0f, 0x0d]; // Aggro mobs
-    
+
     // Collect pixel clouds for passive and aggro mobs
     let ignore_area_bottom = 50;
     for (x, y, px) in image.enumerate_pixels() {
@@ -155,7 +162,9 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
     let target_markers = merge_cloud_into_mobs(&coords, MobType::TargetMarker);
 
     // Find biggest target marker
-    target_markers.into_iter().max_by_key(|x| x.name_bounds.size())
+    target_markers
+        .into_iter()
+        .max_by_key(|x| x.name_bounds.size())
 }
 
 fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob]) -> &'a Mob {
@@ -180,18 +189,91 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob]) -> &'a Mob {
         .0
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct FrontendInfo {
+    enemy_bounds: Option<Vec<Bounds>>,
+    active_enemy_bounds: Option<Bounds>,
+    enemy_kill_count: usize,
+    is_attacking: bool,
+    is_running: bool,
+}
+
+impl FrontendInfo {
+    fn new() -> Self {
+        Self {
+            enemy_bounds: None,
+            active_enemy_bounds: None,
+            enemy_kill_count: 0,
+            is_attacking: false,
+            is_running: false,
+        }
+    }
+
+    fn set_enemy_bounds(&mut self, enemy_bounds: Vec<Bounds>) {
+        self.enemy_bounds = Some(enemy_bounds);
+    }
+
+    fn set_active_enemy_bounds(&mut self, active_enemy_bounds: Bounds) {
+        self.active_enemy_bounds = Some(active_enemy_bounds);
+    }
+
+    fn set_kill_count(&mut self, enemy_kill_count: usize) {
+        self.enemy_kill_count = enemy_kill_count;
+    }
+
+    fn set_is_attacking(&mut self, is_attacking: bool) {
+        self.is_attacking = is_attacking;
+    }
+
+    fn set_is_running(&mut self, is_running: bool) {
+        self.is_running = is_running;
+    }
+}
+
 #[tauri::command]
 async fn start_bot(app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let hwnd = window.hwnd().unwrap();
 
+    let mut last_pot_time = Instant::now();
+    let mut last_initial_attack_time = Instant::now();
+    let mut is_attacking = false;
+    let mut kill_count: usize = 0;
+    let is_paused = Arc::new(AtomicBool::new(false));
+
+    let local_is_paused = is_paused.clone();
+    app_handle.listen_global("toggle_bot", move |_| {
+        local_is_paused.store(!local_is_paused.load(Ordering::Relaxed), Ordering::Relaxed);
+    });
+
+    let local_is_paused = is_paused.clone();
     std::thread::spawn(move || {
         let mut state = BotState::SearchingForEnemy;
         let mut rng = rand::thread_rng();
+
         let mouse = mouse_rs::Mouse::new();
 
         loop {
-            // Make sure that window is focused
+            let is_paused = local_is_paused.load(Ordering::Relaxed);
+
+            // Initialize frontend info
+            let mut frontend_info = FrontendInfo::new();
+            frontend_info.set_is_attacking(is_attacking);
+            frontend_info.set_kill_count(kill_count);
+
+            // Update frontend info with running status
+            frontend_info.set_is_running(!is_paused);
+
+            // Check whether the bot is paused
+            if is_paused {
+                app_handle
+                    .emit_all("frontend_info", &frontend_info)
+                    .unwrap();
+                std::thread::sleep(std::time::Duration::from_millis(250));
+                continue;
+            }
+
+            // Make sure the window is focused
             let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
             if focused_hwnd as isize != hwnd.0 {
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -207,13 +289,25 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 }
             };
 
+            // Consume foodies every 5 seconds and only while attacking
+            let current_time = Instant::now();
+            let min_pot_time_diff = Duration::from_secs(5);
+            if is_attacking
+                && current_time.duration_since(last_initial_attack_time) > min_pot_time_diff
+                && current_time.duration_since(last_pot_time) > min_pot_time_diff
+            {
+                winput::send(Vk::_1);
+                last_pot_time = current_time;
+            }
+
             // Crop image
             // let (crop_x, crop_y) = (image.width() / 6, image.height() / 6);
             // let image = image.sub_image(crop_x, crop_y, image.width() - crop_x, image.height() - crop_y).to_image();
 
             match state {
                 BotState::Idle => {
-                    let total_idle_duration = std::time::Duration::from_millis(rng.gen_range(250..2000));
+                    let total_idle_duration =
+                        std::time::Duration::from_millis(rng.gen_range(250..2000));
                     let idle_chunks = rng.gen_range(1..4);
                     let idle_chunk_duration = total_idle_duration / idle_chunks;
                     for _ in 0..idle_chunks {
@@ -225,58 +319,61 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     state = BotState::SearchingForEnemy;
                 }
                 BotState::AfterEnemyKill => {
+                    kill_count += 1;
                     if rng.gen_bool(0.05) {
                         state = BotState::Idle;
                     } else {
                         state = BotState::SearchingForEnemy;
                     }
-                },
+                }
                 BotState::NoEnemyFound => {
                     match rng.gen_range(0..3) {
                         0 => {
                             // Rotate in random direction for a random duration
                             let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
-                            let rotation_duration = std::time::Duration::from_millis(rng.gen_range(250..750));
+                            let rotation_duration =
+                                std::time::Duration::from_millis(rng.gen_range(250..750));
                             winput::press(*key);
                             std::thread::sleep(rotation_duration);
                             winput::release(*key);
-                        },
+                        }
                         1 => {
                             // Move in random direction for a random duration
                             let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
-                            let rotation_duration = std::time::Duration::from_millis(rng.gen_range(0..500));
-                            let movement_duration = std::time::Duration::from_millis(rng.gen_range(250..750));
+                            let rotation_duration =
+                                std::time::Duration::from_millis(rng.gen_range(0..500));
+                            let movement_duration =
+                                std::time::Duration::from_millis(rng.gen_range(250..750));
                             winput::press(Vk::W);
                             winput::press(*key);
                             std::thread::sleep(rotation_duration);
                             winput::release(*key);
                             std::thread::sleep(movement_duration);
                             winput::release(Vk::W);
-                        },
+                        }
                         2 => {
                             // Move forwards and jump at random intervals
                             let jumps = rng.gen_range(0..3);
                             winput::press(Vk::W);
                             for _ in 0..jumps {
                                 winput::send(Vk::Space);
-                                std::thread::sleep(std::time::Duration::from_millis(rng.gen_range(1300..2000)));
+                                std::thread::sleep(std::time::Duration::from_millis(
+                                    rng.gen_range(1300..2000),
+                                ));
                             }
                             winput::release(Vk::W);
-                        },
-                        _ => unreachable!("IMPOSSIBRU")
+                        }
+                        _ => unreachable!("IMPOSSIBRU"),
                     }
                     state = BotState::SearchingForEnemy;
                 }
                 BotState::SearchingForEnemy => {
                     let mobs = identify_mobs(&image);
-                    app_handle
-                        .emit_all(
-                            "bot_visualizer_enemy_bounds",
-                            mobs.iter()
-                                .map(|mob| mob.name_bounds.clone())
-                                .collect::<Vec<_>>(),
-                        )
-                        .unwrap();
+                    frontend_info.set_enemy_bounds(
+                        mobs.iter()
+                            .map(|mob| mob.name_bounds.clone())
+                            .collect::<Vec<_>>(),
+                    );
                     if mobs.is_empty() {
                         // No mobs found, run movement algo
                         state = BotState::NoEnemyFound;
@@ -312,7 +409,16 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 BotState::EnemyFound(mob) => {
                     // Transform attack coords into local window coords
                     let (x, y) = mob.get_attack_coords();
-                    println!("Trying to attack {} mob at [{},{}]", if mob.mob_type == MobType::Aggro { "aggro" } else { "passive" }, x, y);
+                    println!(
+                        "Trying to attack {} mob at [{},{}]",
+                        if mob.mob_type == MobType::Aggro {
+                            "aggro"
+                        } else {
+                            "passive"
+                        },
+                        x,
+                        y
+                    );
                     let inner_size = window.inner_size().unwrap();
                     let (x_diff, y_diff) = (
                         image.width() - inner_size.width,
@@ -335,44 +441,63 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     state = BotState::Attacking(mob);
                 }
-                BotState::Attacking(_mob) => {
+                BotState::Attacking(mob) => {
+                    frontend_info.set_active_enemy_bounds(mob.name_bounds);
+                    if !is_attacking {
+                        last_initial_attack_time = Instant::now();
+                        last_pot_time = Instant::now();
+                    }
                     if let Some(_) = identify_target_marker(&image) {
-                        // Target marker found, do nothing
+                        // Target marker found
+                        is_attacking = true;
                         std::thread::sleep(std::time::Duration::from_millis(100));
-                    } else  {
-                        // Target marker not found, return to search state
-                        state = BotState::AfterEnemyKill;
+                    } else {
+                        // Target marker not found
+                        if is_attacking {
+                            // Enemy was probably killed
+                            is_attacking = false;
+                            state = BotState::AfterEnemyKill;
+                        } else {
+                            // Lost target without attacking?
+                            state = BotState::SearchingForEnemy;
+                        }
                     }
                 }
             }
 
             // Convert image to base64 and send to frontend
-            let mut buf = Vec::new();
-            let downscaled_image = imageops::resize(
-                &image,
-                image.width() / 8,
-                image.height() / 8,
-                imageops::Nearest,
-            );
-            let mut encoder = JpegEncoder::new_with_quality(&mut buf, 90);
-            encoder
-                .encode(
-                    &downscaled_image,
-                    downscaled_image.width(),
-                    downscaled_image.height(),
-                    ColorType::Rgba8,
-                )
-                .unwrap();
-            let base64 = format!("data:image/jpeg;base64,{}", base64::encode(&buf));
+            // let mut buf = Vec::new();
+            // let downscaled_image = imageops::resize(
+            //     &image,
+            //     image.width() / 8,
+            //     image.height() / 8,
+            //     imageops::Nearest,
+            // );
+            // let mut encoder = JpegEncoder::new_with_quality(&mut buf, 90);
+            // encoder
+            //     .encode(
+            //         &downscaled_image,
+            //         downscaled_image.width(),
+            //         downscaled_image.height(),
+            //         ColorType::Rgba8,
+            //     )
+            //     .unwrap();
+            // let base64 = format!("data:image/jpeg;base64,{}", base64::encode(&buf));
+            // app_handle
+            //     .emit_all(
+            //         "bot_visualizer_update",
+            //         [
+            //             base64,
+            //             image.width().to_string(),
+            //             image.height().to_string(),
+            //         ],
+            //     )
+            //     .unwrap();
+
+            // Update frontend info and send it over
+            frontend_info.set_kill_count(kill_count);
             app_handle
-                .emit_all(
-                    "bot_visualizer_update",
-                    [
-                        base64,
-                        image.width().to_string(),
-                        image.height().to_string(),
-                    ],
-                )
+                .emit_all("frontend_info", &frontend_info)
                 .unwrap();
         }
     });
