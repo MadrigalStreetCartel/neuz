@@ -24,8 +24,13 @@ const Launcher = ({ className }: Props) => {
             setIsLaunched(true)
         })
 
-        webview.once('tauri://error', function (e) {
-            console.error(e)
+        webview.once('tauri://close-requested', function () {
+            webview.close()
+            setIsLaunched(false)
+        })
+
+        webview.once('tauri://closed', function () {
+            setIsLaunched(false)
         })
     }
 
