@@ -218,7 +218,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     let idle_chunk_duration = total_idle_duration / idle_chunks;
                     for _ in 0..idle_chunks {
                         if rng.gen_bool(0.1) {
-                            winput::press(Vk::Space);
+                            winput::send(Vk::Space);
                         }
                         std::thread::sleep(idle_chunk_duration);
                     }
