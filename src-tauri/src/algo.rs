@@ -24,7 +24,7 @@ impl ApproxRect {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy)]
 pub struct Bounds {
     x: u32,
     y: u32,
@@ -39,6 +39,26 @@ impl Bounds {
 
     pub fn size(&self) -> usize {
         self.w as usize * self.h as usize
+    }
+
+    pub fn grow_by(&self, px: u32) -> Bounds {
+        Bounds {
+            x: self.x.saturating_sub(px / 2),
+            y: self.y.saturating_sub(px / 2),
+            w: self.w + px,
+            h: self.h + px,
+        }
+    }
+
+    pub fn center(&self) -> (u32, u32) {
+        (self.x + self.w / 2, self.y + self.h / 2)
+    }
+
+    pub fn intersects_point(&self, point: &(u32, u32)) -> bool {
+        point.0 >= self.x
+            && point.0 < self.x + self.w
+            && point.1 >= self.y
+            && point.1 < self.y + self.h
     }
 }
 

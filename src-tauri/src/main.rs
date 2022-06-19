@@ -41,10 +41,10 @@ fn main() {
 enum BotState {
     Idle,
     NoEnemyFound,
-    AfterEnemyKill,
     SearchingForEnemy,
     EnemyFound(Mob),
     Attacking(Mob),
+    AfterEnemyKill(Mob),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,6 +94,12 @@ fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
         .map(|cluster| Mob {
             mob_type,
             name_bounds: cluster.into_approx_rect().into_bounds(),
+        })
+        .filter(|mob| {
+            // Filter out small clusters (likely to cause misclicks)
+            mob.name_bounds.size() > (10 * 6)
+            // Filter out huge clusters (likely to be Violet Magician Troupe)
+            && mob.name_bounds.size() < (220 * 6)
         })
         .collect()
 }
@@ -167,7 +173,7 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
         .max_by_key(|x| x.name_bounds.size())
 }
 
-fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob]) -> &'a Mob {
+fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bounds>) -> &'a Mob {
     // Calculate middle point of player
     let mid_x = (image.width() / 2) as i32;
     let mid_y = (image.height() / 2) as i32 + 20; // shift mid y point down a bit
@@ -181,12 +187,30 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob]) -> &'a Mob {
         distances.push((mob, distance));
     }
 
-    // Return closest mob
-    distances
-        .iter()
-        .min_by_key(|&(_, distance)| distance)
-        .unwrap()
-        .0
+    // Sort by distance
+    distances.sort_by_key(|&(_, distance)| distance);
+
+    if let Some(avoid_bounds) = avoid_bounds {
+        // Try finding closest mob that' not the mob to be avoided
+        println!("Avoidance radius: {}", image.height() / 8);
+        if let Some((mob, _)) = distances
+            .iter()
+            .filter(|(mob, _)| {
+                !mob.name_bounds
+                    .grow_by(image.height() / 4)
+                    .intersects_point(&avoid_bounds.center())
+            })
+            .next()
+        {
+            println!("Found mob avoiding last target.");
+            mob
+        } else {
+            distances.first().unwrap().0
+        }
+    } else {
+        // Return closest mob
+        distances.first().unwrap().0
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -237,6 +261,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
     let mut last_pot_time = Instant::now();
     let mut last_initial_attack_time = Instant::now();
+    let mut last_kill_time = Instant::now();
+    let mut last_killed_mob_bounds = Bounds::default();
     let mut is_attacking = false;
     let mut kill_count: usize = 0;
     let is_paused = Arc::new(AtomicBool::new(false));
@@ -311,7 +337,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             match state {
                 BotState::Idle => {
                     let total_idle_duration =
-                        std::time::Duration::from_millis(rng.gen_range(250..2000));
+                        std::time::Duration::from_millis(rng.gen_range(500..2000));
                     let idle_chunks = rng.gen_range(1..4);
                     let idle_chunk_duration = total_idle_duration / idle_chunks;
                     for _ in 0..idle_chunks {
@@ -321,14 +347,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         std::thread::sleep(idle_chunk_duration);
                     }
                     state = BotState::SearchingForEnemy;
-                }
-                BotState::AfterEnemyKill => {
-                    kill_count += 1;
-                    if rng.gen_bool(0.05) {
-                        state = BotState::Idle;
-                    } else {
-                        state = BotState::SearchingForEnemy;
-                    }
                 }
                 BotState::NoEnemyFound => {
                     match rng.gen_range(0..3) {
@@ -367,7 +385,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             }
                             winput::release(Vk::W);
                         }
-                        _ => unreachable!("IMPOSSIBRU"),
+                        _ => unreachable!("Impossible"),
                     }
                     state = BotState::SearchingForEnemy;
                 }
@@ -394,18 +412,29 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             .cloned()
                             .collect::<Vec<_>>();
                         if !aggro_mobs.is_empty() {
-                            println!(
-                                "Found {} aggro mobs.",
-                                aggro_mobs.len()
-                            );
-                            let mob = find_closest_mob(&image, aggro_mobs.as_slice());
+                            println!("Found {} aggro mobs. Those die first.", aggro_mobs.len());
+                            let mob = find_closest_mob(&image, aggro_mobs.as_slice(), None);
                             state = BotState::EnemyFound(mob.clone());
                         } else if !passive_mobs.is_empty() {
                             println!("Found {} passive mobs.", passive_mobs.len());
-                            let mob = find_closest_mob(&image, passive_mobs.as_slice());
+                            let mob = {
+                                // Try avoiding detection of last killed mob
+                                if Instant::now().duration_since(last_kill_time)
+                                    < Duration::from_secs(5)
+                                {
+                                    println!("Avoiding mob at {:?}", last_killed_mob_bounds);
+                                    find_closest_mob(
+                                        &image,
+                                        passive_mobs.as_slice(),
+                                        Some(&last_killed_mob_bounds),
+                                    )
+                                } else {
+                                    find_closest_mob(&image, passive_mobs.as_slice(), None)
+                                }
+                            };
                             state = BotState::EnemyFound(mob.clone());
                         } else {
-                            println!("Mobs were found, but they're neither aggro nor passive.");
+                            println!("Mobs were found, but they're neither aggro nor neutral???");
                             state = BotState::NoEnemyFound;
                         }
                     }
@@ -460,12 +489,24 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         if is_attacking {
                             // Enemy was probably killed
                             is_attacking = false;
-                            state = BotState::AfterEnemyKill;
+                            state = BotState::AfterEnemyKill(mob);
                         } else {
                             // Lost target without attacking?
                             state = BotState::SearchingForEnemy;
                         }
                     }
+                }
+                BotState::AfterEnemyKill(mob) => {
+                    kill_count += 1;
+                    last_killed_mob_bounds = mob.name_bounds;
+                    last_kill_time = Instant::now();
+                    state = {
+                        if rng.gen_bool(0.1) {
+                            BotState::Idle
+                        } else {
+                            BotState::SearchingForEnemy
+                        }
+                    };
                 }
             }
 

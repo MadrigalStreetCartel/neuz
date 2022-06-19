@@ -13,13 +13,22 @@ Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/
 
 ## Changelog
 
+**0.3.0**
+- Avoids members of the Violet Magician Troupe
+- Ignores small targets (like buffs and UI icons)
+- Tries to avoid attacking an enemy that has already been killed
+
 **0.2.0**
-- Improved user interface (added bot starts and pause/resume button)
-- Improved retargeting behavior when target marker is gone
-- Added automatic foodie consumption
+- Improves user interface
+- Improves retargeting behavior when target marker is gone
+- Adds automatic foodie consumption
 
 **0.1.0**
 - Initial release
+
+## Ideas
+
+- AFK Protection Mode: Attack aggro mobs close to player, but do not actively search for mobs
 
 ## Mechanics
 
@@ -41,6 +50,7 @@ If the enemy is killed:
 
 1. Initiates short idle pattern with a certain probability
 2. Checks for targets again after idle pattern is complete
+    - Tries to avoid attacking an enemy that has already been killed
 
 **Regeneration Logic**
 
