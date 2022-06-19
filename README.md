@@ -13,6 +13,12 @@ Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/
 
 ## Changelog
 
+**0.4.0**
+- Adds patch notes and events to launcher
+- Improve dead mob avoidance
+- Improve initial movement pattern when no mob is found
+- Improve and extend movement patterns to make the bot seem more life-like 
+
 **0.3.0**
 - Avoids members of the Violet Magician Troupe
 - Ignores small targets (like buffs and UI icons)

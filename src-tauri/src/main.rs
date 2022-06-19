@@ -3,31 +3,31 @@
     windows_subsystem = "windows"
 )]
 
-use algo::Bounds;
-use image::codecs::jpeg::JpegEncoder;
-use image::imageops;
-use image::ColorType;
-use rand::prelude::SliceRandom;
-use rand::Rng;
-use serde::Deserialize;
-use serde::Serialize;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
-use tauri::Manager;
+// use image::{codecs::jpeg::JpegEncoder, imageops, ColorType};
 
-mod algo;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
 
-use tauri::PhysicalPosition;
-use tauri::Position;
+use tauri::{Manager, PhysicalPosition, Position};
+use rand::prelude::{Rng, SliceRandom};
+use serde::{Deserialize, Serialize};
+
+// windows support
 use win_screenshot::capture::Image;
 use winput::Vk;
 
-use crate::algo::x_axis_selector;
-use crate::algo::y_axis_selector;
-use crate::algo::AxisClusterComputer;
+mod algo;
+mod utils;
+
+use crate::{
+    algo::{x_axis_selector, y_axis_selector, AxisClusterComputer, Bounds},
+    utils::Timer,
+};
 
 fn main() {
     let context = tauri::generate_context!();
@@ -68,6 +68,8 @@ impl Mob {
 }
 
 fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
+    let _timer = Timer::start_new("merge_cloud_into_mobs");
+
     // Max merge distance
     let max_distance_x: u32 = 20;
     let max_distance_y: u32 = 5;
@@ -118,6 +120,8 @@ fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
 }
 
 fn identify_mobs(image: &Image) -> Vec<Mob> {
+    let _timer = Timer::start_new("identify_mobs");
+
     // Create collections for passive and aggro mobs
     let mut mob_coords_pas: Vec<(u32, u32)> = Vec::default();
     let mut mob_coords_agg: Vec<(u32, u32)> = Vec::default();
@@ -148,6 +152,7 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
 }
 
 fn identify_target_marker(image: &Image) -> Option<Mob> {
+    let _timer = Timer::start_new("identify_target_marker");
     let mut coords = Vec::default();
 
     // Reference color
@@ -174,6 +179,8 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
 }
 
 fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bounds>) -> &'a Mob {
+    let _timer = Timer::start_new("find_closest_mob");
+
     // Calculate middle point of player
     let mid_x = (image.width() / 2) as i32;
     let mid_y = (image.height() / 2) as i32 + 20; // shift mid y point down a bit
@@ -192,13 +199,12 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bo
 
     if let Some(avoid_bounds) = avoid_bounds {
         // Try finding closest mob that' not the mob to be avoided
-        println!("Avoidance radius: {}", image.height() / 8);
         if let Some((mob, _)) = distances
             .iter()
             .filter(|(mob, _)| {
-                !mob.name_bounds
-                    .grow_by(image.height() / 4)
-                    .intersects_point(&avoid_bounds.center())
+                !avoid_bounds
+                    .grow_by(10)
+                    .intersects_point(&mob.get_attack_coords())
             })
             .next()
         {
@@ -265,6 +271,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
     let mut last_killed_mob_bounds = Bounds::default();
     let mut is_attacking = false;
     let mut kill_count: usize = 0;
+    let mut rotation_movement_tries = 0;
     let is_paused = Arc::new(AtomicBool::new(false));
 
     let local_is_paused = is_paused.clone();
@@ -312,6 +319,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
             // Capture the window
             let image = {
+                let _timer = Timer::start_new("capture_window");
                 if let Ok(image) = capture_screenshot(hwnd.0) {
                     image
                 } else {
@@ -349,39 +357,56 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     state = BotState::SearchingForEnemy;
                 }
                 BotState::NoEnemyFound => {
+                    // Try rotating first in order to locate nearby enemies
+                    if rotation_movement_tries < 10 {
+                        // Rotate in random direction for a random duration
+                        let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
+                        let rotation_duration =
+                            std::time::Duration::from_millis(rng.gen_range(100..500));
+                        winput::press(*key);
+                        std::thread::sleep(rotation_duration);
+                        winput::release(*key);
+                        rotation_movement_tries += 1;
+                        state = BotState::SearchingForEnemy;
+                        continue;
+                    }
+                    // If rotating multiple times failed, try other movement patterns
                     match rng.gen_range(0..3) {
                         0 => {
-                            // Rotate in random direction for a random duration
+                            // Move into a random direction while jumping
                             let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
                             let rotation_duration =
-                                std::time::Duration::from_millis(rng.gen_range(250..750));
+                                std::time::Duration::from_millis(rng.gen_range(100..350));
+                            winput::press(Vk::W);
+                            winput::press(Vk::Space);
                             winput::press(*key);
                             std::thread::sleep(rotation_duration);
                             winput::release(*key);
+                            winput::release(Vk::Space);
+                            winput::release(Vk::W);
                         }
                         1 => {
-                            // Move in random direction for a random duration
-                            let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
-                            let rotation_duration =
-                                std::time::Duration::from_millis(rng.gen_range(0..500));
-                            let movement_duration =
-                                std::time::Duration::from_millis(rng.gen_range(250..750));
+                            // Move forwards while jumping
                             winput::press(Vk::W);
-                            winput::press(*key);
-                            std::thread::sleep(rotation_duration);
-                            winput::release(*key);
-                            std::thread::sleep(movement_duration);
+                            winput::press(Vk::Space);
+                            std::thread::sleep(std::time::Duration::from_millis(
+                                rng.gen_range(1000..4000),
+                            ));
+                            winput::release(Vk::Space);
                             winput::release(Vk::W);
                         }
                         2 => {
-                            // Move forwards and jump at random intervals
-                            let jumps = rng.gen_range(0..3);
+                            // Move forwards in a slalom pattern
+                            let slalom_switch_duration =
+                                std::time::Duration::from_millis(rng.gen_range(350..650));
+                            let total_slaloms = rng.gen_range(4..8);
+                            let mut left = rng.gen_bool(0.5);
                             winput::press(Vk::W);
-                            for _ in 0..jumps {
-                                winput::send(Vk::Space);
-                                std::thread::sleep(std::time::Duration::from_millis(
-                                    rng.gen_range(1300..2000),
-                                ));
+                            for _ in 0..total_slaloms {
+                                winput::press(if left { Vk::A } else { Vk::D });
+                                std::thread::sleep(slalom_switch_duration);
+                                winput::release(if left { Vk::A } else { Vk::D });
+                                left = !left;
                             }
                             winput::release(Vk::W);
                         }
@@ -440,6 +465,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     }
                 }
                 BotState::EnemyFound(mob) => {
+                    rotation_movement_tries = 0;
+
                     // Transform attack coords into local window coords
                     let (x, y) = mob.get_attack_coords();
                     println!(
@@ -471,7 +498,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     mouse.click(&mouse_rs::types::keys::Keys::LEFT).unwrap();
 
                     // Wait a few ms before switching state
-                    std::thread::sleep(std::time::Duration::from_millis(50));
                     state = BotState::Attacking(mob);
                 }
                 BotState::Attacking(mob) => {
@@ -480,9 +506,10 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         last_initial_attack_time = Instant::now();
                         last_pot_time = Instant::now();
                     }
-                    if let Some(_) = identify_target_marker(&image) {
+                    if let Some(marker) = identify_target_marker(&image) {
                         // Target marker found
                         is_attacking = true;
+                        last_killed_mob_bounds = marker.name_bounds;
                         std::thread::sleep(std::time::Duration::from_millis(100));
                     } else {
                         // Target marker not found
@@ -496,9 +523,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         }
                     }
                 }
-                BotState::AfterEnemyKill(mob) => {
+                BotState::AfterEnemyKill(_mob) => {
                     kill_count += 1;
-                    last_killed_mob_bounds = mob.name_bounds;
                     last_kill_time = Instant::now();
                     state = {
                         if rng.gen_bool(0.1) {
