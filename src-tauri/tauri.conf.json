@@ -7,7 +7,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "flyff-universe-bot",
+    "productName": "Neuz",
     "version": "0.1.0"
   },
   "tauri": {
@@ -58,7 +58,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "FlyFF Universe",
+        "title": "Neuz | FlyFF Universe",
         "width": 800
       }
     ]
