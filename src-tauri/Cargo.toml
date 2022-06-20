@@ -21,6 +21,8 @@ tauri = { version = "1.0.0", features = ["api-all"] }
 rand = "0.8.5"
 image = "0.24.2"
 base64 = "0.13.0"
+parking_lot = "0.12.1"
+rayon = "1.5.3"
 
 # Windows platform support
 win-screenshot = "1.0.2"

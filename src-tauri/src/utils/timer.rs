@@ -1,8 +1,12 @@
-use std::time::{Instant, Duration};
+use std::{
+    cell::RefCell,
+    time::{Duration, Instant},
+};
 
 pub struct Timer {
     label: String,
     start: Instant,
+    is_silenced: RefCell<bool>,
 }
 
 impl Timer {
@@ -13,7 +17,25 @@ impl Timer {
         Timer {
             label: label.to_string(),
             start: Instant::now(),
+            is_silenced: RefCell::new(false),
         }
+    }
+
+    pub fn lap(&self, file: &'static str, line: u32) {
+        if *self.is_silenced.borrow() {
+            return;
+        }
+        println!(
+            "[{} {}${}] took {:?}",
+            self.label,
+            file,
+            line,
+            self.elapsed()
+        );
+    }
+
+    pub fn silence(&self) {
+        *self.is_silenced.borrow_mut() = true;
     }
 
     pub fn elapsed(&self) -> Duration {
@@ -21,6 +43,9 @@ impl Timer {
     }
 
     pub fn report(&self) {
+        if *self.is_silenced.borrow() {
+            return;
+        }
         println!("[{}] took {:?}", self.label, self.elapsed());
     }
 }

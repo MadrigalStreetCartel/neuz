@@ -3,8 +3,9 @@ import { WebviewWindow } from '@tauri-apps/api/window'
 
 import FlyffLogo from './assets/logo.png'
 import LauncherBackground from './assets/launcher_background_ice.png'
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import BotVisualizer from './BotVisualizer'
+import { invoke, process as TauriProcess } from '@tauri-apps/api'
 
 type Props = {
     className?: string,
@@ -44,6 +45,7 @@ const fetchNews: () => Promise<[NewsItem[], NewsItem[]]> = async () => {
 }
 
 const Launcher = ({ className }: Props) => {
+    const [hasEnteredMainLoop, enterMainLoop] = useReducer(() => true, false);
     const [isLaunched, setIsLaunched] = useState(false)
     const [recentNews, setRecentNews] = useState<NewsItem[][]>([])
 
@@ -56,19 +58,24 @@ const Launcher = ({ className }: Props) => {
             title: 'Flyff Universe',
             url: 'https://universe.flyff.com/play'
         })
+
+        webview.setCursorGrab(true);
+        webview.setCursorVisible(false);
     
         webview.once('tauri://created', function () {
             webview.show()
             setIsLaunched(true)
+
+            if (!hasEnteredMainLoop) {
+                enterMainLoop()
+                invoke('start_bot')
+            }
         })
 
         webview.once('tauri://close-requested', function () {
             webview.close()
             setIsLaunched(false)
-        })
-
-        webview.once('tauri://closed', function () {
-            setIsLaunched(false)
+            TauriProcess.relaunch();
         })
     }
 

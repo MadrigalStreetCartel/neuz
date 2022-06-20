@@ -1,7 +1,10 @@
 import styled from "styled-components"
 import { listen, emit } from '@tauri-apps/api/event'
-import { invoke } from '@tauri-apps/api'
-import { useEffect, useReducer, useState } from "react"
+import { useEffect, useState } from "react"
+import SlotBar from "./components/SlotBar"
+import ConfigPanel from "./components/ConfigPanel"
+
+export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
 type Bounds = {x: number, y: number, w: number, h: number}
 
@@ -13,24 +16,26 @@ type FrontendInfoModel = {
     is_running: boolean,
 }
 
+export type SlotType = "Unused" | "Food" | "PickupPet" | "AttackSkill" | "BuffSkill" | "Flying"
+export type SlotModel = {
+    slot_type: SlotType,
+}
+export type BotConfigModel = {
+    change_id: number,
+    is_running: boolean,
+    on_demand_pet: boolean,
+    use_attack_skills: boolean,
+    slots: FixedArray<SlotModel, 10>,
+}
+
 type Props = {
     className?: string,
 }
 
 const BotVisualizer = ({ className }: Props) => {
-    const [showStartBtn, freezeStartBtn] = useReducer(() => false, true);
-
     const [imageData, setImageData] = useState({ data: '', width: 0, height: 0 })
     const [info, setInfo] = useState<FrontendInfoModel | null>(null);
-
-    const handleStart = () => {
-        freezeStartBtn()
-        invoke('start_bot')
-    }
-
-    const handleToggle = () => {
-        emit('toggle_bot')
-    }
+    const [config, setConfig] = useState<BotConfigModel | null>(null);
 
     useEffect(() => {
         listen<string>('bot_visualizer_update', event => {
@@ -45,19 +50,51 @@ const BotVisualizer = ({ className }: Props) => {
             const payload = event.payload as FrontendInfoModel
             setInfo(payload)
         })
+
+        listen('bot_config_s2c', event => {
+            console.log(event.payload)
+            const payload = event.payload as BotConfigModel
+            setConfig(payload)
+        })
     }, [])
+
+    const handleToggle = () => {
+        if (!config) return
+        const newConfig = { ...config, is_running: !config.is_running }
+        emit('bot_config_c2s', newConfig)
+    }
+
+    const handleSlotUpdate = (type: SlotType, index: number) => {
+        if (!config) return
+        const newSlots = [...config.slots]
+        newSlots[index] = { ...newSlots[index], slot_type: type }
+        const newConfig = { ...config, slots: newSlots as FixedArray<SlotModel, 10> }
+        emit('bot_config_c2s', newConfig)
+    }
+
+    const handleConfigUpdate = (config: BotConfigModel) => {
+        emit('bot_config_c2s', config)
+    }
 
     return (
         <div className={className}>
-            {info && (
-                <div className="info">
-                    <div className="row">
-                        <div>Running: {info.is_running ? '✅' : '❌'}</div>
-                        <div>Kills: {info.enemy_kill_count}</div>
-                        <div>Attacking: {info.is_attacking ? '✅' : '❌'}</div>
+            <div className="vstack">
+                {info && (
+                    <div className="info">
+                        <div className="row">
+                            <div>Running: {info.is_running ? '✅' : '❌'}</div>
+                            <div>Kills: {info.enemy_kill_count}</div>
+                            <div>Attacking: {info.is_attacking ? '✅' : '❌'}</div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+                {config && (
+                    <>
+                        <SlotBar slots={config.slots} onChange={handleSlotUpdate} />
+                        <ConfigPanel config={config} onChange={handleConfigUpdate} />
+                    </>
+                )}
+            </div>
             <div className="container" style={{ width: `${imageData.width}px`, height: `${imageData.height}px` }}>
                 <img className="view" alt="" src={imageData.data} style={{ width: `${imageData.width}px`, height: `${imageData.height}px` }} />
                 {/* {enemyTags.map(({ x, y }) => (
@@ -71,8 +108,7 @@ const BotVisualizer = ({ className }: Props) => {
                 ))} */}
             </div>
             <div className="footer">
-                {showStartBtn && <div className="btn" onClick={handleStart}>Start Bot</div>}
-                {!showStartBtn && info?.is_running !== undefined && <div className="btn" onClick={handleToggle}>{info.is_running ? 'Pause' : 'Resume'} Bot</div>}
+                <div className="btn" onClick={handleToggle}>{config?.is_running ? 'Stop' : 'Start'} Bot</div>
             </div>
         </div>
     )
@@ -87,9 +123,16 @@ export default styled(BotVisualizer)`
     position: relative;
     overflow: hidden;
 
-    & .info {
+    & .vstack {
         position: fixed;
         top: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    & .info {
         width: 50vw;
         margin: 0 auto;
         display: flex;
@@ -103,6 +146,10 @@ export default styled(BotVisualizer)`
         box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1);
         border: 1px solid hsl(0,0%,10%);
         z-index: 9999;
+
+        &--slotbar {
+            width: auto;
+        }
 
         & .row {
             display: flex;

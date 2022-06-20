@@ -6,26 +6,26 @@
 // use image::{codecs::jpeg::JpegEncoder, imageops, ColorType};
 
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::{mpsc::sync_channel, Arc},
     time::{Duration, Instant},
 };
 
-use tauri::{Manager, PhysicalPosition, Position};
+use parking_lot::RwLock;
 use rand::prelude::{Rng, SliceRandom};
-use serde::{Deserialize, Serialize};
+use rayon::prelude::*;
+use tauri::{Manager, PhysicalPosition, Position};
 
 // windows support
 use win_screenshot::capture::Image;
 use winput::Vk;
 
 mod algo;
+mod ipc;
 mod utils;
 
 use crate::{
     algo::{x_axis_selector, y_axis_selector, AxisClusterComputer, Bounds},
+    ipc::{BotConfig, FrontendInfo, SlotType},
     utils::Timer,
 };
 
@@ -130,16 +130,33 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
     let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
     let ref_color_agg: [u8; 3] = [0xd3, 0x0f, 0x0d]; // Aggro mobs
 
-    // Collect pixel clouds for passive and aggro mobs
+    // Collect pixel clouds
+    struct MobPixel(u32, u32, MobType);
     let ignore_area_bottom = 50;
-    for (x, y, px) in image.enumerate_pixels() {
-        if px.0[3] != 255 || y > image.height() - ignore_area_bottom {
-            continue;
-        }
-        if pixel_matches(&px.0, &ref_color_pas, 2) {
-            mob_coords_pas.push((x, y));
-        } else if pixel_matches(&px.0, &ref_color_agg, 8) {
-            mob_coords_agg.push((x, y));
+    let (snd, recv) = sync_channel::<MobPixel>(4096);
+    image
+        .enumerate_rows()
+        .par_bridge()
+        .for_each(move |(y, row)| {
+            if y > image.height() - ignore_area_bottom {
+                return;
+            }
+            for (x, _, px) in row {
+                if px.0[3] != 255 || y > image.height() - ignore_area_bottom {
+                    return;
+                }
+                if pixel_matches(&px.0, &ref_color_pas, 2) {
+                    snd.send(MobPixel(x, y, MobType::Passive)).unwrap();
+                } else if pixel_matches(&px.0, &ref_color_agg, 8) {
+                    snd.send(MobPixel(x, y, MobType::Aggro)).unwrap();
+                }
+            }
+        });
+    while let Ok(px) = recv.recv() {
+        match px.2 {
+            MobType::Passive => mob_coords_pas.push((px.0, px.1)),
+            MobType::Aggro => mob_coords_agg.push((px.0, px.1)),
+            _ => unreachable!(),
         }
     }
 
@@ -158,15 +175,27 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
     // Reference color
     let ref_color: [u8; 3] = [246, 90, 106];
 
-    // Collect pixel clouds for target markers
+    // Collect pixel clouds
     let ignore_area_bottom = 50;
-    for (x, y, px) in image.enumerate_pixels() {
-        if px.0[3] != 255 || y > image.height() - ignore_area_bottom {
-            continue;
-        }
-        if pixel_matches(&px.0, &ref_color, 2) {
-            coords.push((x, y));
-        }
+    let (snd, recv) = sync_channel::<(u32, u32)>(4096);
+    image
+        .enumerate_rows()
+        .par_bridge()
+        .for_each(move |(y, row)| {
+            if y > image.height() - ignore_area_bottom {
+                return;
+            }
+            for (x, _, px) in row {
+                if px.0[3] != 255 {
+                    return;
+                }
+                if pixel_matches(&px.0, &ref_color, 2) {
+                    snd.send((x, y)).unwrap();
+                }
+            }
+        });
+    while let Ok(coord) = recv.recv() {
+        coords.push(coord);
     }
 
     // Identify target marker entities
@@ -219,44 +248,19 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bo
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct FrontendInfo {
-    enemy_bounds: Option<Vec<Bounds>>,
-    active_enemy_bounds: Option<Bounds>,
-    enemy_kill_count: usize,
-    is_attacking: bool,
-    is_running: bool,
-}
-
-impl FrontendInfo {
-    fn new() -> Self {
-        Self {
-            enemy_bounds: None,
-            active_enemy_bounds: None,
-            enemy_kill_count: 0,
-            is_attacking: false,
-            is_running: false,
-        }
-    }
-
-    fn set_enemy_bounds(&mut self, enemy_bounds: Vec<Bounds>) {
-        self.enemy_bounds = Some(enemy_bounds);
-    }
-
-    fn set_active_enemy_bounds(&mut self, active_enemy_bounds: Bounds) {
-        self.active_enemy_bounds = Some(active_enemy_bounds);
-    }
-
-    fn set_kill_count(&mut self, enemy_kill_count: usize) {
-        self.enemy_kill_count = enemy_kill_count;
-    }
-
-    fn set_is_attacking(&mut self, is_attacking: bool) {
-        self.is_attacking = is_attacking;
-    }
-
-    fn set_is_running(&mut self, is_running: bool) {
-        self.is_running = is_running;
+fn slot_index_to_vk(index: usize) -> Vk {
+    match index {
+        0 => Vk::_0,
+        1 => Vk::_1,
+        2 => Vk::_2,
+        3 => Vk::_3,
+        4 => Vk::_4,
+        5 => Vk::_5,
+        6 => Vk::_6,
+        7 => Vk::_7,
+        8 => Vk::_8,
+        9 => Vk::_9,
+        _ => unreachable!("Invalid food index"),
     }
 }
 
@@ -269,26 +273,60 @@ async fn start_bot(app_handle: tauri::AppHandle) {
     let mut last_initial_attack_time = Instant::now();
     let mut last_kill_time = Instant::now();
     let mut last_killed_mob_bounds = Bounds::default();
+    let mut last_attack_skill_usage_time = Instant::now();
     let mut is_attacking = false;
     let mut kill_count: usize = 0;
     let mut rotation_movement_tries = 0;
-    let is_paused = Arc::new(AtomicBool::new(false));
 
-    let local_is_paused = is_paused.clone();
-    app_handle.listen_global("toggle_bot", move |_| {
-        let was_paused = local_is_paused.load(Ordering::Relaxed);
-        local_is_paused.store(!was_paused, Ordering::Relaxed);
-    });
-
-    let local_is_paused = is_paused.clone();
     std::thread::spawn(move || {
+        let mut last_config_change_id = 0;
         let mut state = BotState::SearchingForEnemy;
         let mut rng = rand::thread_rng();
-
+        let config: Arc<RwLock<BotConfig>> =
+            Arc::new(RwLock::new(BotConfig::deserialize_or_default()));
         let mouse = mouse_rs::Mouse::new();
 
+        // Listen for config changes from the UI
+        let local_config = config.clone();
+        app_handle.listen_global("bot_config_c2s", move |e| {
+            println!("Received config change");
+            if let Some(payload) = e.payload() {
+                match serde_json::from_str::<BotConfig>(payload) {
+                    Ok(new_config) => {
+                        *local_config.write() = new_config.changed();
+                    }
+                    Err(e) => {
+                        println!("Failed to parse bot config: {}", e);
+                        println!("Payload was:\n{}", payload);
+                    }
+                }
+            }
+        });
+
+        // Listen for bot activation state
+        let local_config = config.clone();
+        app_handle.listen_global("toggle_bot", move |_| {
+            local_config.write().toggle_active();
+        });
+
+        // Wait a second for frontend to become ready
+        std::thread::sleep(Duration::from_secs(1));
+
+        // Send initial config to frontend
+        app_handle
+            .emit_all("bot_config_s2c", &*config.read())
+            .unwrap();
+
         loop {
-            let is_paused = local_is_paused.load(Ordering::Relaxed);
+            let timer = Timer::start_new("loop_iter");
+            let config = &*config.read();
+
+            // Send changed config to frontend if needed
+            if config.change_id() > last_config_change_id {
+                config.serialize();
+                app_handle.emit_all("bot_config_s2c", &config).unwrap();
+                last_config_change_id = config.change_id();
+            }
 
             // Initialize frontend info
             let mut frontend_info = FrontendInfo::new();
@@ -296,14 +334,15 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             frontend_info.set_kill_count(kill_count);
 
             // Update frontend info with running status
-            frontend_info.set_is_running(!is_paused);
+            frontend_info.set_is_running(config.is_running());
 
             // Check whether the bot is paused
-            if is_paused {
+            if !config.is_running() {
                 app_handle
                     .emit_all("frontend_info", &frontend_info)
                     .unwrap();
                 std::thread::sleep(std::time::Duration::from_millis(250));
+                timer.silence();
                 continue;
             }
 
@@ -314,8 +353,11 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     .emit_all("frontend_info", &frontend_info)
                     .unwrap();
                 std::thread::sleep(std::time::Duration::from_millis(100));
+                timer.silence();
                 continue;
             }
+
+            timer.lap(file!(), line!());
 
             // Capture the window
             let image = {
@@ -327,6 +369,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 }
             };
 
+            timer.lap(file!(), line!());
+
             // Consume foodies every 5 seconds and only while attacking
             let current_time = Instant::now();
             let min_pot_time_diff = Duration::from_secs(5);
@@ -334,13 +378,17 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 && current_time.duration_since(last_initial_attack_time) > min_pot_time_diff
                 && current_time.duration_since(last_pot_time) > min_pot_time_diff
             {
-                winput::send(Vk::_1);
-                last_pot_time = current_time;
+                if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                    winput::send(slot_index_to_vk(food_index));
+                    last_pot_time = current_time;
+                }
             }
 
             // Crop image
             // let (crop_x, crop_y) = (image.width() / 6, image.height() / 6);
             // let image = image.sub_image(crop_x, crop_y, image.width() - crop_x, image.height() - crop_y).to_image();
+
+            timer.lap(file!(), line!());
 
             match state {
                 BotState::Idle => {
@@ -358,7 +406,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 }
                 BotState::NoEnemyFound => {
                     // Try rotating first in order to locate nearby enemies
-                    if rotation_movement_tries < 10 {
+                    if rotation_movement_tries < 20 {
                         // Rotate in random direction for a random duration
                         let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
                         let rotation_duration =
@@ -375,10 +423,20 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         0 => {
                             // Move into a random direction while jumping
                             let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
-                            let rotation_duration =
-                                std::time::Duration::from_millis(rng.gen_range(100..350));
+                            let rotation_duration = Duration::from_millis(rng.gen_range(100..350));
+                            let movement_slices = rng.gen_range(1..4);
+                            let movement_slice_duration =
+                                Duration::from_millis(rng.gen_range(250..500));
+                            let movement_overlap_duration =
+                                movement_slice_duration.saturating_sub(rotation_duration);
                             winput::press(Vk::W);
                             winput::press(Vk::Space);
+                            for _ in 0..movement_slices {
+                                winput::press(*key);
+                                std::thread::sleep(rotation_duration);
+                                winput::release(*key);
+                                std::thread::sleep(movement_overlap_duration);
+                            }
                             winput::press(*key);
                             std::thread::sleep(rotation_duration);
                             winput::release(*key);
@@ -510,7 +568,17 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         // Target marker found
                         is_attacking = true;
                         last_killed_mob_bounds = marker.name_bounds;
-                        std::thread::sleep(std::time::Duration::from_millis(100));
+
+                        // Try to use attack skill
+                        if let Some(index) =
+                            config.get_random_slot_index(SlotType::AttackSkill, &mut rng)
+                        {
+                            // Only use attack skill if enabled and once a second at most
+                            if config.should_use_attack_skills() && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1) {
+                                last_attack_skill_usage_time = Instant::now();
+                                winput::send(slot_index_to_vk(index));
+                            }
+                        }
                     } else {
                         // Target marker not found
                         if is_attacking {
@@ -533,8 +601,22 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             BotState::SearchingForEnemy
                         }
                     };
+
+                    // Check for on-demand pet config
+                    if config.is_on_demand_pet() {
+                        if let Some(index) = config.get_slot_index(SlotType::PickupPet) {
+                            // Summon pet
+                            winput::send(slot_index_to_vk(index));
+                            // Wait half a second to make sure everything is picked up
+                            std::thread::sleep(std::time::Duration::from_millis(2000));
+                            // Unsummon pet
+                            winput::send(slot_index_to_vk(index));
+                        }
+                    }
                 }
             }
+
+            timer.lap(file!(), line!());
 
             // Convert image to base64 and send to frontend
             // let mut buf = Vec::new();

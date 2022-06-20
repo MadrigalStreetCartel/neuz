@@ -6,18 +6,32 @@ Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/
 ## Bot Usage
 
 **Requirements**
+> No settings have to be changed by default.
 
-1. Use default theme
-2. Enable single-click to attack in options
-3. Put food item of your choice into slot 1
+1. Use default theme (used by default)
+2. Enable auto-attack (enabled by default)
+
+For best compatibility:
+
+1. Enable right-click player menu for best compatibility (disabled by default)
+2. Disable single-click to attack (disabled by default)
 
 ## Changelog
 
+**0.5.0**
+- Adds automatic saving/loading of bot configuration
+- Adds configurable slots for foods, pets, skills and buffs
+- Adds on-demand pickup-pet handling to prevent pet from interfering with algorithm
+- Adds more configurable options to bot UI
+- Further improves movement patterns and responsiveness
+- Greatly improves detection performance by using a multi-threaded algorithm
+- Relaunches application when client window is closed to prevent desync issues
+
 **0.4.0**
 - Adds patch notes and events to launcher
-- Improve dead mob avoidance
-- Improve initial movement pattern when no mob is found
-- Improve and extend movement patterns to make the bot seem more life-like 
+- Improves dead mob avoidance
+- Improves initial movement pattern when no mob is found
+- Improves and extends movement patterns to make the bot seem more life-like 
 
 **0.3.0**
 - Avoids members of the Violet Magician Troupe
