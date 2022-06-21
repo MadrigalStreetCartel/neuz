@@ -18,6 +18,11 @@ For best compatibility:
 
 ## Changelog
 
+**0.6.0**
+- Adds option to stay in area in order to avoid giants etc.
+- Tweaks algorithms for improved hit detection
+- Extends dead-zone at bottom of screen
+
 **0.5.0**
 - Adds automatic saving/loading of bot configuration
 - Adds configurable slots for foods, pets, skills and buffs
