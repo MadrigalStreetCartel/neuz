@@ -58,12 +58,16 @@ const ConfigPanel = ({ className, config, onChange }: Props) => {
     return (
         <div className={className}>
             <div className="row">
-                <StyledConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically." />
+                <StyledConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically. Make sure the pet is NOT summoned before starting." />
                 <BooleanSlider value={config.on_demand_pet} onChange={value => onChange?.({ ...config, on_demand_pet: value })} />
             </div>
             <div className="row">
-                <StyledConfigLabel name="Use skills to attack" helpText="Enables the use of skills configured in the action slot to attack." />
+                <StyledConfigLabel name="Use Skills to Attack" helpText="Enables the use of skills configured in the action slot to attack. DO NOT ACTIVATE unless you got a Refresher Hold or Vital Drink X active (depending on whether it's an MP or FP skill)." />
                 <BooleanSlider value={config.use_attack_skills} onChange={value => onChange?.({ ...config, use_attack_skills: value })} />
+            </div>
+            <div className="row">
+                <StyledConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />
+                <BooleanSlider value={config.stay_in_area} onChange={value => onChange?.({ ...config, stay_in_area: value })} />
             </div>
         </div>
     )

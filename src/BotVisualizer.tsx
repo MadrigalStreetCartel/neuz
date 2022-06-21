@@ -25,6 +25,7 @@ export type BotConfigModel = {
     is_running: boolean,
     on_demand_pet: boolean,
     use_attack_skills: boolean,
+    stay_in_area: boolean,
     slots: FixedArray<SlotModel, 10>,
 }
 

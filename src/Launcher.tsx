@@ -58,9 +58,6 @@ const Launcher = ({ className }: Props) => {
             title: 'Flyff Universe',
             url: 'https://universe.flyff.com/play'
         })
-
-        webview.setCursorGrab(true);
-        webview.setCursorVisible(false);
     
         webview.once('tauri://created', function () {
             webview.show()

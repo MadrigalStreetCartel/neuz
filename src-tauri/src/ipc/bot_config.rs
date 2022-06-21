@@ -32,6 +32,7 @@ pub struct VersionAgnosticBotConfig {
     is_running: Option<bool>,
     on_demand_pet: Option<bool>,
     use_attack_skills: Option<bool>,
+    stay_in_area: Option<bool>,
     slots: Option<[Slot; 10]>,
 }
 
@@ -42,6 +43,7 @@ impl From<BotConfig> for VersionAgnosticBotConfig {
             is_running: Some(bot_config.is_running),
             on_demand_pet: Some(bot_config.on_demand_pet),
             use_attack_skills: Some(bot_config.use_attack_skills),
+            stay_in_area: Some(bot_config.stay_in_area),
             slots: Some(bot_config.slots),
         }
     }
@@ -57,6 +59,8 @@ pub struct BotConfig {
     on_demand_pet: bool,
     /// Whether to use attack skills for combat
     use_attack_skills: bool,
+    /// Whether the bot will try to stay in the area it started in
+    stay_in_area: bool,
     /// Slot configuration
     slots: [Slot; 10],
 }
@@ -98,6 +102,10 @@ impl BotConfig {
         self.use_attack_skills
     }
 
+    pub fn should_stay_in_area(&self) -> bool {
+        self.stay_in_area
+    }
+
     pub fn change_id(&self) -> u64 {
         self.change_id
     }
@@ -123,7 +131,8 @@ impl BotConfig {
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {
         if let Ok(mut file) = File::open(".botconfig") {
-            let config: VersionAgnosticBotConfig = serde_json::from_reader(&mut file).unwrap_or_default();
+            let config: VersionAgnosticBotConfig =
+                serde_json::from_reader(&mut file).unwrap_or_default();
             config.into()
         } else {
             Self::default()
@@ -138,6 +147,7 @@ impl From<VersionAgnosticBotConfig> for BotConfig {
             is_running: serialized_bot_config.is_running.unwrap_or(false),
             on_demand_pet: serialized_bot_config.on_demand_pet.unwrap_or(true),
             use_attack_skills: serialized_bot_config.use_attack_skills.unwrap_or(false),
+            stay_in_area: serialized_bot_config.stay_in_area.unwrap_or(false),
             slots: serialized_bot_config.slots.unwrap_or_default(),
         }
     }

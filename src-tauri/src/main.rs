@@ -63,7 +63,7 @@ struct Mob {
 impl Mob {
     pub fn get_attack_coords(&self) -> (u32, u32) {
         let (x, y) = self.name_bounds.get_lowest_center_point();
-        (x, y + 20)
+        (x, y + 25)
     }
 }
 
@@ -71,7 +71,7 @@ fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
     let _timer = Timer::start_new("merge_cloud_into_mobs");
 
     // Max merge distance
-    let max_distance_x: u32 = 20;
+    let max_distance_x: u32 = 24;
     let max_distance_y: u32 = 5;
 
     // Cluster coordinates in x-direction
@@ -132,7 +132,7 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
 
     // Collect pixel clouds
     struct MobPixel(u32, u32, MobType);
-    let ignore_area_bottom = 50;
+    let ignore_area_bottom = 90;
     let (snd, recv) = sync_channel::<MobPixel>(4096);
     image
         .enumerate_rows()
@@ -165,7 +165,7 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
     let mobs_agg = merge_cloud_into_mobs(&mob_coords_agg, MobType::Aggro);
 
     // Return all mobs
-    Vec::from_iter(mobs_pas.into_iter().chain(mobs_agg.into_iter()))
+    Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
 }
 
 fn identify_target_marker(image: &Image) -> Option<Mob> {
@@ -176,7 +176,7 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
     let ref_color: [u8; 3] = [246, 90, 106];
 
     // Collect pixel clouds
-    let ignore_area_bottom = 50;
+    let ignore_area_bottom = 90;
     let (snd, recv) = sync_channel::<(u32, u32)>(4096);
     image
         .enumerate_rows()
@@ -207,12 +207,18 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
         .max_by_key(|x| x.name_bounds.size())
 }
 
-fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bounds>) -> &'a Mob {
+/// Distance: `[0..=500]`
+fn find_closest_mob<'a>(
+    image: &Image,
+    mobs: &'a [Mob],
+    avoid_bounds: Option<&Bounds>,
+    max_distance: i32,
+) -> Option<&'a Mob> {
     let _timer = Timer::start_new("find_closest_mob");
 
     // Calculate middle point of player
     let mid_x = (image.width() / 2) as i32;
-    let mid_y = (image.height() / 2) as i32 + 20; // shift mid y point down a bit
+    let mid_y = (image.height() / 2) as i32;
 
     // Calculate 2D euclidian distances to player
     let mut distances = Vec::default();
@@ -226,25 +232,42 @@ fn find_closest_mob<'a>(image: &Image, mobs: &'a [Mob], avoid_bounds: Option<&Bo
     // Sort by distance
     distances.sort_by_key(|&(_, distance)| distance);
 
+    // Remove mobs that are too far away
+    distances = distances
+        .into_iter()
+        .filter(|&(_, distance)| distance <= max_distance)
+        .collect();
+
     if let Some(avoid_bounds) = avoid_bounds {
-        // Try finding closest mob that' not the mob to be avoided
-        if let Some((mob, _)) = distances
+        // Try finding closest mob that's not the mob to be avoided
+        if let Some((mob, distance)) = distances
             .iter()
             .filter(|(mob, _)| {
                 !avoid_bounds
-                    .grow_by(10)
+                    .grow_by(25)
                     .intersects_point(&mob.get_attack_coords())
             })
             .next()
         {
             println!("Found mob avoiding last target.");
-            mob
+            println!("Distance: {}", distance);
+            Some(mob)
         } else {
-            distances.first().unwrap().0
+            if let Some((mob, distance)) = distances.first() {
+                println!("Distance: {}", distance);
+                Some(*mob)
+            } else {
+                None
+            }
         }
     } else {
         // Return closest mob
-        distances.first().unwrap().0
+        if let Some((mob, distance)) = distances.first() {
+            println!("Distance: {}", distance);
+            Some(*mob)
+        } else {
+            None
+        }
     }
 }
 
@@ -357,8 +380,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 continue;
             }
 
-            timer.lap(file!(), line!());
-
             // Capture the window
             let image = {
                 let _timer = Timer::start_new("capture_window");
@@ -368,8 +389,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     continue;
                 }
             };
-
-            timer.lap(file!(), line!());
 
             // Consume foodies every 5 seconds and only while attacking
             let current_time = Instant::now();
@@ -387,8 +406,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             // Crop image
             // let (crop_x, crop_y) = (image.width() / 6, image.height() / 6);
             // let image = image.sub_image(crop_x, crop_y, image.width() - crop_x, image.height() - crop_y).to_image();
-
-            timer.lap(file!(), line!());
 
             match state {
                 BotState::Idle => {
@@ -410,12 +427,22 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         // Rotate in random direction for a random duration
                         let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
                         let rotation_duration =
-                            std::time::Duration::from_millis(rng.gen_range(100..500));
+                            std::time::Duration::from_millis(rng.gen_range(100..250));
                         winput::press(*key);
                         std::thread::sleep(rotation_duration);
                         winput::release(*key);
                         rotation_movement_tries += 1;
+                        // Wait a bit to wait for monsters to enter view
+                        std::thread::sleep(std::time::Duration::from_millis(
+                            rng.gen_range(100..250),
+                        ));
                         state = BotState::SearchingForEnemy;
+                        continue;
+                    }
+                    // Check whether bot should stay in area
+                    if config.should_stay_in_area() {
+                        // Reset rotation movement tries to keep rotating
+                        rotation_movement_tries = 0;
                         continue;
                     }
                     // If rotating multiple times failed, try other movement patterns
@@ -479,9 +506,9 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             .map(|mob| mob.name_bounds.clone())
                             .collect::<Vec<_>>(),
                     );
-                    if mobs.is_empty() {
+                    state = if mobs.is_empty() {
                         // No mobs found, run movement algo
-                        state = BotState::NoEnemyFound;
+                        BotState::NoEnemyFound
                     } else {
                         // Check if aggro mobs are found first
                         let aggro_mobs = mobs
@@ -494,13 +521,23 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             .filter(|m| m.mob_type == MobType::Passive)
                             .cloned()
                             .collect::<Vec<_>>();
+                        let max_distance = if config.should_stay_in_area() {
+                            325
+                        } else {
+                            1000
+                        };
                         if !aggro_mobs.is_empty() {
                             println!("Found {} aggro mobs. Those die first.", aggro_mobs.len());
-                            let mob = find_closest_mob(&image, aggro_mobs.as_slice(), None);
-                            state = BotState::EnemyFound(mob.clone());
+                            if let Some(mob) =
+                                find_closest_mob(&image, aggro_mobs.as_slice(), None, max_distance)
+                            {
+                                BotState::EnemyFound(mob.clone())
+                            } else {
+                                BotState::NoEnemyFound
+                            }
                         } else if !passive_mobs.is_empty() {
                             println!("Found {} passive mobs.", passive_mobs.len());
-                            let mob = {
+                            if let Some(mob) = {
                                 // Try avoiding detection of last killed mob
                                 if Instant::now().duration_since(last_kill_time)
                                     < Duration::from_secs(5)
@@ -510,15 +547,24 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                                         &image,
                                         passive_mobs.as_slice(),
                                         Some(&last_killed_mob_bounds),
+                                        max_distance,
                                     )
                                 } else {
-                                    find_closest_mob(&image, passive_mobs.as_slice(), None)
+                                    find_closest_mob(
+                                        &image,
+                                        passive_mobs.as_slice(),
+                                        None,
+                                        max_distance,
+                                    )
                                 }
-                            };
-                            state = BotState::EnemyFound(mob.clone());
+                            } {
+                                BotState::EnemyFound(mob.clone())
+                            } else {
+                                BotState::NoEnemyFound
+                            }
                         } else {
                             println!("Mobs were found, but they're neither aggro nor neutral???");
-                            state = BotState::NoEnemyFound;
+                            BotState::NoEnemyFound
                         }
                     }
                 }
@@ -574,7 +620,9 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             config.get_random_slot_index(SlotType::AttackSkill, &mut rng)
                         {
                             // Only use attack skill if enabled and once a second at most
-                            if config.should_use_attack_skills() && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1) {
+                            if config.should_use_attack_skills()
+                                && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
+                            {
                                 last_attack_skill_usage_time = Instant::now();
                                 winput::send(slot_index_to_vk(index));
                             }
@@ -615,8 +663,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     }
                 }
             }
-
-            timer.lap(file!(), line!());
 
             // Convert image to base64 and send to frontend
             // let mut buf = Vec::new();
