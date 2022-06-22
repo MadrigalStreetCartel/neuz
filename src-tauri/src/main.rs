@@ -11,13 +11,20 @@ use std::{
 };
 
 use parking_lot::RwLock;
-use rand::prelude::{Rng, SliceRandom};
+use rand::{prelude::{Rng, SliceRandom}, seq::index};
 use rayon::prelude::*;
-use tauri::{Manager, PhysicalPosition, Position};
+use tauri::{Manager, PhysicalPosition, Position, Window};
 
 // windows support
+#[cfg(target_os = "windows")]
 use win_screenshot::capture::Image;
+#[cfg(target_os = "windows")]
 use winput::Vk;
+
+// linux support
+#[cfg(target_os = "linux")]
+use tfc::{Context, Error, traits::*};
+
 
 mod algo;
 mod ipc;
@@ -28,6 +35,8 @@ use crate::{
     ipc::{BotConfig, FrontendInfo, SlotType},
     utils::Timer,
 };
+
+type Image = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 fn main() {
     let context = tauri::generate_context!();
@@ -40,12 +49,110 @@ fn main() {
 
 enum BotState {
     Idle,
+    Interrupted,
     NoEnemyFound,
     SearchingForEnemy,
     EnemyFound(Mob),
     Attacking(Mob),
     AfterEnemyKill(Mob),
 }
+
+enum Keymode {
+    Press,
+    Hold,
+    Release,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Key {
+    // 0-9
+    N,
+    I,
+    II,
+    III,
+    IV,
+    V,
+    VI,
+    VII,
+    VIII,
+    IX,
+    X,
+    // WASD
+    W,
+    A,
+    S,
+    D,
+    Space,
+}
+
+impl From<usize> for Key {
+    fn from(index: usize) -> Self {
+        use Key::*;
+        match index {
+            0 => N,
+            1 => I,
+            2 => II,
+            3 => III,
+            4 => IV,
+            5 => V,
+            6 => VI,
+            7 => VII,
+            8 => VIII,
+            9 => IX,
+            _ => unreachable!("Invalid Index (expected 0-9)")
+        }
+    }
+}
+
+#[cfg(target_os="windows")]
+impl Into<Vk> for Keys {
+  fn into(self) -> Vk {
+    use Key::*;
+    match index {
+        N => Vk::_0,
+        I => Vk::_1,
+        II => Vk::_2,
+        III => Vk::_3,
+        IV => Vk::_4,
+        V => Vk::_5,
+        VI => Vk::_6,
+        VII => Vk::_7,
+        VIII => Vk::_8,
+        IX => Vk::_9,
+        W => Vk::W,
+        A => Vk::A,
+        S => Vk::S,
+        D => Vk::D,
+        Space => Vk::Space,
+        _ => unreachable!("Invalid food index"),
+    }
+  }
+}
+
+#[cfg(target_os="linux")]
+impl Into<char> for Key {
+    fn into(self) -> char {
+    use Key::*;
+      match self {
+        N => '0',
+        I => '1',
+        II => '2',
+        III => '3',
+        IV => '4',
+        V => '5',
+        VI => '6',
+        VII => '7',
+        VIII => '8',
+        IX => '9',
+        W => 'w',
+        A => 'a',
+        S => 's',
+        D => 'd',
+        Space => ' ', // TODO
+        _ => unreachable!("Invalid food index"),
+      }
+    }
+  }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MobType {
@@ -271,6 +378,7 @@ fn find_closest_mob<'a>(
     }
 }
 
+#[cfg(target_os = "windows")]
 fn slot_index_to_vk(index: usize) -> Vk {
     match index {
         0 => Vk::_0,
@@ -287,9 +395,25 @@ fn slot_index_to_vk(index: usize) -> Vk {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn send_keystroke(k: Key, mode: Keymode) {
+    let k = k.into();
+    match mode {
+        Press => winput::send(k),
+        Hold => winput::press(k),
+        Release => winput::release(k),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn send_keystroke(k: Key, mode: Keymode) {
+    unimplemented!();
+}
+
 #[tauri::command]
 async fn start_bot(app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
+    #[cfg(target_os = "windows")]
     let hwnd = window.hwnd().unwrap();
 
     let mut last_pot_time = Instant::now();
@@ -370,7 +494,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             }
 
             // Make sure the window is focused
-            let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
+            /*let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
             if focused_hwnd as isize != hwnd.0 {
                 app_handle
                     .emit_all("frontend_info", &frontend_info)
@@ -378,12 +502,20 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 timer.silence();
                 continue;
-            }
+            }*/
 
             // Capture the window
+            
             let image = {
                 let _timer = Timer::start_new("capture_window");
+                #[cfg(target_os = "windows")]
                 if let Ok(image) = capture_screenshot(hwnd.0) {
+                    image
+                } else {
+                    continue;
+                }
+                #[cfg(target_os = "linux")]
+                if let Ok(image) = capture_screenshot(&window) {
                     image
                 } else {
                     continue;
@@ -398,7 +530,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 && current_time.duration_since(last_pot_time) > min_pot_time_diff
             {
                 if let Some(food_index) = config.get_slot_index(SlotType::Food) {
-                    winput::send(slot_index_to_vk(food_index));
+                    send_keystroke(food_index.into(), Keymode::Press);
                     last_pot_time = current_time;
                 }
             }
@@ -415,7 +547,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     let idle_chunk_duration = total_idle_duration / idle_chunks;
                     for _ in 0..idle_chunks {
                         if rng.gen_bool(0.1) {
-                            winput::send(Vk::Space);
+                            send_keystroke(Key::Space, Keymode::Press);
                         }
                         std::thread::sleep(idle_chunk_duration);
                     }
@@ -425,12 +557,12 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     // Try rotating first in order to locate nearby enemies
                     if rotation_movement_tries < 20 {
                         // Rotate in random direction for a random duration
-                        let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
+                        let key = [Key::A, Key::D].choose(&mut rng).unwrap();
                         let rotation_duration =
                             std::time::Duration::from_millis(rng.gen_range(100..250));
-                        winput::press(*key);
+                        send_keystroke(*key, Keymode::Hold);
                         std::thread::sleep(rotation_duration);
-                        winput::release(*key);
+                        send_keystroke(*key, Keymode::Release);
                         rotation_movement_tries += 1;
                         // Wait a bit to wait for monsters to enter view
                         std::thread::sleep(std::time::Duration::from_millis(
@@ -449,36 +581,38 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     match rng.gen_range(0..3) {
                         0 => {
                             // Move into a random direction while jumping
-                            let key = [Vk::A, Vk::D].choose(&mut rng).unwrap();
+                            let key = [Key::A, Key::D].choose(&mut rng).unwrap();
                             let rotation_duration = Duration::from_millis(rng.gen_range(100..350));
                             let movement_slices = rng.gen_range(1..4);
                             let movement_slice_duration =
                                 Duration::from_millis(rng.gen_range(250..500));
                             let movement_overlap_duration =
                                 movement_slice_duration.saturating_sub(rotation_duration);
-                            winput::press(Vk::W);
-                            winput::press(Vk::Space);
+                            send_keystroke(Key::W, Keymode::Hold);
+                            send_keystroke(Key::Space, Keymode::Hold);
                             for _ in 0..movement_slices {
-                                winput::press(*key);
+                                send_keystroke(*key, Keymode::Hold);
+                                
                                 std::thread::sleep(rotation_duration);
-                                winput::release(*key);
+                                send_keystroke(*key, Keymode::Release);
                                 std::thread::sleep(movement_overlap_duration);
                             }
-                            winput::press(*key);
+                            send_keystroke(*key, Keymode::Hold);
                             std::thread::sleep(rotation_duration);
-                            winput::release(*key);
-                            winput::release(Vk::Space);
-                            winput::release(Vk::W);
+                            send_keystroke(*key, Keymode::Release);
+                            send_keystroke(Key::Space, Keymode::Release);
+                            send_keystroke(Key::W, Keymode::Release);
                         }
                         1 => {
                             // Move forwards while jumping
-                            winput::press(Vk::W);
-                            winput::press(Vk::Space);
+                            
+                            send_keystroke(Key::W, Keymode::Hold);
+                            send_keystroke(Key::Space, Keymode::Hold);
                             std::thread::sleep(std::time::Duration::from_millis(
                                 rng.gen_range(1000..4000),
                             ));
-                            winput::release(Vk::Space);
-                            winput::release(Vk::W);
+                            send_keystroke(Key::Space, Keymode::Release);
+                            send_keystroke(Key::W, Keymode::Release);
                         }
                         2 => {
                             // Move forwards in a slalom pattern
@@ -486,14 +620,15 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                                 std::time::Duration::from_millis(rng.gen_range(350..650));
                             let total_slaloms = rng.gen_range(4..8);
                             let mut left = rng.gen_bool(0.5);
-                            winput::press(Vk::W);
+                            send_keystroke(Key::W, Keymode::Hold);
                             for _ in 0..total_slaloms {
-                                winput::press(if left { Vk::A } else { Vk::D });
+                                let cond = if left {Key::A} else { Key::D};
+                                send_keystroke(cond, Keymode::Hold);
                                 std::thread::sleep(slalom_switch_duration);
-                                winput::release(if left { Vk::A } else { Vk::D });
+                                send_keystroke(cond, Keymode::Release);
                                 left = !left;
                             }
-                            winput::release(Vk::W);
+                            send_keystroke(Key::W, Keymode::Release);
                         }
                         _ => unreachable!("Impossible"),
                     }
@@ -624,7 +759,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                                 && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
                             {
                                 last_attack_skill_usage_time = Instant::now();
-                                winput::send(slot_index_to_vk(index));
+                                send_keystroke(index.into(), Keymode::Press);
                             }
                         }
                     } else {
@@ -654,13 +789,16 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     if config.is_on_demand_pet() {
                         if let Some(index) = config.get_slot_index(SlotType::PickupPet) {
                             // Summon pet
-                            winput::send(slot_index_to_vk(index));
+                            send_keystroke(index.into(), Keymode::Press);
                             // Wait half a second to make sure everything is picked up
                             std::thread::sleep(std::time::Duration::from_millis(2000));
                             // Unsummon pet
-                            winput::send(slot_index_to_vk(index));
+                            send_keystroke(index.into(), Keymode::Press);
                         }
                     }
+                }
+                BotState::Interrupted => {
+                    unimplemented!("");
                 }
             }
 
@@ -710,6 +848,9 @@ fn capture_screenshot(hwnd: isize) -> Result<Image, ()> {
 }
 
 #[cfg(target_os = "linux")]
-fn capture_screenshot(window: &Window) {
-    unimplemented!()
+fn capture_screenshot(window: &Window) -> Result<Image, ()> {
+    //window.set().focus();
+    panic!("");
+    /*screenshot_rs::screenshot_window("screenshot".to_string());
+    */
 }
