@@ -10,21 +10,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use parking_lot::RwLock;
-use rand::{prelude::{Rng, SliceRandom}, seq::index};
+use rand::prelude::{Rng, SliceRandom};
 use rayon::prelude::*;
-use tauri::{Manager, PhysicalPosition, Position, Window};
+use tauri::{Manager, PhysicalPosition, Position};
 
 // windows support
 #[cfg(target_os = "windows")]
-use win_screenshot::capture::Image;
-#[cfg(target_os = "windows")]
 use winput::Vk;
-
-// linux support
-#[cfg(target_os = "linux")]
-use tfc::{Context, Error, traits::*};
-
 
 mod algo;
 mod ipc;
@@ -35,8 +29,6 @@ use crate::{
     ipc::{BotConfig, FrontendInfo, SlotType},
     utils::Timer,
 };
-
-type Image = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 fn main() {
     let context = tauri::generate_context!();
@@ -76,7 +68,6 @@ enum Key {
     VII,
     VIII,
     IX,
-    X,
     // WASD
     W,
     A,
@@ -99,60 +90,58 @@ impl From<usize> for Key {
             7 => VII,
             8 => VIII,
             9 => IX,
-            _ => unreachable!("Invalid Index (expected 0-9)")
+            _ => unreachable!("Invalid Index (expected 0-9)"),
         }
     }
 }
 
-#[cfg(target_os="windows")]
-impl Into<Vk> for Keys {
-  fn into(self) -> Vk {
-    use Key::*;
-    match index {
-        N => Vk::_0,
-        I => Vk::_1,
-        II => Vk::_2,
-        III => Vk::_3,
-        IV => Vk::_4,
-        V => Vk::_5,
-        VI => Vk::_6,
-        VII => Vk::_7,
-        VIII => Vk::_8,
-        IX => Vk::_9,
-        W => Vk::W,
-        A => Vk::A,
-        S => Vk::S,
-        D => Vk::D,
-        Space => Vk::Space,
-        _ => unreachable!("Invalid food index"),
+#[cfg(target_os = "windows")]
+impl Into<Vk> for Key {
+    fn into(self) -> Vk {
+        use Key::*;
+        match self {
+            N => Vk::_0,
+            I => Vk::_1,
+            II => Vk::_2,
+            III => Vk::_3,
+            IV => Vk::_4,
+            V => Vk::_5,
+            VI => Vk::_6,
+            VII => Vk::_7,
+            VIII => Vk::_8,
+            IX => Vk::_9,
+            W => Vk::W,
+            A => Vk::A,
+            S => Vk::S,
+            D => Vk::D,
+            Space => Vk::Space,
+        }
     }
-  }
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 impl Into<char> for Key {
     fn into(self) -> char {
-    use Key::*;
-      match self {
-        N => '0',
-        I => '1',
-        II => '2',
-        III => '3',
-        IV => '4',
-        V => '5',
-        VI => '6',
-        VII => '7',
-        VIII => '8',
-        IX => '9',
-        W => 'w',
-        A => 'a',
-        S => 's',
-        D => 'd',
-        Space => ' ', // TODO
-        _ => unreachable!("Invalid food index"),
-      }
+        use Key::*;
+        match self {
+            N => '0',
+            I => '1',
+            II => '2',
+            III => '3',
+            IV => '4',
+            V => '5',
+            VI => '6',
+            VII => '7',
+            VIII => '8',
+            IX => '9',
+            W => 'w',
+            A => 'a',
+            S => 's',
+            D => 'd',
+            Space => ' ', // TODO
+        }
     }
-  }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MobType {
@@ -226,7 +215,7 @@ fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
     perm.iter().all(|&(a, b)| matches_inner(a, b))
 }
 
-fn identify_mobs(image: &Image) -> Vec<Mob> {
+fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
     let _timer = Timer::start_new("identify_mobs");
 
     // Create collections for passive and aggro mobs
@@ -275,7 +264,7 @@ fn identify_mobs(image: &Image) -> Vec<Mob> {
     Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
 }
 
-fn identify_target_marker(image: &Image) -> Option<Mob> {
+fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
     let _timer = Timer::start_new("identify_target_marker");
     let mut coords = Vec::default();
 
@@ -316,7 +305,7 @@ fn identify_target_marker(image: &Image) -> Option<Mob> {
 
 /// Distance: `[0..=500]`
 fn find_closest_mob<'a>(
-    image: &Image,
+    image: &ImageBuffer,
     mobs: &'a [Mob],
     avoid_bounds: Option<&Bounds>,
     max_distance: i32,
@@ -397,11 +386,11 @@ fn slot_index_to_vk(index: usize) -> Vk {
 
 #[cfg(target_os = "windows")]
 fn send_keystroke(k: Key, mode: Keymode) {
-    let k = k.into();
+    let k: Vk = k.into();
     match mode {
-        Press => winput::send(k),
-        Hold => winput::press(k),
-        Release => winput::release(k),
+        Keymode::Press => winput::send(k),
+        Keymode::Hold => winput::press(k),
+        Keymode::Release => winput::release(k),
     }
 }
 
@@ -505,17 +494,17 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             }*/
 
             // Capture the window
-            
+
             let image = {
                 let _timer = Timer::start_new("capture_window");
-                #[cfg(target_os = "windows")]
-                if let Ok(image) = capture_screenshot(hwnd.0) {
-                    image
-                } else {
-                    continue;
-                }
-                #[cfg(target_os = "linux")]
-                if let Ok(image) = capture_screenshot(&window) {
+                let provider = libscreenshot::get_best_window_capture_provider();
+                let window_id = || {
+                    #[cfg(target_os = "windows")]
+                    return hwnd.0 as u64;
+                    #[cfg(target_os = "linux")]
+                    return window.id() as u64;
+                };
+                if let Ok(image) = provider.capture_window(window_id()) {
                     image
                 } else {
                     continue;
@@ -592,7 +581,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             send_keystroke(Key::Space, Keymode::Hold);
                             for _ in 0..movement_slices {
                                 send_keystroke(*key, Keymode::Hold);
-                                
+
                                 std::thread::sleep(rotation_duration);
                                 send_keystroke(*key, Keymode::Release);
                                 std::thread::sleep(movement_overlap_duration);
@@ -605,7 +594,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         }
                         1 => {
                             // Move forwards while jumping
-                            
+
                             send_keystroke(Key::W, Keymode::Hold);
                             send_keystroke(Key::Space, Keymode::Hold);
                             std::thread::sleep(std::time::Duration::from_millis(
@@ -622,7 +611,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             let mut left = rng.gen_bool(0.5);
                             send_keystroke(Key::W, Keymode::Hold);
                             for _ in 0..total_slaloms {
-                                let cond = if left {Key::A} else { Key::D};
+                                let cond = if left { Key::A } else { Key::D };
                                 send_keystroke(cond, Keymode::Hold);
                                 std::thread::sleep(slalom_switch_duration);
                                 send_keystroke(cond, Keymode::Release);
@@ -838,19 +827,4 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 .unwrap();
         }
     });
-}
-
-#[cfg(target_os = "windows")]
-fn capture_screenshot(hwnd: isize) -> Result<Image, ()> {
-    use win_screenshot::capture::capture_window;
-
-    capture_window(hwnd).map_err(|_| ())
-}
-
-#[cfg(target_os = "linux")]
-fn capture_screenshot(window: &Window) -> Result<Image, ()> {
-    //window.set().focus();
-    panic!("");
-    /*screenshot_rs::screenshot_window("screenshot".to_string());
-    */
 }

@@ -21,6 +21,7 @@ impl Timer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lap(&self, file: &'static str, line: u32) {
         if *self.is_silenced.borrow() {
             return;
