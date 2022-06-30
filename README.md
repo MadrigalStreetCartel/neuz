@@ -3,7 +3,7 @@
 
 We are NOT affiliated with Gala Lab Corp., Sniegu Technologies SAS or Flyff Universe.
 
-Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/msi)
+Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/msi) | [DEB Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/deb) | [AppImage Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/appimage)
 
 ## Semi Autonomous Mode
 > Right now the bot operates in semi-autonomous mode. Keep an eye on it.
