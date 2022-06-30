@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Neuz",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "tauri": {
     "allowlist": {
@@ -58,7 +58,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "Neuz | FlyFF Universe",
+        "title": "Neuz | MadrigalStreetCartel",
         "width": 800
       }
     ]

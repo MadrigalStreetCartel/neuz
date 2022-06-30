@@ -1,11 +1,55 @@
-import styled from 'styled-components'
-import { WebviewWindow } from '@tauri-apps/api/window'
-
-import FlyffLogo from './assets/logo.png'
-import LauncherBackground from './assets/launcher_background_ice.png'
-import { useEffect, useReducer, useState } from 'react'
-import BotVisualizer from './BotVisualizer'
+import { useEffect, useReducer, useState, useMemo } from 'react'
 import { invoke, process as TauriProcess } from '@tauri-apps/api'
+import { sample } from 'lodash'
+import { WebviewWindow } from '@tauri-apps/api/window'
+import styled from 'styled-components'
+
+import BotVisualizer from './BotVisualizer'
+
+import FlyffLogo from './assets/msc_dark.png'
+import LauncherBackground from './assets/launcher_background_ice.png'
+
+const Greetings = [
+    '😭 Real Market trading is destroying our game 😭',
+    'Gala, if you see this, hire me',
+    'I am a bot, I am a bot, I am a bot',
+    'Gala vs Computer Vision',
+    'Not a virus, guaranteed',
+    'Neuz.exe',
+    'Remember sunkist?',
+    'Select individuals only',
+    '...you do the math',
+    'Vampire Empire',
+    'Certified Based',
+    'I am not a bot',
+    'My french fries are made out of Gpotatoes',
+    'Plz don\'t kill me',
+    'Plz don\'t ban me',
+    'Gib me a star on github',
+    'Why p2w when you can bot',
+    'Chad botter vs virgin p2w user',
+    'Do you even grind bro',
+    'Why waste time with farming',
+    'Why waste time when you can bot',
+    'Bot & Chill',
+    'Don\'t like bots? Don\t play the game',
+    'Ich chill bei Bangs',
+    'Gala sued me for my pserver 😥',
+    'Can be bought with 0 BTC 👍',
+    'Free is always best',
+    '/say me',
+    'MPL licensed',
+    'Can you buff me pls?',
+    'Plz res me',
+    'Smoke ants',
+    'Madrigal Street Capital',
+    'Madrigal Street Cartel',
+    'Madrigal Street Casino',
+    'Madrigal Street Chinafarming',
+    'Madrigal Street Cocaine',
+    'Do you remember CFlyff',
+    '夢想飛飛',
+]
 
 type Props = {
     className?: string,
@@ -48,6 +92,7 @@ const Launcher = ({ className }: Props) => {
     const [hasEnteredMainLoop, enterMainLoop] = useReducer(() => true, false);
     const [isLaunched, setIsLaunched] = useState(false)
     const [recentNews, setRecentNews] = useState<NewsItem[][]>([])
+    const greeting = useMemo(() => sample(Greetings), []);
 
     useEffect(() => {
         fetchNews().then(setRecentNews)
@@ -80,7 +125,10 @@ const Launcher = ({ className }: Props) => {
         <div className={className}>
             {!isLaunched && (
                 <div className="container">
-                    <img className="logo" alt="Flyff Universe Logo" src={FlyffLogo} />
+                    <div className="logo-container">
+                        <img className="logo" alt="Flyff Universe Logo" src={FlyffLogo} />
+                        <span className="greet">{greeting}</span>
+                    </div>
                     <div className="news">
                         {recentNews.map(newsBlock => (
                             <>
@@ -163,11 +211,53 @@ export default styled(Launcher)`
         }
     }
 
-    & .logo {
-        height: 25vh;
-        max-height: 250px;
-        object-fit: scale-down;
+    & .logo-container {
+        display: flex;
+        justify-content: center;
+        position: relative;
+        width: 100%;
+        background: hsla(203, 100%, 0%, .75);
+        backdrop-filter: blur(.5rem);
+        padding: 2rem;
+        box-shadow: 0 0 .1rem hsla(0,0%,0%,.5), 0 0 .5rem hsla(0,0%,0%,.5);
+        border-radius: 0.25rem;
+        
+        & .logo {
+            width: 100%;
+            padding: 0 0 2.5rem 0;
+            height: calc(25vh + 2rem);
+            max-height: 128px;
+            object-fit: scale-down;
+            opacity: .9;
+        }
+
+        @keyframes wiggle {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            33% {
+                transform: scale(1.1) rotate(-1deg);
+            }
+            66% {
+                transform: scale(1.1) rotate(1deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        & .greet {
+            position: absolute;
+            width: 100%;
+            white-space: nowrap;
+            text-align: center;
+            font-size: 1.25rem;
+            color: white;
+            bottom: 1.5rem;
+            animation: wiggle 5s ease-in-out infinite;
+        }
     }
+
 
     & .btn {
         cursor: pointer;

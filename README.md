@@ -1,9 +1,12 @@
 # Neuz
-> Flyff Universe Client and Bot
+> Open Source Flyff Universe client with enhanced features.
+
+We are NOT affiliated with Gala Lab Corp., Sniegu Technologies SAS or Flyff Universe.
 
 Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/msi)
 
-## Bot Usage
+## Semi Autonomous Mode
+> Right now the bot operates in semi-autonomous mode. Keep an eye on it.
 
 **Requirements**
 > No settings have to be changed by default.
@@ -14,9 +17,16 @@ Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/
 For best compatibility:
 
 1. Enable right-click player menu for best compatibility (disabled by default)
-2. Disable single-click to attack (disabled by default)
+2. Disable single-click to attack (disabled by default, not necessarily needed)
 
 ## Changelog
+
+**0.7.0**
+- Adds support for Linux (incomplete)
+- Fixes long standing bug with violet magician avoidance
+- Switches to our own [libscreenshot](https://github.com/madrigalstreetcartel/libscreenshot) for huge performance gains
+- Replaces copyrighted logo with MadrigalStreetCapital logo
+- Improve launcher UI
 
 **0.6.0**
 - Adds option to stay in area in order to avoid giants etc.

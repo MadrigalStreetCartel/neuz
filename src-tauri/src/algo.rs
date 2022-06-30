@@ -37,6 +37,7 @@ impl Bounds {
         (self.x + self.w / 2, self.y + self.h)
     }
 
+    #[inline]
     pub fn size(&self) -> usize {
         self.w as usize * self.h as usize
     }
@@ -50,11 +51,13 @@ impl Bounds {
         }
     }
 
+    #[inline]
     pub fn center(&self) -> (u32, u32) {
         (self.x + self.w / 2, self.y + self.h / 2)
     }
 
-    pub fn intersects_point(&self, point: &(u32, u32)) -> bool {
+    #[inline]
+    pub fn contains_point(&self, point: &(u32, u32)) -> bool {
         point.0 >= self.x
             && point.0 < self.x + self.w
             && point.1 >= self.y

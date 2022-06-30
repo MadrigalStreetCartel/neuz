@@ -10,15 +10,20 @@ use std::{
     time::{Duration, Instant},
 };
 
-use libscreenshot::{ImageBuffer, WindowCaptureProvider};
+use libscreenshot::ImageBuffer;
 use parking_lot::RwLock;
 use rand::prelude::{Rng, SliceRandom};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use rayon::prelude::*;
 use tauri::{Manager, PhysicalPosition, Position};
 
 // windows support
 #[cfg(target_os = "windows")]
 use winput::Vk;
+
+// linux
+#[cfg(target_os = "linux")]
+use tfc::{traits::*, Context, Error};
 
 mod algo;
 mod ipc;
@@ -56,6 +61,7 @@ enum Keymode {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code, clippy::upper_case_acronyms)]
 enum Key {
     // 0-9
     N,
@@ -96,10 +102,10 @@ impl From<usize> for Key {
 }
 
 #[cfg(target_os = "windows")]
-impl Into<Vk> for Key {
-    fn into(self) -> Vk {
+impl From<Key> for Vk {
+    fn from(k: Key) -> Self {
         use Key::*;
-        match self {
+        match k {
             N => Vk::_0,
             I => Vk::_1,
             II => Vk::_2,
@@ -120,10 +126,10 @@ impl Into<Vk> for Key {
 }
 
 #[cfg(target_os = "linux")]
-impl Into<char> for Key {
-    fn into(self) -> char {
+impl From<Key> for char {
+    fn from(k: Key) -> char {
         use Key::*;
-        match self {
+        match k {
             N => '0',
             I => '1',
             II => '2',
@@ -167,7 +173,7 @@ fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
     let _timer = Timer::start_new("merge_cloud_into_mobs");
 
     // Max merge distance
-    let max_distance_x: u32 = 24;
+    let max_distance_x: u32 = 30;
     let max_distance_y: u32 = 5;
 
     // Cluster coordinates in x-direction
@@ -338,23 +344,20 @@ fn find_closest_mob<'a>(
         // Try finding closest mob that's not the mob to be avoided
         if let Some((mob, distance)) = distances
             .iter()
-            .filter(|(mob, _)| {
+            .find(|(mob, _)| {
                 !avoid_bounds
                     .grow_by(25)
-                    .intersects_point(&mob.get_attack_coords())
+                    .contains_point(&mob.get_attack_coords())
             })
-            .next()
         {
             println!("Found mob avoiding last target.");
             println!("Distance: {}", distance);
             Some(mob)
+        } else if let Some((mob, distance)) = distances.first() {
+            println!("Distance: {}", distance);
+            Some(*mob)
         } else {
-            if let Some((mob, distance)) = distances.first() {
-                println!("Distance: {}", distance);
-                Some(*mob)
-            } else {
-                None
-            }
+            None
         }
     } else {
         // Return closest mob
@@ -364,23 +367,6 @@ fn find_closest_mob<'a>(
         } else {
             None
         }
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn slot_index_to_vk(index: usize) -> Vk {
-    match index {
-        0 => Vk::_0,
-        1 => Vk::_1,
-        2 => Vk::_2,
-        3 => Vk::_3,
-        4 => Vk::_4,
-        5 => Vk::_5,
-        6 => Vk::_6,
-        7 => Vk::_7,
-        8 => Vk::_8,
-        9 => Vk::_9,
-        _ => unreachable!("Invalid food index"),
     }
 }
 
@@ -396,14 +382,20 @@ fn send_keystroke(k: Key, mode: Keymode) {
 
 #[cfg(target_os = "linux")]
 fn send_keystroke(k: Key, mode: Keymode) {
-    unimplemented!();
+    let k: char = k.into();
+    let k = k as u8;
+    let mut ctx = tfc::Context::new().unwrap();
+    match mode {
+        Keymode::Press => ctx.ascii_char(k),
+        Keymode::Hold => ctx.ascii_char_down(k),
+        Keymode::Release => ctx.ascii_char_up(k),
+    }
+    .unwrap();
 }
 
 #[tauri::command]
 async fn start_bot(app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
-    #[cfg(target_os = "windows")]
-    let hwnd = window.hwnd().unwrap();
 
     let mut last_pot_time = Instant::now();
     let mut last_initial_attack_time = Instant::now();
@@ -483,31 +475,36 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             }
 
             // Make sure the window is focused
-            /*let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
-            if focused_hwnd as isize != hwnd.0 {
-                app_handle
-                    .emit_all("frontend_info", &frontend_info)
-                    .unwrap();
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                timer.silence();
-                continue;
-            }*/
+            #[cfg(target_os = "windows")]
+            {
+                let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
+                if focused_hwnd as isize != window.hwnd().unwrap().0 {
+                    app_handle
+                        .emit_all("frontend_info", &frontend_info)
+                        .unwrap();
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    timer.silence();
+                    continue;
+                }
+            }
 
             // Capture the window
-
             let image = {
                 let _timer = Timer::start_new("capture_window");
-                let provider = libscreenshot::get_best_window_capture_provider();
-                let window_id = || {
-                    #[cfg(target_os = "windows")]
-                    return hwnd.0 as u64;
-                    #[cfg(target_os = "linux")]
-                    return window.id() as u64;
-                };
-                if let Ok(image) = provider.capture_window(window_id()) {
-                    image
+                if let Some(provider) = libscreenshot::get_window_capture_provider() {
+                    let window_id = || match window.raw_window_handle() {
+                        RawWindowHandle::Xlib(handle) => handle.window as u64,
+                        RawWindowHandle::Win32(handle) => handle.hwnd as u64,
+                        _ => 0_u64,
+                    };
+                    if let Ok(image) = provider.capture_window(window_id()) {
+                        image
+                    } else {
+                        println!("Capturing window failed.");
+                        continue;
+                    }
                 } else {
-                    continue;
+                    continue
                 }
             };
 
@@ -627,7 +624,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     let mobs = identify_mobs(&image);
                     frontend_info.set_enemy_bounds(
                         mobs.iter()
-                            .map(|mob| mob.name_bounds.clone())
+                            .map(|mob| mob.name_bounds)
                             .collect::<Vec<_>>(),
                     );
                     state = if mobs.is_empty() {
@@ -655,7 +652,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             if let Some(mob) =
                                 find_closest_mob(&image, aggro_mobs.as_slice(), None, max_distance)
                             {
-                                BotState::EnemyFound(mob.clone())
+                                BotState::EnemyFound(*mob)
                             } else {
                                 BotState::NoEnemyFound
                             }
@@ -682,7 +679,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                                     )
                                 }
                             } {
-                                BotState::EnemyFound(mob.clone())
+                                BotState::EnemyFound(*mob)
                             } else {
                                 BotState::NoEnemyFound
                             }
@@ -707,18 +704,18 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         x,
                         y
                     );
-                    let inner_size = window.inner_size().unwrap();
-                    let (x_diff, y_diff) = (
-                        image.width() - inner_size.width,
-                        image.height() - inner_size.height,
-                    );
-                    let (window_x, window_y) = (
-                        (x.saturating_sub(x_diff / 2)) as i32,
-                        (y.saturating_sub(y_diff)) as i32,
-                    );
+                    // let inner_size = window.inner_size().unwrap();
+                    // let (x_diff, y_diff) = (
+                    //     image.width() - inner_size.width,
+                    //     image.height() - inner_size.height,
+                    // );
+                    // let (window_x, window_y) = (
+                    //     (x.saturating_sub(x_diff / 2)) as i32,
+                    //     (y.saturating_sub(y_diff)) as i32,
+                    // );
                     let target_cursor_pos = Position::Physical(PhysicalPosition {
-                        x: window_x,
-                        y: window_y,
+                        x: x as i32,
+                        y: y as i32,
                     });
 
                     // Set cursor position and simulate a click
