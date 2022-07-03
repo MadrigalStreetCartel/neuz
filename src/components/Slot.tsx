@@ -1,5 +1,6 @@
 import styled from 'styled-components'
-import { SlotType } from '../BotVisualizer'
+
+import { SlotType } from '../models/BotConfig'
 
 const SLOT_SIZE_PX = 40;
 

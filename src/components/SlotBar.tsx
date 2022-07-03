@@ -1,10 +1,12 @@
 import styled from 'styled-components'
-import { FixedArray, SlotModel, SlotType } from '../BotVisualizer'
+
 import Slot from './Slot'
+
+import { SlotType, SlotBarModel } from '../models/BotConfig'
 
 type Props = {
     className?: string,
-    slots: FixedArray<SlotModel, 10>,
+    slots: SlotBarModel,
     onChange?: (type: SlotType, index: number) => void,
 }
 

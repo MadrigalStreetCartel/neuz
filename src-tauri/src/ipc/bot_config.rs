@@ -26,49 +26,48 @@ impl Default for Slot {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
-pub struct VersionAgnosticBotConfig {
-    change_id: u64,
-    is_running: Option<bool>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum BotMode {
+    Farming,
+    Support,
+    AutoShout,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct FarmingConfig {
+    /// Summon pet after kill and unsummon before next attack
     on_demand_pet: Option<bool>,
+    /// Whether to use attack skills for combat
     use_attack_skills: Option<bool>,
+    /// Whether the bot will try to stay in the area it started in
     stay_in_area: Option<bool>,
+    /// Slot configuration
     slots: Option<[Slot; 10]>,
 }
 
-impl From<BotConfig> for VersionAgnosticBotConfig {
-    fn from(bot_config: BotConfig) -> Self {
-        Self {
-            change_id: bot_config.change_id,
-            is_running: Some(bot_config.is_running),
-            on_demand_pet: Some(bot_config.on_demand_pet),
-            use_attack_skills: Some(bot_config.use_attack_skills),
-            stay_in_area: Some(bot_config.stay_in_area),
-            slots: Some(bot_config.slots),
-        }
+impl FarmingConfig {
+    pub fn should_use_on_demand_pet(&self) -> bool {
+        self.on_demand_pet.unwrap_or(false)
     }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BotConfig {
-    /// Change id to sync changes between frontend and backend
-    change_id: u64,
-    /// Whether the bot is running
-    is_running: bool,
-    /// Summon pet after kill and unsummon before next attack
-    on_demand_pet: bool,
-    /// Whether to use attack skills for combat
-    use_attack_skills: bool,
-    /// Whether the bot will try to stay in the area it started in
-    stay_in_area: bool,
-    /// Slot configuration
-    slots: [Slot; 10],
-}
+    pub fn should_use_attack_skills(&self) -> bool {
+        self.use_attack_skills.unwrap_or(false)
+    }
 
-impl BotConfig {
+    pub fn should_stay_in_area(&self) -> bool {
+        self.stay_in_area.unwrap_or(false)
+    }
+
+    pub fn slots(&self) -> Vec<Slot> {
+        self.slots
+            .map(|slots| slots.into_iter().collect::<Vec<_>>())
+            .unwrap_or([Slot::default(); 10].into_iter().collect::<Vec<_>>())
+    }
+
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
         self.slots
+            .unwrap_or_default()
             .iter()
             .position(|slot| slot.slot_type == slot_type)
     }
@@ -79,31 +78,80 @@ impl BotConfig {
         R: Rng,
     {
         self.slots
+            .unwrap_or_default()
             .iter()
             .enumerate()
             .filter(|(_, slot)| slot.slot_type == slot_type)
             .choose(rng)
             .map(|(index, _)| index)
     }
+}
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct SupportConfig {
+    slots: Option<[Slot; 10]>,
+}
+
+impl SupportConfig {
+    pub fn slots(&self) -> Vec<Slot> {
+        self.slots
+            .map(|slots| slots.into_iter().collect::<Vec<_>>())
+            .unwrap_or([Slot::default(); 10].into_iter().collect::<Vec<_>>())
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct ShoutConfig {
+    shout_interval: Option<u64>,
+    shout_message: Option<String>,
+}
+
+impl ShoutConfig {
+    pub fn shout_interval(&self) -> u64 {
+        self.shout_interval.unwrap_or(60)
+    }
+
+    pub fn shout_message(&self) -> String {
+        self.shout_message.clone().unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BotConfig {
+    /// Change id to sync changes between frontend and backend
+    change_id: u64,
+
+    /// Whether the bot is running
+    is_running: bool,
+    
+    /// The bot mode
+    mode: Option<BotMode>,
+
+    farming_config: FarmingConfig,
+    support_config: SupportConfig,
+    shout_config: ShoutConfig,
+}
+
+impl Default for BotConfig {
+    fn default() -> Self {
+        Self {
+            change_id: 0,
+            mode: None,
+            is_running: false,
+            farming_config: FarmingConfig::default(),
+            support_config: SupportConfig::default(),
+            shout_config: ShoutConfig::default(),
+        }
+    }
+}
+
+impl BotConfig {
     pub fn toggle_active(&mut self) {
         self.is_running = !self.is_running;
     }
 
     pub fn is_running(&self) -> bool {
         self.is_running
-    }
-
-    pub fn is_on_demand_pet(&self) -> bool {
-        self.on_demand_pet
-    }
-
-    pub fn should_use_attack_skills(&self) -> bool {
-        self.use_attack_skills
-    }
-
-    pub fn should_stay_in_area(&self) -> bool {
-        self.stay_in_area
     }
 
     pub fn change_id(&self) -> u64 {
@@ -115,6 +163,18 @@ impl BotConfig {
         self
     }
 
+    pub fn farming_config(&self) -> &FarmingConfig {
+        &self.farming_config
+    }
+
+    pub fn support_config(&self) -> &SupportConfig {
+        &self.support_config
+    }
+
+    pub fn shout_config(&self) -> &ShoutConfig {
+        &self.shout_config
+    }
+
     /// Serialize config to disk
     pub fn serialize(&self) {
         let config = {
@@ -123,38 +183,18 @@ impl BotConfig {
             config
         };
         if let Ok(mut file) = File::create(".botconfig") {
-            let serializable_config = VersionAgnosticBotConfig::from(config);
-            let _ = serde_json::to_writer(&mut file, &serializable_config);
+            let _ = serde_json::to_writer(&mut file, &config);
         }
     }
 
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {
         if let Ok(mut file) = File::open(".botconfig") {
-            let config: VersionAgnosticBotConfig =
+            let config: BotConfig =
                 serde_json::from_reader(&mut file).unwrap_or_default();
             config.into()
         } else {
             Self::default()
         }
-    }
-}
-
-impl From<VersionAgnosticBotConfig> for BotConfig {
-    fn from(serialized_bot_config: VersionAgnosticBotConfig) -> Self {
-        Self {
-            change_id: serialized_bot_config.change_id,
-            is_running: serialized_bot_config.is_running.unwrap_or(false),
-            on_demand_pet: serialized_bot_config.on_demand_pet.unwrap_or(true),
-            use_attack_skills: serialized_bot_config.use_attack_skills.unwrap_or(false),
-            stay_in_area: serialized_bot_config.stay_in_area.unwrap_or(false),
-            slots: serialized_bot_config.slots.unwrap_or_default(),
-        }
-    }
-}
-
-impl Default for BotConfig {
-    fn default() -> Self {
-        VersionAgnosticBotConfig::default().into()
     }
 }

@@ -3,8 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-// use image::{codecs::jpeg::JpegEncoder, imageops, ColorType};
-
 use std::{
     sync::{mpsc::sync_channel, Arc},
     time::{Duration, Instant},
@@ -515,7 +513,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 && current_time.duration_since(last_initial_attack_time) > min_pot_time_diff
                 && current_time.duration_since(last_pot_time) > min_pot_time_diff
             {
-                if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                if let Some(food_index) = config.farming_config().get_slot_index(SlotType::Food) {
                     send_keystroke(food_index.into(), Keymode::Press);
                     last_pot_time = current_time;
                 }
@@ -558,7 +556,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         continue;
                     }
                     // Check whether bot should stay in area
-                    if config.should_stay_in_area() {
+                    if config.farming_config().should_stay_in_area() {
                         // Reset rotation movement tries to keep rotating
                         rotation_movement_tries = 0;
                         continue;
@@ -642,7 +640,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             .filter(|m| m.mob_type == MobType::Passive)
                             .cloned()
                             .collect::<Vec<_>>();
-                        let max_distance = if config.should_stay_in_area() {
+                        let max_distance = if config.farming_config().should_stay_in_area() {
                             325
                         } else {
                             1000
@@ -694,16 +692,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
                     // Transform attack coords into local window coords
                     let (x, y) = mob.get_attack_coords();
-                    println!(
-                        "Trying to attack {} mob at [{},{}]",
-                        if mob.mob_type == MobType::Aggro {
-                            "aggro"
-                        } else {
-                            "passive"
-                        },
-                        x,
-                        y
-                    );
+                    println!("Trying to attack mob at [{},{}]", x, y);
                     // let inner_size = window.inner_size().unwrap();
                     // let (x_diff, y_diff) = (
                     //     image.width() - inner_size.width,
@@ -738,10 +727,10 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
                         // Try to use attack skill
                         if let Some(index) =
-                            config.get_random_slot_index(SlotType::AttackSkill, &mut rng)
+                            config.farming_config().get_random_slot_index(SlotType::AttackSkill, &mut rng)
                         {
                             // Only use attack skill if enabled and once a second at most
-                            if config.should_use_attack_skills()
+                            if config.farming_config().should_use_attack_skills()
                                 && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
                             {
                                 last_attack_skill_usage_time = Instant::now();
@@ -772,8 +761,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     };
 
                     // Check for on-demand pet config
-                    if config.is_on_demand_pet() {
-                        if let Some(index) = config.get_slot_index(SlotType::PickupPet) {
+                    if config.farming_config().should_use_on_demand_pet() {
+                        if let Some(index) = config.farming_config().get_slot_index(SlotType::PickupPet) {
                             // Summon pet
                             send_keystroke(index.into(), Keymode::Press);
                             // Wait half a second to make sure everything is picked up

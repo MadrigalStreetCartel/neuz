@@ -21,12 +21,16 @@ For best compatibility:
 
 ## Changelog
 
+**0.8.0**
+- Adds the foundation for modes of operation (Farming, Support, AutoShout)
+- Updates launcher UI
+
 **0.7.0**
 - Adds support for Linux (incomplete)
 - Fixes long standing bug with violet magician avoidance
 - Switches to our own [libscreenshot](https://github.com/madrigalstreetcartel/libscreenshot) for huge performance gains
 - Replaces copyrighted logo with MadrigalStreetCapital logo
-- Improve launcher UI
+- Improves launcher UI
 
 **0.6.0**
 - Adds option to stay in area in order to avoid giants etc.

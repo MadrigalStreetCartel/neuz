@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Neuz",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "tauri": {
     "allowlist": {
@@ -16,8 +16,8 @@
     },
     "bundle": {
       "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
+      "category": "Productivity",
+      "copyright": "2022 MadrigalStreetCartel",
       "deb": {
         "depends": []
       },
@@ -29,7 +29,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "inc.sigma.nefpusvpx",
+      "identifier": "inc.madrigalstreetcartel.neuz",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -56,10 +56,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
         "resizable": true,
         "title": "Neuz | MadrigalStreetCartel",
-        "width": 800
+        "width": 800,
+        "height": 600
       }
     ]
   }

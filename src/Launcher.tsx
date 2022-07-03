@@ -4,10 +4,9 @@ import { sample } from 'lodash'
 import { WebviewWindow } from '@tauri-apps/api/window'
 import styled from 'styled-components'
 
-import BotVisualizer from './BotVisualizer'
-
 import FlyffLogo from './assets/msc_dark.png'
 import LauncherBackground from './assets/launcher_background_ice.png'
+import MissionControl from './MissionControl'
 
 const Greetings = [
     '😭 Real Market trading is destroying our game 😭',
@@ -47,6 +46,7 @@ const Greetings = [
     'Madrigal Street Casino',
     'Madrigal Street Chinafarming',
     'Madrigal Street Cocaine',
+    'Madrigal Skooma Cartel',
     'Do you remember CFlyff',
     '夢想飛飛',
 ]
@@ -146,7 +146,7 @@ const Launcher = ({ className }: Props) => {
                 </div>
             )}
             {isLaunched && (
-                <BotVisualizer />
+                <MissionControl />
             )}
         </div>
     )
@@ -164,7 +164,6 @@ export default styled(Launcher)`
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
-    overflow: hidden;
 
     & .container {
         display: flex;
