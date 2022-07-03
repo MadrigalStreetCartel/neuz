@@ -123,7 +123,7 @@ pub struct BotConfig {
 
     /// Whether the bot is running
     is_running: bool,
-    
+
     /// The bot mode
     mode: Option<BotMode>,
 
@@ -190,9 +190,9 @@ impl BotConfig {
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {
         if let Ok(mut file) = File::open(".botconfig") {
-            let config: BotConfig =
-                serde_json::from_reader(&mut file).unwrap_or_default();
-            config.into()
+            serde_json::from_reader::<_, BotConfig>(&mut file)
+                .unwrap_or_default()
+                .into()
         } else {
             Self::default()
         }

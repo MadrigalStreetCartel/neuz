@@ -21,6 +21,10 @@ For best compatibility:
 
 ## Changelog
 
+**0.9.0**
+- Fixes crash related to message pumping on windows
+- Vastly improves killed mob avoidance
+
 **0.8.0**
 - Adds the foundation for modes of operation (Farming, Support, AutoShout)
 - Updates launcher UI

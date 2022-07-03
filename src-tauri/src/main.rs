@@ -167,7 +167,7 @@ impl Mob {
     }
 }
 
-fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
+fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType, ignore_size: bool) -> Vec<Mob> {
     let _timer = Timer::start_new("merge_cloud_into_mobs");
 
     // Max merge distance
@@ -198,10 +198,14 @@ fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType) -> Vec<Mob> {
             name_bounds: cluster.into_approx_rect().into_bounds(),
         })
         .filter(|mob| {
-            // Filter out small clusters (likely to cause misclicks)
-            mob.name_bounds.size() > (10 * 6)
-            // Filter out huge clusters (likely to be Violet Magician Troupe)
-            && mob.name_bounds.size() < (220 * 6)
+            if ignore_size {
+                true
+            } else {
+                // Filter out small clusters (likely to cause misclicks)
+                mob.name_bounds.size() > (10 * 6)
+                // Filter out huge clusters (likely to be Violet Magician Troupe)
+                && mob.name_bounds.size() < (220 * 6)
+            }
         })
         .collect()
 }
@@ -246,9 +250,13 @@ fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
                     return;
                 }
                 if pixel_matches(&px.0, &ref_color_pas, 2) {
-                    snd.send(MobPixel(x, y, MobType::Passive)).unwrap();
+                    match snd.send(MobPixel(x, y, MobType::Passive)) {
+                        _ => (),
+                    }
                 } else if pixel_matches(&px.0, &ref_color_agg, 8) {
-                    snd.send(MobPixel(x, y, MobType::Aggro)).unwrap();
+                    match snd.send(MobPixel(x, y, MobType::Aggro)) {
+                        _ => (),
+                    }
                 }
             }
         });
@@ -261,8 +269,8 @@ fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
     }
 
     // Identify mobs
-    let mobs_pas = merge_cloud_into_mobs(&mob_coords_pas, MobType::Passive);
-    let mobs_agg = merge_cloud_into_mobs(&mob_coords_agg, MobType::Aggro);
+    let mobs_pas = merge_cloud_into_mobs(&mob_coords_pas, MobType::Passive, false);
+    let mobs_agg = merge_cloud_into_mobs(&mob_coords_agg, MobType::Aggro, false);
 
     // Return all mobs
     Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
@@ -290,7 +298,9 @@ fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
                     return;
                 }
                 if pixel_matches(&px.0, &ref_color, 2) {
-                    snd.send((x, y)).unwrap();
+                    match snd.send((x, y)) {
+                        _ => (),
+                    }
                 }
             }
         });
@@ -299,7 +309,7 @@ fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
     }
 
     // Identify target marker entities
-    let target_markers = merge_cloud_into_mobs(&coords, MobType::TargetMarker);
+    let target_markers = merge_cloud_into_mobs(&coords, MobType::TargetMarker, true);
 
     // Find biggest target marker
     target_markers
@@ -340,20 +350,14 @@ fn find_closest_mob<'a>(
 
     if let Some(avoid_bounds) = avoid_bounds {
         // Try finding closest mob that's not the mob to be avoided
-        if let Some((mob, distance)) = distances
-            .iter()
-            .find(|(mob, _)| {
-                !avoid_bounds
-                    .grow_by(25)
-                    .contains_point(&mob.get_attack_coords())
-            })
-        {
+        if let Some((mob, distance)) = distances.iter().find(|(mob, distance)| {
+            *distance > 150
+            // let coords = mob.name_bounds.get_lowest_center_point();
+            // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+        }) {
             println!("Found mob avoiding last target.");
             println!("Distance: {}", distance);
             Some(mob)
-        } else if let Some((mob, distance)) = distances.first() {
-            println!("Distance: {}", distance);
-            Some(*mob)
         } else {
             None
         }
@@ -389,6 +393,11 @@ fn send_keystroke(k: Key, mode: Keymode) {
         Keymode::Release => ctx.ascii_char_up(k),
     }
     .unwrap();
+}
+
+#[inline(always)]
+fn erase_result<T, E>(r: Result<T, E>) {
+    drop(r.ok() as Option<_>)
 }
 
 #[tauri::command]
@@ -435,13 +444,19 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             local_config.write().toggle_active();
         });
 
+        let send_config = |config: &BotConfig| {
+            drop(app_handle.emit_all("bot_config_s2c", &*config) as Result<(), _>)
+        };
+
+        let send_frontend_info = |frontend_info: &FrontendInfo| {
+            drop(app_handle.emit_all("bot_info_s2c", frontend_info) as Result<(), _>)
+        };
+
         // Wait a second for frontend to become ready
         std::thread::sleep(Duration::from_secs(1));
 
         // Send initial config to frontend
-        app_handle
-            .emit_all("bot_config_s2c", &*config.read())
-            .unwrap();
+        send_config(&*config.read());
 
         loop {
             let timer = Timer::start_new("loop_iter");
@@ -450,7 +465,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
                 config.serialize();
-                app_handle.emit_all("bot_config_s2c", &config).unwrap();
+                send_config(&config);
                 last_config_change_id = config.change_id();
             }
 
@@ -464,9 +479,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
             // Check whether the bot is paused
             if !config.is_running() {
-                app_handle
-                    .emit_all("frontend_info", &frontend_info)
-                    .unwrap();
+                send_frontend_info(&frontend_info);
                 std::thread::sleep(std::time::Duration::from_millis(250));
                 timer.silence();
                 continue;
@@ -476,13 +489,13 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             #[cfg(target_os = "windows")]
             {
                 let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
-                if focused_hwnd as isize != window.hwnd().unwrap().0 {
-                    app_handle
-                        .emit_all("frontend_info", &frontend_info)
-                        .unwrap();
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                    timer.silence();
-                    continue;
+                if let Ok(hwnd) = window.hwnd().map(|hwnd| hwnd.0) {
+                    if focused_hwnd as isize != hwnd {
+                        send_frontend_info(&frontend_info);
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        timer.silence();
+                        continue;
+                    }
                 }
             }
 
@@ -502,7 +515,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         continue;
                     }
                 } else {
-                    continue
+                    continue;
                 }
             };
 
@@ -541,7 +554,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     // Try rotating first in order to locate nearby enemies
                     if rotation_movement_tries < 20 {
                         // Rotate in random direction for a random duration
-                        let key = [Key::A, Key::D].choose(&mut rng).unwrap();
+                        let key = [Key::A, Key::D].choose(&mut rng).unwrap_or(&Key::A);
                         let rotation_duration =
                             std::time::Duration::from_millis(rng.gen_range(100..250));
                         send_keystroke(*key, Keymode::Hold);
@@ -565,7 +578,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     match rng.gen_range(0..3) {
                         0 => {
                             // Move into a random direction while jumping
-                            let key = [Key::A, Key::D].choose(&mut rng).unwrap();
+                            let key = [Key::A, Key::D].choose(&mut rng).unwrap_or(&Key::A);
                             let rotation_duration = Duration::from_millis(rng.gen_range(100..350));
                             let movement_slices = rng.gen_range(1..4);
                             let movement_slice_duration =
@@ -621,9 +634,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 BotState::SearchingForEnemy => {
                     let mobs = identify_mobs(&image);
                     frontend_info.set_enemy_bounds(
-                        mobs.iter()
-                            .map(|mob| mob.name_bounds)
-                            .collect::<Vec<_>>(),
+                        mobs.iter().map(|mob| mob.name_bounds).collect::<Vec<_>>(),
                     );
                     state = if mobs.is_empty() {
                         // No mobs found, run movement algo
@@ -659,7 +670,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             if let Some(mob) = {
                                 // Try avoiding detection of last killed mob
                                 if Instant::now().duration_since(last_kill_time)
-                                    < Duration::from_secs(5)
+                                    < Duration::from_millis(2500)
                                 {
                                     println!("Avoiding mob at {:?}", last_killed_mob_bounds);
                                     find_closest_mob(
@@ -708,8 +719,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                     });
 
                     // Set cursor position and simulate a click
-                    window.set_cursor_position(target_cursor_pos).unwrap();
-                    mouse.click(&mouse_rs::types::keys::Keys::LEFT).unwrap();
+                    erase_result(window.set_cursor_position(target_cursor_pos));
+                    erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
 
                     // Wait a few ms before switching state
                     state = BotState::Attacking(mob);
@@ -726,8 +737,9 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         last_killed_mob_bounds = marker.name_bounds;
 
                         // Try to use attack skill
-                        if let Some(index) =
-                            config.farming_config().get_random_slot_index(SlotType::AttackSkill, &mut rng)
+                        if let Some(index) = config
+                            .farming_config()
+                            .get_random_slot_index(SlotType::AttackSkill, &mut rng)
                         {
                             // Only use attack skill if enabled and once a second at most
                             if config.farming_config().should_use_attack_skills()
@@ -752,17 +764,12 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 BotState::AfterEnemyKill(_mob) => {
                     kill_count += 1;
                     last_kill_time = Instant::now();
-                    state = {
-                        if rng.gen_bool(0.1) {
-                            BotState::Idle
-                        } else {
-                            BotState::SearchingForEnemy
-                        }
-                    };
 
                     // Check for on-demand pet config
                     if config.farming_config().should_use_on_demand_pet() {
-                        if let Some(index) = config.farming_config().get_slot_index(SlotType::PickupPet) {
+                        if let Some(index) =
+                            config.farming_config().get_slot_index(SlotType::PickupPet)
+                        {
                             // Summon pet
                             send_keystroke(index.into(), Keymode::Press);
                             // Wait half a second to make sure everything is picked up
@@ -771,6 +778,14 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                             send_keystroke(index.into(), Keymode::Press);
                         }
                     }
+
+                    state = {
+                        if rng.gen_bool(0.1) {
+                            BotState::Idle
+                        } else {
+                            BotState::SearchingForEnemy
+                        }
+                    };
                 }
                 BotState::Interrupted => {
                     unimplemented!("");
@@ -808,9 +823,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
             // Update frontend info and send it over
             frontend_info.set_kill_count(kill_count);
-            app_handle
-                .emit_all("frontend_info", &frontend_info)
-                .unwrap();
+            send_frontend_info(&frontend_info);
         }
     });
 }
