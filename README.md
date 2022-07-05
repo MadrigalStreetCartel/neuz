@@ -1,25 +1,12 @@
-# Neuz
-> Open Source Flyff Universe client with enhanced features.
+# Neuz-Dev
+> Flyff Universe client with enhanced features.
 
-We are NOT affiliated with Gala Lab Corp., Sniegu Technologies SAS or Flyff Universe.
+**This is a private development repository. Read the [LICENSE](./LICENSE.md)!**
 
-Binaries are downloadable from here: [MSI Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/msi) | [DEB Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/deb) | [AppImage Builds](https://github.com/SplittyDev/Neuz/tree/main/src-tauri/target/release/bundle/appimage)
-
-## Semi Autonomous Mode
-> Right now the bot operates in semi-autonomous mode. Keep an eye on it.
-
-**Requirements**
-> No settings have to be changed by default.
-
-1. Use default theme (used by default)
-2. Enable auto-attack (enabled by default)
-
-For best compatibility:
-
-1. Enable right-click player menu for best compatibility (disabled by default)
-2. Disable single-click to attack (disabled by default, not necessarily needed)
+Binaries are downloadable from here: [MSI](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/msi) | [DEB](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/deb) | [AppImage](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/appimage)
 
 ## Changelog
+> This is an internal changelog. DO NOT REPRODUCE.
 
 **0.9.0**
 - Fixes crash related to message pumping on windows
