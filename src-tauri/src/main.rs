@@ -395,6 +395,11 @@ fn send_keystroke(k: Key, mode: Keymode) {
     .unwrap();
 }
 
+#[cfg(target_os = "macos")]
+fn send_keystroke(k: Key, mode: Keymode) {
+    unimplemented!("MacOS support is in the works.")
+}
+
 #[inline(always)]
 fn erase_result<T, E>(r: Result<T, E>) {
     drop(r.ok() as Option<_>)
