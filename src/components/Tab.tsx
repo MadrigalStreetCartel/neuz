@@ -22,7 +22,7 @@ export default styled(Tab)`
     cursor: pointer;
     border-radius: .25rem;
     overflow: hidden;
-    width: 200px;
+    width: 150px;
     transition: all .25s ease;
     filter: grayscale(100%);
     opacity: 0.9;
