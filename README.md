@@ -5,6 +5,14 @@
 
 Binaries are downloadable from here: [MSI](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/msi) | [DEB](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/deb) | [AppImage](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/appimage)
 
+## Contributing
+
+1. Fork the repository
+2. Use a descritive branch name (example: `feat/add-auto-loot`)
+3. Implement your changes and test them properly
+4. Run `cargo fmt` to format your code according to the Rust standard
+5. Open a pull request and describe your changes in detail
+
 ## Changelog
 > This is an internal changelog. DO NOT REPRODUCE.
 
