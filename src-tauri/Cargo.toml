@@ -32,9 +32,12 @@ libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot" 
 winapi = "0.3"
 winput = "0.2"
 
-# Linux platform support
+# Linux / macOS platform support
 [target.'cfg(target_os="linux")'.dependencies]
 tfc = "0.6.1"
+
+[target.'cfg(target_os="macos")'.dependencies]
+enigo = "0.0.14"
 
 [features]
 # by default Tauri runs in production mode

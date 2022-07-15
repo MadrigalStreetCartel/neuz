@@ -5,23 +5,33 @@
 
 use std::{
     sync::{mpsc::sync_channel, Arc},
-    time::{Duration, Instant},
+    time::{Duration, Instant}, cell::RefCell,
 };
 
-use libscreenshot::ImageBuffer;
+use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use parking_lot::RwLock;
 use rand::prelude::{Rng, SliceRandom};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use rayon::prelude::*;
 use tauri::{Manager, PhysicalPosition, Position};
 
-// windows support
+#[cfg(target_os = "macos")]
+const IGNORE_AREA_TOP: u32 = 60;
+#[cfg(not(target_os = "macos"))]
+const IGNORE_AREA_TOP: u32 = 0;
+
+const IGNORE_AREA_BOTTOM: u32 = 0;
+
+// windows
 #[cfg(target_os = "windows")]
 use winput::Vk;
 
 // linux
 #[cfg(target_os = "linux")]
 use tfc::{traits::*, Context, Error};
+
+// macOS
+use enigo::Enigo;
 
 mod algo;
 mod ipc;
@@ -42,6 +52,7 @@ fn main() {
         .expect("error while running tauri application");
 }
 
+#[derive(Debug)]
 enum BotState {
     Idle,
     Interrupted,
@@ -147,6 +158,30 @@ impl From<Key> for char {
     }
 }
 
+#[cfg(target_os = "macos")]
+impl From<Key> for enigo::Key {
+    fn from(k: Key) -> Self {
+        use Key::*;
+        match k {
+            N => enigo::Key::Layout('0'),
+            I => enigo::Key::Layout('1'),
+            II => enigo::Key::Layout('2'),
+            III => enigo::Key::Layout('3'),
+            IV => enigo::Key::Layout('4'),
+            V => enigo::Key::Layout('5'),
+            VI => enigo::Key::Layout('6'),
+            VII => enigo::Key::Layout('7'),
+            VIII => enigo::Key::Layout('8'),
+            IX => enigo::Key::Layout('9'),
+            W => enigo::Key::Layout('w'),
+            A => enigo::Key::Layout('a'),
+            S => enigo::Key::Layout('s'),
+            D => enigo::Key::Layout('d'),
+            Space => enigo::Key::Space,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MobType {
     Passive,
@@ -236,17 +271,16 @@ fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
 
     // Collect pixel clouds
     struct MobPixel(u32, u32, MobType);
-    let ignore_area_bottom = 90;
     let (snd, recv) = sync_channel::<MobPixel>(4096);
     image
         .enumerate_rows()
         .par_bridge()
         .for_each(move |(y, row)| {
-            if y > image.height() - ignore_area_bottom {
+            if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                 return;
             }
             for (x, _, px) in row {
-                if px.0[3] != 255 || y > image.height() - ignore_area_bottom {
+                if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                     return;
                 }
                 if pixel_matches(&px.0, &ref_color_pas, 2) {
@@ -284,13 +318,12 @@ fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
     let ref_color: [u8; 3] = [246, 90, 106];
 
     // Collect pixel clouds
-    let ignore_area_bottom = 90;
     let (snd, recv) = sync_channel::<(u32, u32)>(4096);
     image
         .enumerate_rows()
         .par_bridge()
         .for_each(move |(y, row)| {
-            if y > image.height() - ignore_area_bottom {
+            if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                 return;
             }
             for (x, _, px) in row {
@@ -348,9 +381,9 @@ fn find_closest_mob<'a>(
         .filter(|&(_, distance)| distance <= max_distance)
         .collect();
 
-    if let Some(avoid_bounds) = avoid_bounds {
+    if let Some(_) = avoid_bounds {
         // Try finding closest mob that's not the mob to be avoided
-        if let Some((mob, distance)) = distances.iter().find(|(mob, distance)| {
+        if let Some((mob, distance)) = distances.iter().find(|(_mob, distance)| {
             *distance > 150
             // let coords = mob.name_bounds.get_lowest_center_point();
             // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
@@ -375,6 +408,7 @@ fn find_closest_mob<'a>(
 #[cfg(target_os = "windows")]
 fn send_keystroke(k: Key, mode: Keymode) {
     let k: Vk = k.into();
+    let mut ctx = tfc::Context::new().unwrap();
     match mode {
         Keymode::Press => winput::send(k),
         Keymode::Hold => winput::press(k),
@@ -397,7 +431,13 @@ fn send_keystroke(k: Key, mode: Keymode) {
 
 #[cfg(target_os = "macos")]
 fn send_keystroke(k: Key, mode: Keymode) {
-    unimplemented!("MacOS support is in the works.")
+    use enigo::KeyboardControllable;
+    let k: enigo::Key = k.into();
+    match mode {
+        Keymode::Press => enigo.key_click(k),
+        Keymode::Hold => enigo.key_down(k),
+        Keymode::Release => enigo.key_up(k),
+    }
 }
 
 #[inline(always)]
@@ -406,7 +446,9 @@ fn erase_result<T, E>(r: Result<T, E>) {
 }
 
 #[tauri::command]
-async fn start_bot(app_handle: tauri::AppHandle) {
+fn start_bot(app_handle: tauri::AppHandle) {
+    let enigo = RefCell::new(Enigo::new());
+    let mut enigo = &mut enigo;
     let window = app_handle.get_window("client").unwrap();
 
     let mut last_pot_time = Instant::now();
@@ -509,18 +551,35 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                 let _timer = Timer::start_new("capture_window");
                 if let Some(provider) = libscreenshot::get_window_capture_provider() {
                     let window_id = || match window.raw_window_handle() {
-                        RawWindowHandle::Xlib(handle) => handle.window as u64,
-                        RawWindowHandle::Win32(handle) => handle.hwnd as u64,
-                        _ => 0_u64,
+                        RawWindowHandle::Xlib(handle) => Some(handle.window as u64),
+                        RawWindowHandle::Win32(handle) => Some(handle.hwnd as u64),
+                        RawWindowHandle::AppKit(handle) => {
+                            #[cfg(target_os = "macos")]
+                            unsafe {
+                                use std::ffi::c_void;
+                                let ns_window_ptr = handle.ns_window as *const c_void;
+                                libscreenshot::platform::macos::macos_helper
+                                    ::ns_window_to_window_id(ns_window_ptr)
+                                    .map(|id| id as u64)
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            unreachable!()
+                        }
+                        _ => Some(0_u64),
                     };
-                    if let Ok(image) = provider.capture_window(window_id()) {
-                        image
+                    if let Some(window_id) = window_id() {
+                        if let Ok(image) = provider.capture_window(window_id) {
+                            image
+                        } else {
+                            println!("Capturing window failed.");
+                            continue
+                        }
                     } else {
-                        println!("Capturing window failed.");
-                        continue;
+                        println!("Obtaining window handle failed.");
+                        continue
                     }
                 } else {
-                    continue;
+                    continue
                 }
             };
 
@@ -540,6 +599,8 @@ async fn start_bot(app_handle: tauri::AppHandle) {
             // Crop image
             // let (crop_x, crop_y) = (image.width() / 6, image.height() / 6);
             // let image = image.sub_image(crop_x, crop_y, image.width() - crop_x, image.height() - crop_y).to_image();
+
+            println!("{:?}", state);
 
             match state {
                 BotState::Idle => {
@@ -562,9 +623,11 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         let key = [Key::A, Key::D].choose(&mut rng).unwrap_or(&Key::A);
                         let rotation_duration =
                             std::time::Duration::from_millis(rng.gen_range(100..250));
+                        println!("DEBUG {}", line!());
                         send_keystroke(*key, Keymode::Hold);
                         std::thread::sleep(rotation_duration);
                         send_keystroke(*key, Keymode::Release);
+                        println!("DEBUG {}", line!());
                         rotation_movement_tries += 1;
                         // Wait a bit to wait for monsters to enter view
                         std::thread::sleep(std::time::Duration::from_millis(
@@ -607,7 +670,6 @@ async fn start_bot(app_handle: tauri::AppHandle) {
                         }
                         1 => {
                             // Move forwards while jumping
-
                             send_keystroke(Key::W, Keymode::Hold);
                             send_keystroke(Key::Space, Keymode::Hold);
                             std::thread::sleep(std::time::Duration::from_millis(
@@ -725,7 +787,7 @@ async fn start_bot(app_handle: tauri::AppHandle) {
 
                     // Set cursor position and simulate a click
                     erase_result(window.set_cursor_position(target_cursor_pos));
-                    erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
+                    // erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
 
                     // Wait a few ms before switching state
                     state = BotState::Attacking(mob);
