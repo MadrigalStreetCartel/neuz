@@ -27,10 +27,11 @@ const IGNORE_AREA_BOTTOM: u32 = 0;
 use winput::Vk;
 
 // linux
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 use tfc::{traits::*, Context, Error};
 
 // macOS
+#[cfg(target_os = "macos")]
 use enigo::Enigo;
 
 mod algo;
@@ -433,6 +434,7 @@ fn send_keystroke(k: Key, mode: Keymode) {
 fn send_keystroke(k: Key, mode: Keymode) {
     use enigo::KeyboardControllable;
     let k: enigo::Key = k.into();
+    let mut enigo = Enigo::new();
     match mode {
         Keymode::Press => enigo.key_click(k),
         Keymode::Hold => enigo.key_down(k),
@@ -447,8 +449,6 @@ fn erase_result<T, E>(r: Result<T, E>) {
 
 #[tauri::command]
 fn start_bot(app_handle: tauri::AppHandle) {
-    let enigo = RefCell::new(Enigo::new());
-    let mut enigo = &mut enigo;
     let window = app_handle.get_window("client").unwrap();
 
     let mut last_pot_time = Instant::now();
