@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::algo::Bounds;
+use crate::data::Bounds;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FrontendInfo {

@@ -3,29 +3,23 @@
     windows_subsystem = "windows"
 )]
 
-use std::{
-    sync::{mpsc::sync_channel, Arc},
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 
-use libscreenshot::{ImageBuffer, WindowCaptureProvider};
+use behavior::{Behavior, FarmingBehavior};
+use image_analyzer::ImageAnalyzer;
+use libscreenshot::WindowCaptureProvider;
 use parking_lot::RwLock;
-use rand::prelude::{Rng, SliceRandom};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use rayon::prelude::*;
-use tauri::{Manager, PhysicalPosition, Position};
+use platform::PlatformAccessor;
+use tauri::{Manager, Window};
 
-mod algo;
+mod behavior;
+mod data;
+mod image_analyzer;
 mod ipc;
 mod platform;
 mod utils;
 
-use crate::{
-    algo::{x_axis_selector, y_axis_selector, AxisClusterComputer, Bounds},
-    ipc::{BotConfig, FrontendInfo, SlotType},
-    platform::{send_keystroke, Key, KeyMode, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
-    utils::Timer,
-};
+use crate::{ipc::BotConfig, utils::Timer};
 
 fn main() {
     let context = tauri::generate_context!();
@@ -36,261 +30,34 @@ fn main() {
         .expect("error while running tauri application");
 }
 
-#[derive(Debug)]
-enum BotState {
-    Idle,
-    Interrupted,
-    NoEnemyFound,
-    SearchingForEnemy,
-    EnemyFound(Mob),
-    Attacking(Mob),
-    AfterEnemyKill(Mob),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MobType {
-    Passive,
-    Aggro,
-    TargetMarker,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Mob {
-    mob_type: MobType,
-    name_bounds: Bounds,
-}
-
-impl Mob {
-    pub fn get_attack_coords(&self) -> (u32, u32) {
-        let (x, y) = self.name_bounds.get_lowest_center_point();
-        (x, y + 25)
-    }
-}
-
-fn merge_cloud_into_mobs(coords: &[(u32, u32)], mob_type: MobType, ignore_size: bool) -> Vec<Mob> {
-    let _timer = Timer::start_new("merge_cloud_into_mobs");
-
-    // Max merge distance
-    let max_distance_x: u32 = 30;
-    let max_distance_y: u32 = 5;
-
-    // Cluster coordinates in x-direction
-    let x_clusters =
-        AxisClusterComputer::cluster_by_distance(coords, max_distance_x, x_axis_selector);
-
-    let mut xy_clusters = Vec::default();
-    for x_cluster in x_clusters {
-        // Cluster current x-cluster coordinates in y-direction
-        let local_y_clusters = AxisClusterComputer::cluster_by_distance(
-            x_cluster.points_ref(),
-            max_distance_y,
-            y_axis_selector,
-        );
-        // Extend final xy-clusters with local y-clusters
-        xy_clusters.extend(local_y_clusters.into_iter());
-    }
-
-    // Create mobs from clusters
-    xy_clusters
-        .into_iter()
-        .map(|cluster| Mob {
-            mob_type,
-            name_bounds: cluster.into_approx_rect().into_bounds(),
-        })
-        .filter(|mob| {
-            if ignore_size {
-                true
+/// Capture the current window contents.
+fn capture_window(window: &Window) -> Option<ImageAnalyzer> {
+    let _timer = Timer::start_new("capture_window");
+    if let Some(provider) = libscreenshot::get_window_capture_provider() {
+        if let Some(window_id) = platform::get_window_id(window) {
+            if let Ok(image) = provider.capture_window(window_id) {
+                Some(ImageAnalyzer::new(image))
             } else {
-                // Filter out small clusters (likely to cause misclicks)
-                mob.name_bounds.size() > (10 * 6)
-                // Filter out huge clusters (likely to be Violet Magician Troupe)
-                && mob.name_bounds.size() < (220 * 6)
+                println!("Capturing window failed.");
+                None
             }
-        })
-        .collect()
-}
-
-/// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
-#[inline(always)]
-fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
-    let matches_inner = |a: u8, b: u8| match (a, b) {
-        (a, b) if a == b => true,
-        (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-        (a, b) if a < b => b.saturating_sub(a) <= tolerance,
-        _ => false,
-    };
-    let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
-    perm.iter().all(|&(a, b)| matches_inner(a, b))
-}
-
-fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
-    let _timer = Timer::start_new("identify_mobs");
-
-    // Create collections for passive and aggro mobs
-    let mut mob_coords_pas: Vec<(u32, u32)> = Vec::default();
-    let mut mob_coords_agg: Vec<(u32, u32)> = Vec::default();
-
-    // Reference colors
-    let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
-    let ref_color_agg: [u8; 3] = [0xd3, 0x0f, 0x0d]; // Aggro mobs
-
-    // Collect pixel clouds
-    struct MobPixel(u32, u32, MobType);
-    let (snd, recv) = sync_channel::<MobPixel>(4096);
-    image
-        .enumerate_rows()
-        .par_bridge()
-        .for_each(move |(y, row)| {
-            #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-            if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
-                return;
-            }
-            for (x, _, px) in row {
-                if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
-                    return;
-                }
-                if pixel_matches(&px.0, &ref_color_pas, 2) {
-                    erase_result(snd.send(MobPixel(x, y, MobType::Passive)));
-                } else if pixel_matches(&px.0, &ref_color_agg, 8) {
-                    erase_result(snd.send(MobPixel(x, y, MobType::Aggro)));
-                }
-            }
-        });
-    while let Ok(px) = recv.recv() {
-        match px.2 {
-            MobType::Passive => mob_coords_pas.push((px.0, px.1)),
-            MobType::Aggro => mob_coords_agg.push((px.0, px.1)),
-            _ => unreachable!(),
-        }
-    }
-
-    // Identify mobs
-    let mobs_pas = merge_cloud_into_mobs(&mob_coords_pas, MobType::Passive, false);
-    let mobs_agg = merge_cloud_into_mobs(&mob_coords_agg, MobType::Aggro, false);
-
-    // Return all mobs
-    Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
-}
-
-fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
-    let _timer = Timer::start_new("identify_target_marker");
-    let mut coords = Vec::default();
-
-    // Reference color
-    let ref_color: [u8; 3] = [246, 90, 106];
-
-    // Collect pixel clouds
-    let (snd, recv) = sync_channel::<(u32, u32)>(4096);
-    image
-        .enumerate_rows()
-        .par_bridge()
-        .for_each(move |(y, row)| {
-            #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-            if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
-                return;
-            }
-            for (x, _, px) in row {
-                if px.0[3] != 255 {
-                    return;
-                }
-                if pixel_matches(&px.0, &ref_color, 2) {
-                    erase_result(snd.send((x, y)));
-                }
-            }
-        });
-    while let Ok(coord) = recv.recv() {
-        coords.push(coord);
-    }
-
-    // Identify target marker entities
-    let target_markers = merge_cloud_into_mobs(&coords, MobType::TargetMarker, true);
-
-    // Find biggest target marker
-    target_markers
-        .into_iter()
-        .max_by_key(|x| x.name_bounds.size())
-}
-
-/// Distance: `[0..=500]`
-fn find_closest_mob<'a>(
-    image: &ImageBuffer,
-    mobs: &'a [Mob],
-    avoid_bounds: Option<&Bounds>,
-    max_distance: i32,
-) -> Option<&'a Mob> {
-    let _timer = Timer::start_new("find_closest_mob");
-
-    // Calculate middle point of player
-    let mid_x = (image.width() / 2) as i32;
-    let mid_y = (image.height() / 2) as i32;
-
-    // Calculate 2D euclidian distances to player
-    let mut distances = Vec::default();
-    for mob in mobs {
-        let (x, y) = mob.get_attack_coords();
-        let distance =
-            (((mid_x - x as i32).pow(2) + (mid_y - y as i32).pow(2)) as f64).sqrt() as i32;
-        distances.push((mob, distance));
-    }
-
-    // Sort by distance
-    distances.sort_by_key(|&(_, distance)| distance);
-
-    // Remove mobs that are too far away
-    distances = distances
-        .into_iter()
-        .filter(|&(_, distance)| distance <= max_distance)
-        .collect();
-
-    if let Some(_) = avoid_bounds {
-        // Try finding closest mob that's not the mob to be avoided
-        if let Some((mob, distance)) = distances.iter().find(|(_mob, distance)| {
-            *distance > 150
-            // let coords = mob.name_bounds.get_lowest_center_point();
-            // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
-        }) {
-            println!("Found mob avoiding last target.");
-            println!("Distance: {}", distance);
-            Some(mob)
         } else {
+            println!("Obtaining window handle failed.");
             None
         }
     } else {
-        // Return closest mob
-        if let Some((mob, distance)) = distances.first() {
-            println!("Distance: {}", distance);
-            Some(*mob)
-        } else {
-            None
-        }
+        None
     }
-}
-
-#[inline(always)]
-fn erase_result<T, E>(r: Result<T, E>) {
-    drop(r.ok() as Option<_>)
 }
 
 #[tauri::command]
 fn start_bot(app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
 
-    let mut last_pot_time = Instant::now();
-    let mut last_initial_attack_time = Instant::now();
-    let mut last_kill_time = Instant::now();
-    let mut last_killed_mob_bounds = Bounds::default();
-    let mut last_attack_skill_usage_time = Instant::now();
-    let mut is_attacking = false;
-    let mut kill_count: usize = 0;
-    let mut rotation_movement_tries = 0;
-
     std::thread::spawn(move || {
         let mut last_config_change_id = 0;
-        let mut state = BotState::SearchingForEnemy;
-        let mut rng = rand::thread_rng();
         let config: Arc<RwLock<BotConfig>> =
             Arc::new(RwLock::new(BotConfig::deserialize_or_default()));
-        let mouse = mouse_rs::Mouse::new();
 
         // Listen for config changes from the UI
         let local_config = config.clone();
@@ -319,9 +86,10 @@ fn start_bot(app_handle: tauri::AppHandle) {
             drop(app_handle.emit_all("bot_config_s2c", &*config) as Result<(), _>)
         };
 
-        let send_frontend_info = |frontend_info: &FrontendInfo| {
-            drop(app_handle.emit_all("bot_info_s2c", frontend_info) as Result<(), _>)
-        };
+        // NOTE: Currently not needed.
+        // let send_frontend_info = |frontend_info: &FrontendInfo| {
+        //     drop(app_handle.emit_all("bot_info_s2c", frontend_info) as Result<(), _>)
+        // };
 
         // Wait a second for frontend to become ready
         std::thread::sleep(Duration::from_secs(1));
@@ -329,8 +97,18 @@ fn start_bot(app_handle: tauri::AppHandle) {
         // Send initial config to frontend
         send_config(&*config.read());
 
+        // Create platform accessor
+        let accessor = PlatformAccessor {
+            window: &window,
+            mouse: mouse_rs::Mouse::new(),
+        };
+
+        // Instantiate behaviors
+        let mut farming_behavior = FarmingBehavior::new(&accessor);
+
+        // Enter main loop
         loop {
-            let timer = Timer::start_new("loop_iter");
+            let timer = Timer::start_new("main_loop");
             let config = &*config.read();
 
             // Send changed config to frontend if needed
@@ -340,382 +118,31 @@ fn start_bot(app_handle: tauri::AppHandle) {
                 last_config_change_id = config.change_id();
             }
 
-            // Initialize frontend info
-            let mut frontend_info = FrontendInfo::new();
-            frontend_info.set_is_attacking(is_attacking);
-            frontend_info.set_kill_count(kill_count);
-
-            // Update frontend info with running status
-            frontend_info.set_is_running(config.is_running());
-
-            // Check whether the bot is paused
+            // Continue early if the bot is not engaged
             if !config.is_running() {
-                send_frontend_info(&frontend_info);
+                // send_frontend_info(&frontend_info);
                 std::thread::sleep(std::time::Duration::from_millis(250));
                 timer.silence();
                 continue;
             }
 
-            // Make sure the window is focused
-            #[cfg(target_os = "windows")]
-            {
-                let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
-                if let Ok(hwnd) = window.hwnd().map(|hwnd| hwnd.0) {
-                    if focused_hwnd as isize != hwnd {
-                        send_frontend_info(&frontend_info);
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                        timer.silence();
-                        continue;
-                    }
-                }
+            // Try again a bit later if the window is not focused
+            if !platform::get_window_focused(&window) {
+                // send_frontend_info(&frontend_info);
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                timer.silence();
+                continue;
             }
 
-            // Capture the window
-            let image = {
-                let _timer = Timer::start_new("capture_window");
-                if let Some(provider) = libscreenshot::get_window_capture_provider() {
-                    let window_id = || match window.raw_window_handle() {
-                        RawWindowHandle::Xlib(handle) => Some(handle.window as u64),
-                        RawWindowHandle::Win32(handle) => Some(handle.hwnd as u64),
-                        #[allow(unused_variables)]
-                        RawWindowHandle::AppKit(handle) => {
-                            #[cfg(target_os = "macos")]
-                            unsafe {
-                                use std::ffi::c_void;
-                                let ns_window_ptr = handle.ns_window as *const c_void;
-                                libscreenshot::platform::macos::macos_helper
-                                    ::ns_window_to_window_id(ns_window_ptr)
-                                    .map(|id| id as u64)
-                            }
-                            #[cfg(not(target_os = "macos"))]
-                            unreachable!()
-                        }
-                        _ => Some(0_u64),
-                    };
-                    if let Some(window_id) = window_id() {
-                        if let Ok(image) = provider.capture_window(window_id) {
-                            image
-                        } else {
-                            println!("Capturing window failed.");
-                            continue;
-                        }
-                    } else {
-                        println!("Obtaining window handle failed.");
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            };
-
-            // Consume foodies every 5 seconds and only while attacking
-            let current_time = Instant::now();
-            let min_pot_time_diff = Duration::from_secs(5);
-            if is_attacking
-                && current_time.duration_since(last_initial_attack_time) > min_pot_time_diff
-                && current_time.duration_since(last_pot_time) > min_pot_time_diff
-            {
-                if let Some(food_index) = config.farming_config().get_slot_index(SlotType::Food) {
-                    send_keystroke(food_index.into(), KeyMode::Press);
-                    last_pot_time = current_time;
-                }
+            // Try capturing the window contents
+            if let Some(image_analyzer) = capture_window(&window) {
+                // Run the current behavior
+                farming_behavior.run_iteration(config, image_analyzer);
             }
-
-            // Crop image
-            // let (crop_x, crop_y) = (image.width() / 6, image.height() / 6);
-            // let image = image.sub_image(crop_x, crop_y, image.width() - crop_x, image.height() - crop_y).to_image();
-
-            println!("{:?}", state);
-
-            match state {
-                BotState::Idle => {
-                    let total_idle_duration =
-                        std::time::Duration::from_millis(rng.gen_range(500..2000));
-                    let idle_chunks = rng.gen_range(1..4);
-                    let idle_chunk_duration = total_idle_duration / idle_chunks;
-                    for _ in 0..idle_chunks {
-                        if rng.gen_bool(0.1) {
-                            send_keystroke(Key::Space, KeyMode::Press);
-                        }
-                        std::thread::sleep(idle_chunk_duration);
-                    }
-                    state = BotState::SearchingForEnemy;
-                }
-                BotState::NoEnemyFound => {
-                    // Try rotating first in order to locate nearby enemies
-                    if rotation_movement_tries < 20 {
-                        // Rotate in random direction for a random duration
-                        let key = [Key::A, Key::D].choose(&mut rng).unwrap_or(&Key::A);
-                        let rotation_duration =
-                            std::time::Duration::from_millis(rng.gen_range(100..250));
-                        println!("DEBUG {}", line!());
-                        send_keystroke(*key, KeyMode::Hold);
-                        std::thread::sleep(rotation_duration);
-                        send_keystroke(*key, KeyMode::Release);
-                        println!("DEBUG {}", line!());
-                        rotation_movement_tries += 1;
-                        // Wait a bit to wait for monsters to enter view
-                        std::thread::sleep(std::time::Duration::from_millis(
-                            rng.gen_range(100..250),
-                        ));
-                        state = BotState::SearchingForEnemy;
-                        continue;
-                    }
-                    // Check whether bot should stay in area
-                    if config.farming_config().should_stay_in_area() {
-                        // Reset rotation movement tries to keep rotating
-                        rotation_movement_tries = 0;
-                        continue;
-                    }
-                    // If rotating multiple times failed, try other movement patterns
-                    match rng.gen_range(0..3) {
-                        0 => {
-                            // Move into a random direction while jumping
-                            let key = [Key::A, Key::D].choose(&mut rng).unwrap_or(&Key::A);
-                            let rotation_duration = Duration::from_millis(rng.gen_range(100..350));
-                            let movement_slices = rng.gen_range(1..4);
-                            let movement_slice_duration =
-                                Duration::from_millis(rng.gen_range(250..500));
-                            let movement_overlap_duration =
-                                movement_slice_duration.saturating_sub(rotation_duration);
-                            send_keystroke(Key::W, KeyMode::Hold);
-                            send_keystroke(Key::Space, KeyMode::Hold);
-                            for _ in 0..movement_slices {
-                                send_keystroke(*key, KeyMode::Hold);
-
-                                std::thread::sleep(rotation_duration);
-                                send_keystroke(*key, KeyMode::Release);
-                                std::thread::sleep(movement_overlap_duration);
-                            }
-                            send_keystroke(*key, KeyMode::Hold);
-                            std::thread::sleep(rotation_duration);
-                            send_keystroke(*key, KeyMode::Release);
-                            send_keystroke(Key::Space, KeyMode::Release);
-                            send_keystroke(Key::W, KeyMode::Release);
-                        }
-                        1 => {
-                            // Move forwards while jumping
-                            send_keystroke(Key::W, KeyMode::Hold);
-                            send_keystroke(Key::Space, KeyMode::Hold);
-                            std::thread::sleep(std::time::Duration::from_millis(
-                                rng.gen_range(1000..4000),
-                            ));
-                            send_keystroke(Key::Space, KeyMode::Release);
-                            send_keystroke(Key::W, KeyMode::Release);
-                        }
-                        2 => {
-                            // Move forwards in a slalom pattern
-                            let slalom_switch_duration =
-                                std::time::Duration::from_millis(rng.gen_range(350..650));
-                            let total_slaloms = rng.gen_range(4..8);
-                            let mut left = rng.gen_bool(0.5);
-                            send_keystroke(Key::W, KeyMode::Hold);
-                            for _ in 0..total_slaloms {
-                                let cond = if left { Key::A } else { Key::D };
-                                send_keystroke(cond, KeyMode::Hold);
-                                std::thread::sleep(slalom_switch_duration);
-                                send_keystroke(cond, KeyMode::Release);
-                                left = !left;
-                            }
-                            send_keystroke(Key::W, KeyMode::Release);
-                        }
-                        _ => unreachable!("Impossible"),
-                    }
-                    state = BotState::SearchingForEnemy;
-                }
-                BotState::SearchingForEnemy => {
-                    let mobs = identify_mobs(&image);
-                    frontend_info.set_enemy_bounds(
-                        mobs.iter().map(|mob| mob.name_bounds).collect::<Vec<_>>(),
-                    );
-                    state = if mobs.is_empty() {
-                        // No mobs found, run movement algo
-                        BotState::NoEnemyFound
-                    } else {
-                        // Check if aggro mobs are found first
-                        let aggro_mobs = mobs
-                            .iter()
-                            .filter(|m| m.mob_type == MobType::Aggro)
-                            .cloned()
-                            .collect::<Vec<_>>();
-                        let passive_mobs = mobs
-                            .iter()
-                            .filter(|m| m.mob_type == MobType::Passive)
-                            .cloned()
-                            .collect::<Vec<_>>();
-                        let max_distance = if config.farming_config().should_stay_in_area() {
-                            325
-                        } else {
-                            1000
-                        };
-                        if !aggro_mobs.is_empty() {
-                            println!("Found {} aggro mobs. Those die first.", aggro_mobs.len());
-                            if let Some(mob) =
-                                find_closest_mob(&image, aggro_mobs.as_slice(), None, max_distance)
-                            {
-                                BotState::EnemyFound(*mob)
-                            } else {
-                                BotState::NoEnemyFound
-                            }
-                        } else if !passive_mobs.is_empty() {
-                            println!("Found {} passive mobs.", passive_mobs.len());
-                            if let Some(mob) = {
-                                // Try avoiding detection of last killed mob
-                                if Instant::now().duration_since(last_kill_time)
-                                    < Duration::from_millis(2500)
-                                {
-                                    println!("Avoiding mob at {:?}", last_killed_mob_bounds);
-                                    find_closest_mob(
-                                        &image,
-                                        passive_mobs.as_slice(),
-                                        Some(&last_killed_mob_bounds),
-                                        max_distance,
-                                    )
-                                } else {
-                                    find_closest_mob(
-                                        &image,
-                                        passive_mobs.as_slice(),
-                                        None,
-                                        max_distance,
-                                    )
-                                }
-                            } {
-                                BotState::EnemyFound(*mob)
-                            } else {
-                                BotState::NoEnemyFound
-                            }
-                        } else {
-                            println!("Mobs were found, but they're neither aggro nor neutral???");
-                            BotState::NoEnemyFound
-                        }
-                    }
-                }
-                BotState::EnemyFound(mob) => {
-                    rotation_movement_tries = 0;
-
-                    // Transform attack coords into local window coords
-                    let (x, y) = mob.get_attack_coords();
-                    println!("Trying to attack mob at [{},{}]", x, y);
-                    // let inner_size = window.inner_size().unwrap();
-                    // let (x_diff, y_diff) = (
-                    //     image.width() - inner_size.width,
-                    //     image.height() - inner_size.height,
-                    // );
-                    // let (window_x, window_y) = (
-                    //     (x.saturating_sub(x_diff / 2)) as i32,
-                    //     (y.saturating_sub(y_diff)) as i32,
-                    // );
-                    let target_cursor_pos = Position::Physical(PhysicalPosition {
-                        x: x as i32,
-                        y: y as i32,
-                    });
-
-                    // Set cursor position and simulate a click
-                    erase_result(window.set_cursor_position(target_cursor_pos));
-                    erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
-
-                    // Wait a few ms before switching state
-                    state = BotState::Attacking(mob);
-                }
-                BotState::Attacking(mob) => {
-                    frontend_info.set_active_enemy_bounds(mob.name_bounds);
-                    if !is_attacking {
-                        last_initial_attack_time = Instant::now();
-                        last_pot_time = Instant::now();
-                    }
-                    if let Some(marker) = identify_target_marker(&image) {
-                        // Target marker found
-                        is_attacking = true;
-                        last_killed_mob_bounds = marker.name_bounds;
-
-                        // Try to use attack skill
-                        if let Some(index) = config
-                            .farming_config()
-                            .get_random_slot_index(SlotType::AttackSkill, &mut rng)
-                        {
-                            // Only use attack skill if enabled and once a second at most
-                            if config.farming_config().should_use_attack_skills()
-                                && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
-                            {
-                                last_attack_skill_usage_time = Instant::now();
-                                send_keystroke(index.into(), KeyMode::Press);
-                            }
-                        }
-                    } else {
-                        // Target marker not found
-                        if is_attacking {
-                            // Enemy was probably killed
-                            is_attacking = false;
-                            state = BotState::AfterEnemyKill(mob);
-                        } else {
-                            // Lost target without attacking?
-                            state = BotState::SearchingForEnemy;
-                        }
-                    }
-                }
-                BotState::AfterEnemyKill(_mob) => {
-                    kill_count += 1;
-                    last_kill_time = Instant::now();
-
-                    // Check for on-demand pet config
-                    if config.farming_config().should_use_on_demand_pet() {
-                        if let Some(index) =
-                            config.farming_config().get_slot_index(SlotType::PickupPet)
-                        {
-                            // Summon pet
-                            send_keystroke(index.into(), KeyMode::Press);
-                            // Wait half a second to make sure everything is picked up
-                            std::thread::sleep(std::time::Duration::from_millis(2000));
-                            // Unsummon pet
-                            send_keystroke(index.into(), KeyMode::Press);
-                        }
-                    }
-
-                    state = {
-                        if rng.gen_bool(0.1) {
-                            BotState::Idle
-                        } else {
-                            BotState::SearchingForEnemy
-                        }
-                    };
-                }
-                BotState::Interrupted => {
-                    unimplemented!("");
-                }
-            }
-
-            // Convert image to base64 and send to frontend
-            // let mut buf = Vec::new();
-            // let downscaled_image = imageops::resize(
-            //     &image,
-            //     image.width() / 8,
-            //     image.height() / 8,
-            //     imageops::Nearest,
-            // );
-            // let mut encoder = JpegEncoder::new_with_quality(&mut buf, 90);
-            // encoder
-            //     .encode(
-            //         &downscaled_image,
-            //         downscaled_image.width(),
-            //         downscaled_image.height(),
-            //         ColorType::Rgba8,
-            //     )
-            //     .unwrap();
-            // let base64 = format!("data:image/jpeg;base64,{}", base64::encode(&buf));
-            // app_handle
-            //     .emit_all(
-            //         "bot_visualizer_update",
-            //         [
-            //             base64,
-            //             image.width().to_string(),
-            //             image.height().to_string(),
-            //         ],
-            //     )
-            //     .unwrap();
 
             // Update frontend info and send it over
-            frontend_info.set_kill_count(kill_count);
-            send_frontend_info(&frontend_info);
+            // frontend_info.set_kill_count(kill_count);
+            // send_frontend_info(&frontend_info);
         }
     });
 }

@@ -5,6 +5,7 @@ use super::{Key, KeyMode};
 pub const IGNORE_AREA_TOP: u32 = 60;
 pub const IGNORE_AREA_BOTTOM: u32 = 0;
 
+#[allow(clippy::just_underscores_and_digits)]
 impl From<Key> for enigo::Key {
     fn from(k: Key) -> Self {
         use Key::*;
