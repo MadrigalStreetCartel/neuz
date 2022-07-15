@@ -23,5 +23,5 @@ export default styled(TabControl)`
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem 0;
+    padding: 0;
 `

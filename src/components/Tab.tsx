@@ -22,7 +22,7 @@ export default styled(Tab)`
     cursor: pointer;
     border-radius: .25rem;
     overflow: hidden;
-    width: 150px;
+    height: 75px;
     transition: all .25s ease;
     filter: grayscale(100%);
     opacity: 0.9;
@@ -43,6 +43,7 @@ export default styled(Tab)`
     
     & img {
         width: 100%;
+        height: 75px;
         object-fit: scale-down;
         border-radius: .25rem;
         backdrop-filter: blur(.5rem);

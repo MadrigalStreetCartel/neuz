@@ -43,7 +43,7 @@ const MissionControl = ({ className }: Props) => {
             setImageData({ data, width, height })
         })
 
-        listen('frontend_info', event => {
+        listen('bot_info_s2c', event => {
             const payload = event.payload as FrontendInfoModel
             setInfo(payload)
         })
@@ -77,9 +77,7 @@ const MissionControl = ({ className }: Props) => {
                 {info && (
                     <div className="info">
                         <div className="row">
-                            <div>Engaged: {info.is_running ? '✅' : '❌'}</div>
                             <div>Kills: {info.enemy_kill_count}</div>
-                            <div>Attacking: {info.is_attacking ? '✅' : '❌'}</div>
                         </div>
                     </div>
                 )}
@@ -124,7 +122,7 @@ export default styled(MissionControl)`
     flex-direction: column;
     justify-content: flex-start;
     overflow: auto;
-    padding: 2rem 0 1rem 0;
+    padding: 1rem 0;
 
     & .vstack {
         display: flex;
@@ -138,7 +136,7 @@ export default styled(MissionControl)`
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        padding: 1rem 2rem;
+        padding: .5rem 1rem;
         gap: .5rem;
         color: white;
         background: hsla(203, 100%, 0%, .75);
@@ -213,7 +211,6 @@ export default styled(MissionControl)`
 
     & .footer {
         width: 100%;
-        padding: 1rem;
         display: flex;
         justify-content: center;
         align-items: center;
