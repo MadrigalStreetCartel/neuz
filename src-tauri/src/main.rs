@@ -5,7 +5,7 @@
 
 use std::{
     sync::{mpsc::sync_channel, Arc},
-    time::{Duration, Instant}, cell::RefCell,
+    time::{Duration, Instant},
 };
 
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
@@ -22,23 +22,13 @@ const IGNORE_AREA_TOP: u32 = 0;
 
 const IGNORE_AREA_BOTTOM: u32 = 0;
 
-// windows
-#[cfg(target_os = "windows")]
-use winput::Vk;
-
-// linux
-#[cfg(any(target_os = "linux", target_os = "windows"))]
-use tfc::{traits::*, Context, Error};
-
-// macOS
-#[cfg(target_os = "macos")]
-use enigo::Enigo;
-
 mod algo;
 mod ipc;
 mod utils;
+mod platform;
 
 use crate::{
+    platform::{Key, KeyMode, send_keystroke},
     algo::{x_axis_selector, y_axis_selector, AxisClusterComputer, Bounds},
     ipc::{BotConfig, FrontendInfo, SlotType},
     utils::Timer,
@@ -62,125 +52,6 @@ enum BotState {
     EnemyFound(Mob),
     Attacking(Mob),
     AfterEnemyKill(Mob),
-}
-
-enum Keymode {
-    Press,
-    Hold,
-    Release,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[allow(dead_code, clippy::upper_case_acronyms)]
-enum Key {
-    // 0-9
-    N,
-    I,
-    II,
-    III,
-    IV,
-    V,
-    VI,
-    VII,
-    VIII,
-    IX,
-    // WASD
-    W,
-    A,
-    S,
-    D,
-    Space,
-}
-
-impl From<usize> for Key {
-    fn from(index: usize) -> Self {
-        use Key::*;
-        match index {
-            0 => N,
-            1 => I,
-            2 => II,
-            3 => III,
-            4 => IV,
-            5 => V,
-            6 => VI,
-            7 => VII,
-            8 => VIII,
-            9 => IX,
-            _ => unreachable!("Invalid Index (expected 0-9)"),
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
-impl From<Key> for Vk {
-    fn from(k: Key) -> Self {
-        use Key::*;
-        match k {
-            N => Vk::_0,
-            I => Vk::_1,
-            II => Vk::_2,
-            III => Vk::_3,
-            IV => Vk::_4,
-            V => Vk::_5,
-            VI => Vk::_6,
-            VII => Vk::_7,
-            VIII => Vk::_8,
-            IX => Vk::_9,
-            W => Vk::W,
-            A => Vk::A,
-            S => Vk::S,
-            D => Vk::D,
-            Space => Vk::Space,
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-impl From<Key> for char {
-    fn from(k: Key) -> char {
-        use Key::*;
-        match k {
-            N => '0',
-            I => '1',
-            II => '2',
-            III => '3',
-            IV => '4',
-            V => '5',
-            VI => '6',
-            VII => '7',
-            VIII => '8',
-            IX => '9',
-            W => 'w',
-            A => 'a',
-            S => 's',
-            D => 'd',
-            Space => ' ', // TODO
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-impl From<Key> for enigo::Key {
-    fn from(k: Key) -> Self {
-        use Key::*;
-        match k {
-            N => enigo::Key::Layout('0'),
-            I => enigo::Key::Layout('1'),
-            II => enigo::Key::Layout('2'),
-            III => enigo::Key::Layout('3'),
-            IV => enigo::Key::Layout('4'),
-            V => enigo::Key::Layout('5'),
-            VI => enigo::Key::Layout('6'),
-            VII => enigo::Key::Layout('7'),
-            VIII => enigo::Key::Layout('8'),
-            IX => enigo::Key::Layout('9'),
-            W => enigo::Key::Layout('w'),
-            A => enigo::Key::Layout('a'),
-            S => enigo::Key::Layout('s'),
-            D => enigo::Key::Layout('d'),
-            Space => enigo::Key::Space,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -406,42 +277,6 @@ fn find_closest_mob<'a>(
     }
 }
 
-#[cfg(target_os = "windows")]
-fn send_keystroke(k: Key, mode: Keymode) {
-    let k: Vk = k.into();
-    let mut ctx = tfc::Context::new().unwrap();
-    match mode {
-        Keymode::Press => winput::send(k),
-        Keymode::Hold => winput::press(k),
-        Keymode::Release => winput::release(k),
-    }
-}
-
-#[cfg(target_os = "linux")]
-fn send_keystroke(k: Key, mode: Keymode) {
-    let k: char = k.into();
-    let k = k as u8;
-    let mut ctx = tfc::Context::new().unwrap();
-    match mode {
-        Keymode::Press => ctx.ascii_char(k),
-        Keymode::Hold => ctx.ascii_char_down(k),
-        Keymode::Release => ctx.ascii_char_up(k),
-    }
-    .unwrap();
-}
-
-#[cfg(target_os = "macos")]
-fn send_keystroke(k: Key, mode: Keymode) {
-    use enigo::KeyboardControllable;
-    let k: enigo::Key = k.into();
-    let mut enigo = Enigo::new();
-    match mode {
-        Keymode::Press => enigo.key_click(k),
-        Keymode::Hold => enigo.key_down(k),
-        Keymode::Release => enigo.key_up(k),
-    }
-}
-
 #[inline(always)]
 fn erase_result<T, E>(r: Result<T, E>) {
     drop(r.ok() as Option<_>)
@@ -591,7 +426,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
                 && current_time.duration_since(last_pot_time) > min_pot_time_diff
             {
                 if let Some(food_index) = config.farming_config().get_slot_index(SlotType::Food) {
-                    send_keystroke(food_index.into(), Keymode::Press);
+                    send_keystroke(food_index.into(), KeyMode::Press);
                     last_pot_time = current_time;
                 }
             }
@@ -610,7 +445,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
                     let idle_chunk_duration = total_idle_duration / idle_chunks;
                     for _ in 0..idle_chunks {
                         if rng.gen_bool(0.1) {
-                            send_keystroke(Key::Space, Keymode::Press);
+                            send_keystroke(Key::Space, KeyMode::Press);
                         }
                         std::thread::sleep(idle_chunk_duration);
                     }
@@ -624,9 +459,9 @@ fn start_bot(app_handle: tauri::AppHandle) {
                         let rotation_duration =
                             std::time::Duration::from_millis(rng.gen_range(100..250));
                         println!("DEBUG {}", line!());
-                        send_keystroke(*key, Keymode::Hold);
+                        send_keystroke(*key, KeyMode::Hold);
                         std::thread::sleep(rotation_duration);
-                        send_keystroke(*key, Keymode::Release);
+                        send_keystroke(*key, KeyMode::Release);
                         println!("DEBUG {}", line!());
                         rotation_movement_tries += 1;
                         // Wait a bit to wait for monsters to enter view
@@ -653,30 +488,30 @@ fn start_bot(app_handle: tauri::AppHandle) {
                                 Duration::from_millis(rng.gen_range(250..500));
                             let movement_overlap_duration =
                                 movement_slice_duration.saturating_sub(rotation_duration);
-                            send_keystroke(Key::W, Keymode::Hold);
-                            send_keystroke(Key::Space, Keymode::Hold);
+                            send_keystroke(Key::W, KeyMode::Hold);
+                            send_keystroke(Key::Space, KeyMode::Hold);
                             for _ in 0..movement_slices {
-                                send_keystroke(*key, Keymode::Hold);
+                                send_keystroke(*key, KeyMode::Hold);
 
                                 std::thread::sleep(rotation_duration);
-                                send_keystroke(*key, Keymode::Release);
+                                send_keystroke(*key, KeyMode::Release);
                                 std::thread::sleep(movement_overlap_duration);
                             }
-                            send_keystroke(*key, Keymode::Hold);
+                            send_keystroke(*key, KeyMode::Hold);
                             std::thread::sleep(rotation_duration);
-                            send_keystroke(*key, Keymode::Release);
-                            send_keystroke(Key::Space, Keymode::Release);
-                            send_keystroke(Key::W, Keymode::Release);
+                            send_keystroke(*key, KeyMode::Release);
+                            send_keystroke(Key::Space, KeyMode::Release);
+                            send_keystroke(Key::W, KeyMode::Release);
                         }
                         1 => {
                             // Move forwards while jumping
-                            send_keystroke(Key::W, Keymode::Hold);
-                            send_keystroke(Key::Space, Keymode::Hold);
+                            send_keystroke(Key::W, KeyMode::Hold);
+                            send_keystroke(Key::Space, KeyMode::Hold);
                             std::thread::sleep(std::time::Duration::from_millis(
                                 rng.gen_range(1000..4000),
                             ));
-                            send_keystroke(Key::Space, Keymode::Release);
-                            send_keystroke(Key::W, Keymode::Release);
+                            send_keystroke(Key::Space, KeyMode::Release);
+                            send_keystroke(Key::W, KeyMode::Release);
                         }
                         2 => {
                             // Move forwards in a slalom pattern
@@ -684,15 +519,15 @@ fn start_bot(app_handle: tauri::AppHandle) {
                                 std::time::Duration::from_millis(rng.gen_range(350..650));
                             let total_slaloms = rng.gen_range(4..8);
                             let mut left = rng.gen_bool(0.5);
-                            send_keystroke(Key::W, Keymode::Hold);
+                            send_keystroke(Key::W, KeyMode::Hold);
                             for _ in 0..total_slaloms {
                                 let cond = if left { Key::A } else { Key::D };
-                                send_keystroke(cond, Keymode::Hold);
+                                send_keystroke(cond, KeyMode::Hold);
                                 std::thread::sleep(slalom_switch_duration);
-                                send_keystroke(cond, Keymode::Release);
+                                send_keystroke(cond, KeyMode::Release);
                                 left = !left;
                             }
-                            send_keystroke(Key::W, Keymode::Release);
+                            send_keystroke(Key::W, KeyMode::Release);
                         }
                         _ => unreachable!("Impossible"),
                     }
@@ -813,7 +648,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
                                 && last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
                             {
                                 last_attack_skill_usage_time = Instant::now();
-                                send_keystroke(index.into(), Keymode::Press);
+                                send_keystroke(index.into(), KeyMode::Press);
                             }
                         }
                     } else {
@@ -838,11 +673,11 @@ fn start_bot(app_handle: tauri::AppHandle) {
                             config.farming_config().get_slot_index(SlotType::PickupPet)
                         {
                             // Summon pet
-                            send_keystroke(index.into(), Keymode::Press);
+                            send_keystroke(index.into(), KeyMode::Press);
                             // Wait half a second to make sure everything is picked up
                             std::thread::sleep(std::time::Duration::from_millis(2000));
                             // Unsummon pet
-                            send_keystroke(index.into(), Keymode::Press);
+                            send_keystroke(index.into(), KeyMode::Press);
                         }
                     }
 
