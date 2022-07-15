@@ -787,7 +787,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
 
                     // Set cursor position and simulate a click
                     erase_result(window.set_cursor_position(target_cursor_pos));
-                    // erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
+                    erase_result(mouse.click(&mouse_rs::types::keys::Keys::LEFT));
 
                     // Wait a few ms before switching state
                     state = BotState::Attacking(mob);
