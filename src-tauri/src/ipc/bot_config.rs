@@ -61,7 +61,7 @@ impl FarmingConfig {
     pub fn slots(&self) -> Vec<Slot> {
         self.slots
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
-            .unwrap_or([Slot::default(); 10].into_iter().collect::<Vec<_>>())
+            .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
     /// Get the first matching slot index
@@ -96,7 +96,7 @@ impl SupportConfig {
     pub fn slots(&self) -> Vec<Slot> {
         self.slots
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
-            .unwrap_or([Slot::default(); 10].into_iter().collect::<Vec<_>>())
+            .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 }
 
@@ -190,9 +190,7 @@ impl BotConfig {
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {
         if let Ok(mut file) = File::open(".botconfig") {
-            serde_json::from_reader::<_, BotConfig>(&mut file)
-                .unwrap_or_default()
-                .into()
+            serde_json::from_reader::<_, BotConfig>(&mut file).unwrap_or_default()
         } else {
             Self::default()
         }

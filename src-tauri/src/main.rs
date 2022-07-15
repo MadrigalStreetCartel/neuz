@@ -15,22 +15,15 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use rayon::prelude::*;
 use tauri::{Manager, PhysicalPosition, Position};
 
-#[cfg(target_os = "macos")]
-const IGNORE_AREA_TOP: u32 = 60;
-#[cfg(not(target_os = "macos"))]
-const IGNORE_AREA_TOP: u32 = 0;
-
-const IGNORE_AREA_BOTTOM: u32 = 0;
-
 mod algo;
 mod ipc;
-mod utils;
 mod platform;
+mod utils;
 
 use crate::{
-    platform::{Key, KeyMode, send_keystroke},
     algo::{x_axis_selector, y_axis_selector, AxisClusterComputer, Bounds},
     ipc::{BotConfig, FrontendInfo, SlotType},
+    platform::{send_keystroke, Key, KeyMode, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 
@@ -148,6 +141,7 @@ fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
         .enumerate_rows()
         .par_bridge()
         .for_each(move |(y, row)| {
+            #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
             if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                 return;
             }
@@ -156,13 +150,9 @@ fn identify_mobs(image: &ImageBuffer) -> Vec<Mob> {
                     return;
                 }
                 if pixel_matches(&px.0, &ref_color_pas, 2) {
-                    match snd.send(MobPixel(x, y, MobType::Passive)) {
-                        _ => (),
-                    }
+                    erase_result(snd.send(MobPixel(x, y, MobType::Passive)));
                 } else if pixel_matches(&px.0, &ref_color_agg, 8) {
-                    match snd.send(MobPixel(x, y, MobType::Aggro)) {
-                        _ => (),
-                    }
+                    erase_result(snd.send(MobPixel(x, y, MobType::Aggro)));
                 }
             }
         });
@@ -195,6 +185,7 @@ fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
         .enumerate_rows()
         .par_bridge()
         .for_each(move |(y, row)| {
+            #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
             if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                 return;
             }
@@ -203,9 +194,7 @@ fn identify_target_marker(image: &ImageBuffer) -> Option<Mob> {
                     return;
                 }
                 if pixel_matches(&px.0, &ref_color, 2) {
-                    match snd.send((x, y)) {
-                        _ => (),
-                    }
+                    erase_result(snd.send((x, y)));
                 }
             }
         });
@@ -347,7 +336,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
                 config.serialize();
-                send_config(&config);
+                send_config(config);
                 last_config_change_id = config.change_id();
             }
 
@@ -388,6 +377,7 @@ fn start_bot(app_handle: tauri::AppHandle) {
                     let window_id = || match window.raw_window_handle() {
                         RawWindowHandle::Xlib(handle) => Some(handle.window as u64),
                         RawWindowHandle::Win32(handle) => Some(handle.hwnd as u64),
+                        #[allow(unused_variables)]
                         RawWindowHandle::AppKit(handle) => {
                             #[cfg(target_os = "macos")]
                             unsafe {
@@ -407,14 +397,14 @@ fn start_bot(app_handle: tauri::AppHandle) {
                             image
                         } else {
                             println!("Capturing window failed.");
-                            continue
+                            continue;
                         }
                     } else {
                         println!("Obtaining window handle failed.");
-                        continue
+                        continue;
                     }
                 } else {
-                    continue
+                    continue;
                 }
             };
 

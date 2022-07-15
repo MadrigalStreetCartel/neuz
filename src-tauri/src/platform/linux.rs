@@ -2,6 +2,9 @@ use tfc::{traits::*, Context, Error};
 
 use super::{Key, KeyMode};
 
+pub const IGNORE_AREA_TOP: u32 = 0;
+pub const IGNORE_AREA_BOTTOM: u32 = 0;
+
 impl From<Key> for char {
     fn from(k: Key) -> char {
         use Key::*;
