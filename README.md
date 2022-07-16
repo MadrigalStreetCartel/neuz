@@ -8,7 +8,7 @@ Binaries are downloadable from here: [MSI](https://github.com/MadrigalStreetCart
 ## Contributing
 
 1. Fork the repository
-2. Use a descritive branch name (example: `feat/add-auto-loot`)
+2. Use a descriptive branch name (example: `feat/add-auto-loot`)
 3. Implement your changes and test them properly
 4. Run `cargo fmt` to format your code according to the Rust standard
 5. Open a pull request and describe your changes in detail
