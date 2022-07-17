@@ -1,106 +1,86 @@
-# Neuz-Dev
-> Flyff Universe client with enhanced features.
+![banner]
 
-**This is a private development repository. Read the [LICENSE](./LICENSE.md)!**
+- [Download](#download)
+- [Community](#community)
+- [Usage](#usage)
+  - [Engagement Behavior](#engagement-behavior)
+  - [Farming Automation](#farming-automation)
+    - [Requirements](#requirements)
+    - [Slot Configuration](#slot-configuration)
+  - [Support Automation / AutoShout](#support-automation--autoshout)
+- [FAQ](#faq)
 
-Binaries are downloadable from here: [MSI](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/msi) | [DEB](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/deb) | [AppImage](https://github.com/MadrigalStreetCartel/neuz-dev/tree/main/src-tauri/target/release/bundle/appimage)
+# Download
 
-## Contributing
+- Latest version: [Download for Windows][download_msi]
+- Older versions: [Release Archive](./releases)
 
-1. Fork the repository
-2. Use a descriptive branch name (example: `feat/add-auto-loot`)
-3. Implement your changes and test them properly
-4. Run `cargo fmt` to format your code according to the Rust standard
-5. Open a pull request and describe your changes in detail
+Take a look at the [changelog][changelog]!
 
-## Changelog
-> This is an internal changelog. DO NOT REPRODUCE.
+# Community
 
-**0.10.0**
-- Adds HP detection and HP-based food consumption
-- Fixes issue with mobs not getting detected
+Join our Discord: https://discord.gg/cZr3X3mCnq
 
-**0.9.0**
-- Fixes crash related to message pumping on windows
-- Vastly improves killed mob avoidance
+# Usage
 
-**0.8.0**
-- Adds the foundation for modes of operation (Farming, Support, AutoShout)
-- Updates launcher UI
+1. Start Neuz
+2. Press `Play`
+3. Select a playstyle
+4. Adjust settings to your liking
+5. Press `ENGAGE`
 
-**0.7.0**
-- Adds support for Linux (incomplete)
-- Fixes long standing bug with violet magician avoidance
-- Switches to our own [libscreenshot](https://github.com/madrigalstreetcartel/libscreenshot) for huge performance gains
-- Replaces copyrighted logo with MadrigalStreetCapital logo
-- Improves launcher UI
+## Engagement Behavior
 
-**0.6.0**
-- Adds option to stay in area in order to avoid giants etc.
-- Tweaks algorithms for improved hit detection
-- Extends dead-zone at bottom of screen
+- Automation will take over your cursor as soon as the game window is focused.
+- Unfocusing the game window (e.g. <kbd>ALT+TAB</kbd>) will pause the automation until the game window is focused again.
+- Pressing `DISENGAGE` will fully stop the automation.
 
-**0.5.0**
-- Adds automatic saving/loading of bot configuration
-- Adds configurable slots for foods, pets, skills and buffs
-- Adds on-demand pickup-pet handling to prevent pet from interfering with algorithm
-- Adds more configurable options to bot UI
-- Further improves movement patterns and responsiveness
-- Greatly improves detection performance by using a multi-threaded algorithm
-- Relaunches application when client window is closed to prevent desync issues
+## Farming Automation
 
-**0.4.0**
-- Adds patch notes and events to launcher
-- Improves dead mob avoidance
-- Improves initial movement pattern when no mob is found
-- Improves and extends movement patterns to make the bot seem more life-like 
+Use farming automation if you're trying to level up your character or farm sets, quest items, penya, etc.
 
-**0.3.0**
-- Avoids members of the Violet Magician Troupe
-- Ignores small targets (like buffs and UI icons)
-- Tries to avoid attacking an enemy that has already been killed
+Works best if you're in a densely populated farming area.
 
-**0.2.0**
-- Improves user interface
-- Improves retargeting behavior when target marker is gone
-- Adds automatic foodie consumption
+### Requirements
 
-**0.1.0**
-- Initial release
+No settings have to be changed by default.
 
-## Ideas
+1. Use default theme (used by default)
+2. Enable auto-attack (enabled by default)
 
-- AFK Protection Mode: Attack aggro mobs close to player, but do not actively search for mobs
+For optimal performance (optional and not necessarily needed):
 
-## Mechanics
+1. Enable right-click player menu (disabled by default)
+2. Disable single-click to attack (disabled by default)
+3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. You can press `T` to bring the player stats up again, as those don't interfere with automation.
 
-**Attack Logic**
+### Slot Configuration
 
-1. Detects targets (passive and aggro)
-2. Finds closest target, preferring aggros even if they're further away
-3. Clicks target to initiate attack
-4. Detects target marker to confirm attack status
-5. Keeps attacking till the target marker is gone (enemy or player is dead)
-6. Back to step 1
+If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Skills to Attack`, make sure to configure the slot bar in Neuz accordingly.
 
-If no enemy is in range:
+| Slot Symbol | Flyff Equivalent |
+| ----------- | ---------------- |
+| 🍔         | Food Item        |
+| 🐶         | Pickup Pet       |
+| 🗡️         | Attack Skill     |
+| 🪄         | Buff Skill       |
+| ✈️         | Board/Mount      |
 
-1. Initiates one of multiple predefined movement patterns
-2. Checks for targets again after movement pattern is complete
+## Support Automation / AutoShout
+Not yet implemented. Keep your eyes peeled for an update.
 
-If the enemy is killed:
+# FAQ
 
-1. Initiates short idle pattern with a certain probability
-2. Checks for targets again after idle pattern is complete
-    - Tries to avoid attacking an enemy that has already been killed
+**Is this safe?**<br>
+Yes. If you don't trust us, compile it yourself or GTFO.
 
-**Regeneration Logic**
+**Is this a bot?**<br>
+It's a client with semi-autonomous automation features.
 
-1. Foodie is consumed every 5 seconds after an attack started
-2. New attacks reset the counter, so no reg between attacks
+<!-- Links -->
+[banner]: ./banner.png
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.10.0_x64_en-US.msi
+[changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
-Notes:
-
-- The algorithm assumes that it's easy enough to kill the enemy if it takes less than 5 seconds
-- In case the attack takes longer, it assumes that consuming one food item every 5 seconds is enough
-
+<!-- Disclaimer -->
+<small>Disclaimer: We are NOT affiliated with Gala Lab Corp., Sniegu Technologies SAS or Flyff Universe.</small>
