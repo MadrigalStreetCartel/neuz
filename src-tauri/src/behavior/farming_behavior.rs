@@ -5,7 +5,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::ImageAnalyzer,
+    image_analyzer::{Hp, ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
 };
@@ -26,6 +26,8 @@ pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     platform: &'a PlatformAccessor<'a>,
     state: State,
+    last_hp: Hp,
+    last_food_hp: Hp,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
     last_attack_skill_usage_time: Instant,
@@ -42,6 +44,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             platform,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
+            last_hp: Hp::default(),
+            last_food_hp: Hp::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
@@ -61,7 +65,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         let config = config.farming_config();
 
         // Check whether food should be consumed
-        self.check_food(config);
+        self.check_food(config, &image);
 
         // Check state machine
         self.state = match self.state {
@@ -76,17 +80,75 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl<'a> FarmingBehavior<'_> {
-    fn check_food(&mut self, config: &FarmingConfig) {
-        // Consume foodies every 5 seconds and only while attacking
+    /// Consume food based on HP. Fallback for when HP is unable to be detected.
+    fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
-        let min_pot_time_diff = Duration::from_secs(5);
-        if self.is_attacking
-            && current_time.duration_since(self.last_initial_attack_time) > min_pot_time_diff
-            && current_time.duration_since(self.last_pot_time) > min_pot_time_diff
-        {
-            if let Some(food_index) = config.get_slot_index(SlotType::Food) {
-                send_keystroke(food_index.into(), KeyMode::Press);
-                self.last_pot_time = current_time;
+        let min_pot_time_diff = Duration::from_millis(2000);
+
+        // Decide which fooding logic to use based on HP
+        match image.detect_hp(self.last_hp) {
+            // HP bar detected, use HP-based potting logic
+            Some(hp) => {
+                // HP threshold. We probably shouldn't use food at > 60% HP.
+                // If HP is < 30% we need to use food ASAP.
+                let hp_threshold_reached = hp.hp <= 60;
+                let hp_critical_threshold_reached = hp.hp <= 30;
+
+                // Calculate ms since last food usage
+                let ms_since_last_food = Instant::now()
+                    .duration_since(self.last_pot_time)
+                    .as_millis();
+
+                // Check whether we can use food again.
+                // This is based on a very generous limit of 2s between food uses.
+                let can_use_food =
+                    current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
+
+                // Use food ASAP if HP is critical.
+                // Wait a minimum of 333ms after last usage anyway to avoid detection.
+                // Spamming 3 times per second when low on HP seems legit for a real player.
+                let should_use_food_reason_hp_critical =
+                    ms_since_last_food > 333 && hp_critical_threshold_reached;
+
+                // Use food if nominal usage conditions are met
+                let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
+
+                // Check whether we should use food for any reason
+                let should_use_food =
+                    should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+
+                if should_use_food {
+                    if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                        // Send keystroke for first slot mapped to food
+                        send_keystroke(food_index.into(), KeyMode::Press);
+
+                        // Update state
+                        self.last_pot_time = current_time;
+                        self.last_food_hp = hp;
+
+                        // wait a few ms for the food to be consumed
+                        std::thread::sleep(Duration::from_millis(100));
+                    } else {
+                        println!("[WARN] No slot is mapped to food!");
+                    }
+                }
+
+                self.last_hp = hp;
+            }
+
+            // HP bar not found, use legacy potting logic
+            // => Pot every 5 seconds and only while in a fight
+            None => {
+                if self.is_attacking
+                    && current_time.duration_since(self.last_initial_attack_time)
+                        > min_pot_time_diff
+                    && current_time.duration_since(self.last_pot_time) > min_pot_time_diff
+                {
+                    if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                        send_keystroke(food_index.into(), KeyMode::Press);
+                        self.last_pot_time = current_time;
+                    }
+                }
             }
         }
     }

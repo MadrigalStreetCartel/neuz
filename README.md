@@ -16,6 +16,10 @@ Binaries are downloadable from here: [MSI](https://github.com/MadrigalStreetCart
 ## Changelog
 > This is an internal changelog. DO NOT REPRODUCE.
 
+**0.10.0**
+- Adds HP detection and HP-based food consumption
+- Fixes issue with mobs not getting detected
+
 **0.9.0**
 - Fixes crash related to message pumping on windows
 - Vastly improves killed mob avoidance
