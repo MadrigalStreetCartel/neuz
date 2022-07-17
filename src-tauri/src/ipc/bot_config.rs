@@ -43,6 +43,8 @@ pub struct FarmingConfig {
     stay_in_area: Option<bool>,
     /// Slot configuration
     slots: Option<[Slot; 10]>,
+    /// Disable farming
+    farming_enabled: Option<bool>
 }
 
 impl FarmingConfig {
@@ -62,6 +64,10 @@ impl FarmingConfig {
         self.slots
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
+    }
+
+    pub fn farming_enabled(&self) -> bool {
+        self.farming_enabled.unwrap_or(true)
     }
 
     /// Get the first matching slot index
@@ -103,16 +109,23 @@ impl SupportConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
-    shout_message: Option<String>,
+    shout_message: Option<Vec<String>>,
+    shout_enabled:Option<bool>,
 }
 
 impl ShoutConfig {
+
+    
     pub fn shout_interval(&self) -> u64 {
         self.shout_interval.unwrap_or(60)
     }
 
-    pub fn shout_message(&self) -> String {
+    pub fn shout_message(&self) -> Vec<String> {
         self.shout_message.clone().unwrap_or_default()
+    }
+
+    pub fn shout_enabled(&self) -> bool {
+        self.shout_enabled.unwrap_or(false)
     }
 }
 

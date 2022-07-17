@@ -25,15 +25,20 @@ impl From<Key> for Vk {
             S => Vk::S,
             D => Vk::D,
             Space => Vk::Space,
+            Escape => Vk::Escape,
+            Enter => Vk::Enter,
         }
     }
 }
 
-pub fn send_keystroke(k: Key, mode: KeyMode) {
+pub fn send_keystroke(k:Key, mode: KeyMode) {
     let k: Vk = k.into();
     match mode {
         KeyMode::Press => winput::send(k),
         KeyMode::Hold => winput::press(k),
         KeyMode::Release => winput::release(k),
     }
+}
+pub fn send_message(s:&str){
+    winput::send_str(s);
 }

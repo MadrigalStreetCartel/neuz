@@ -25,6 +25,8 @@ impl From<Key> for char {
             S => 's',
             D => 'd',
             Space => ' ', // TODO
+            Esc => ' ', // TODO
+            Enter => ' ', // TODO
         }
     }
 }
@@ -39,4 +41,9 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => ctx.ascii_char_up(k),
     }
     .unwrap();
+}
+pub fn send_message(text:&str){
+    // TODO
+    let mut ctx = tfc::Context::new().unwrap();
+
 }

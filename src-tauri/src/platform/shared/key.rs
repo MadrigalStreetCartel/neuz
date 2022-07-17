@@ -24,7 +24,10 @@ pub enum Key {
     A,
     S,
     D,
+    // INTERACTIONS
     Space,
+    Escape,
+    Enter
 }
 
 impl From<usize> for Key {

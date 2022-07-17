@@ -25,6 +25,8 @@ impl From<Key> for enigo::Key {
             S => enigo::Key::Layout('s'),
             D => enigo::Key::Layout('d'),
             Space => enigo::Key::Space,
+            Escape => enigo::Key::Escape,
+            Enter => enigo::Key::Enter,
         }
     }
 }
@@ -37,4 +39,9 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Hold => enigo.key_down(k),
         KeyMode::Release => enigo.key_up(k),
     }
+}
+pub fn send_message(text:&str){
+    // TODO
+    let mut enigo = Enigo::new();
+
 }

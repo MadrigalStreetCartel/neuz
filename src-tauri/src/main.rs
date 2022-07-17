@@ -5,7 +5,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use behavior::{Behavior, FarmingBehavior};
+use behavior::{Behavior, FarmingBehavior, ShoutBehavior};
 use image_analyzer::ImageAnalyzer;
 use libscreenshot::WindowCaptureProvider;
 use parking_lot::RwLock;
@@ -135,7 +135,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&accessor, &logger);
-
+        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger);
+        
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -165,7 +166,14 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             // Try capturing the window contents
             if let Some(image_analyzer) = capture_window(&logger, &window) {
                 // Run the current behavior
-                farming_behavior.run_iteration(config, image_analyzer);
+                if config.farming_config().farming_enabled() {
+                    farming_behavior.run_iteration(config, Some(image_analyzer));
+                }
+                if config.shout_config().shout_enabled() {
+                    shout_behavior.run_iteration(config,None);
+                }
+                
+                
             }
         }
     });

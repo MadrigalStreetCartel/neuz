@@ -64,9 +64,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn stop(&mut self) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, image: ImageAnalyzer) {
+    fn run_iteration(&mut self, config: &BotConfig, img: Option<ImageAnalyzer>) {
         let config = config.farming_config();
-
+        let image:ImageAnalyzer = img.unwrap();
         // Check whether food should be consumed
         self.check_food(config, &image);
 
@@ -157,20 +157,24 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn on_idle(&mut self, _config: &FarmingConfig) -> State {
-        let total_idle_duration = Duration::from_millis(self.rng.gen_range(500..2000));
-        let idle_chunks = self.rng.gen_range(1..4);
-        let idle_chunk_duration = total_idle_duration / idle_chunks;
 
-        // Do mostly nothing, but jump sometimes
-        for _ in 0..idle_chunks {
-            if self.rng.gen_bool(0.1) {
-                send_keystroke(Key::Space, KeyMode::Press);
+            
+            let total_idle_duration = Duration::from_millis(self.rng.gen_range(500..2000));
+            let idle_chunks = self.rng.gen_range(1..4);
+            let idle_chunk_duration = total_idle_duration / idle_chunks;
+    
+            // Do mostly nothing, but jump sometimes
+            for _ in 0..idle_chunks {
+                if self.rng.gen_bool(0.1) {
+                    send_keystroke(Key::Space, KeyMode::Press);
+                }
+                std::thread::sleep(idle_chunk_duration);
             }
-            std::thread::sleep(idle_chunk_duration);
-        }
+    
+            // Transition to next state
+            State::SearchingForEnemy
+        
 
-        // Transition to next state
-        State::SearchingForEnemy
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
