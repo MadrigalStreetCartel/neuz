@@ -9,6 +9,24 @@ use crate::{
     utils::Timer,
 };
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Hp {
+    pub max_w: u32,
+    pub hp: u32,
+}
+
+impl PartialEq for Hp {
+    fn eq(&self, other: &Self) -> bool {
+        self.hp == other.hp
+    }
+}
+
+impl PartialOrd for Hp {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.hp.cmp(&other.hp))
+    }
+}
+
 pub struct ImageAnalyzer {
     image: ImageBuffer,
 }
@@ -53,7 +71,7 @@ impl ImageAnalyzer {
                     true
                 } else {
                     // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > 50
+                    mob.bounds.w > 30
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
                     && mob.bounds.size() < (220 * 6)
                 }
@@ -226,5 +244,60 @@ impl ImageAnalyzer {
                 None
             }
         }
+    }
+
+    pub fn detect_hp(&self, last_hp: Hp) -> Option<Hp> {
+        const MAX_SEARCH_X: u32 = 310;
+        const MAX_SEARCH_Y: u32 = 120;
+        let refs: [[u8; 3]; 4] = [[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]];
+
+        let (snd, recv) = sync_channel::<Point>(4096);
+        self.image
+            .enumerate_rows()
+            .par_bridge()
+            .for_each(move |(y, row)| {
+                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
+                if y <= IGNORE_AREA_TOP
+                    || y > self.image.height() - IGNORE_AREA_BOTTOM
+                    || y > IGNORE_AREA_TOP + MAX_SEARCH_Y
+                {
+                    return;
+                }
+                'outer: for (x, _, px) in row {
+                    if px.0[3] != 255 || x >= MAX_SEARCH_X {
+                        return;
+                    }
+                    for ref_color in refs.iter() {
+                        if Self::pixel_matches(&px.0, &ref_color, 5) {
+                            #[allow(clippy::drop_copy)]
+                            drop(snd.send(Point::new(x, y)));
+                            continue 'outer;
+                        }
+                    }
+                }
+            });
+
+        // Receive points from channel
+        let cloud = {
+            let mut cloud = PointCloud::default();
+            while let Ok(point) = recv.recv() {
+                cloud.push(point);
+            }
+            cloud
+        };
+
+        // Calculate bounds
+        let bounds = cloud.to_bounds();
+
+        // Recalculate hp tracking info
+        let max_w = bounds.w.max(last_hp.max_w);
+        let hp_frac = bounds.w as f32 / max_w as f32;
+        let hp_scaled = ((hp_frac * 100_f32) as u32).max(0).min(100);
+        let hp = Hp {
+            max_w,
+            hp: hp_scaled,
+        };
+
+        Some(hp)
     }
 }
