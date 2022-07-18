@@ -3,6 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use slog::Logger;
+
 pub struct Timer {
     label: String,
     start: Instant,

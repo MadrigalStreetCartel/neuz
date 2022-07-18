@@ -50,3 +50,14 @@ impl Bounds {
             && point.y <= self.y + self.h
     }
 }
+
+impl slog::Value for Bounds {
+    fn serialize(
+        &self,
+        _record: &slog::Record,
+        key: slog::Key,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
+        serializer.emit_str(key, &format!("{:?}", self))
+    }
+}

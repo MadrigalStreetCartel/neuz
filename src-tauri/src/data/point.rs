@@ -28,3 +28,14 @@ impl Display for Point {
         write!(f, "(x: {}, y: {})", self.x, self.y)
     }
 }
+
+impl slog::Value for Point {
+    fn serialize(
+        &self,
+        _record: &slog::Record,
+        key: slog::Key,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
+        serializer.emit_str(key, &format!("{:?}", self))
+    }
+}
