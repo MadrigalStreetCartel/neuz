@@ -1,6 +1,11 @@
 # Changelog
 Date format: `DD/MM/YYYY`
 
+**0.10.1**
+> Released on 18.07.2022
+
+- Adds privacy-friendly error logging to Sentry
+
 **0.10.0**
 > Released on 17.07.2022
 
