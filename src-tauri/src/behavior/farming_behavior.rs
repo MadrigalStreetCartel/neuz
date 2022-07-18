@@ -86,16 +86,16 @@ impl<'a> FarmingBehavior<'_> {
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
-        let min_pot_time_diff = Duration::from_millis(2000);
+        let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
         match image.detect_hp(self.last_hp) {
             // HP bar detected, use HP-based potting logic
             Some(hp) => {
-                // HP threshold. We probably shouldn't use food at > 60% HP.
-                // If HP is < 30% we need to use food ASAP.
-                let hp_threshold_reached = hp.hp <= 60;
-                let hp_critical_threshold_reached = hp.hp <= 30;
+                // HP threshold. We probably shouldn't use food at > 75% HP.
+                // If HP is < 15% we need to use food ASAP.
+                let hp_threshold_reached = hp.hp <= 75;
+                let hp_critical_threshold_reached = hp.hp <= 15;
 
                 // Calculate ms since last food usage
                 let ms_since_last_food = Instant::now()
@@ -103,22 +103,21 @@ impl<'a> FarmingBehavior<'_> {
                     .as_millis();
 
                 // Check whether we can use food again.
-                // This is based on a very generous limit of 2s between food uses.
+                // This is based on a very generous limit of 1s between food uses.
                 let can_use_food =
                     current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
 
                 // Use food ASAP if HP is critical.
                 // Wait a minimum of 333ms after last usage anyway to avoid detection.
                 // Spamming 3 times per second when low on HP seems legit for a real player.
-                let should_use_food_reason_hp_critical =
-                    ms_since_last_food > 333 && hp_critical_threshold_reached;
+                let should_use_food_reason_hp_critical = hp_critical_threshold_reached;
 
                 // Use food if nominal usage conditions are met
                 let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
 
                 // Check whether we should use food for any reason
-                let should_use_food =
-                    should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+                let should_use_food = should_use_food_reason_nominal;
+                let should_use_pill = should_use_food_reason_hp_critical;
 
                 if should_use_food {
                     if let Some(food_index) = config.get_slot_index(SlotType::Food) {
@@ -133,6 +132,22 @@ impl<'a> FarmingBehavior<'_> {
                         std::thread::sleep(Duration::from_millis(100));
                     } else {
                         slog::info!(self.logger, "No slot is mapped to food!");
+                    }
+                }
+
+                if should_use_pill {
+                    if let Some(pill_index) = config.get_slot_index(SlotType::Pill) {
+                        // Send keystroke for first slot mapped to pill
+                        send_keystroke(pill_index.into(), KeyMode::Press);
+
+                        // Update state
+                        self.last_pot_time = current_time;
+                        self.last_food_hp = hp;
+
+                        // wait a few ms for the pill to be consumed
+                        std::thread::sleep(Duration::from_millis(100));
+                    } else {
+                        println!("[WARN] No slot is mapped to pill!");
                     }
                 }
 

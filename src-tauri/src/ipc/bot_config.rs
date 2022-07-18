@@ -11,6 +11,7 @@ pub enum SlotType {
     AttackSkill,
     BuffSkill,
     Flying,
+    Pill,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

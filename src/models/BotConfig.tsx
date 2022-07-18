@@ -1,6 +1,6 @@
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export type SlotType = "Unused" | "Food" | "PickupPet" | "AttackSkill" | "BuffSkill" | "Flying"
+export type SlotType = "Unused" | "Food" | "PickupPet" | "AttackSkill" | "BuffSkill" | "Flying" | "Pill"
 
 export type SlotModel = {
     slot_type: SlotType,
