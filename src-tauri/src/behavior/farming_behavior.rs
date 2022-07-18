@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use rand::{prelude::SliceRandom, Rng};
+use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
@@ -24,6 +25,7 @@ enum State {
 
 pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
+    logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
     state: State,
     last_hp: Hp,
@@ -39,8 +41,9 @@ pub struct FarmingBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
-    fn new(platform: &'a PlatformAccessor<'a>) -> Self {
+    fn new(platform: &'a PlatformAccessor<'a>, logger: &'a Logger) -> Self {
         Self {
+            logger,
             platform,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
@@ -129,7 +132,7 @@ impl<'a> FarmingBehavior<'_> {
                         // wait a few ms for the food to be consumed
                         std::thread::sleep(Duration::from_millis(100));
                     } else {
-                        println!("[WARN] No slot is mapped to food!");
+                        slog::info!(self.logger, "No slot is mapped to food!");
                     }
                 }
 
@@ -278,22 +281,24 @@ impl<'a> FarmingBehavior<'_> {
             } else {
                 1000
             };
+
+            // Prioritize aggro mobs
             if !aggro_mobs.is_empty() {
-                println!("Found {} aggro mobs. Those die first.", aggro_mobs.len());
-                if let Some(mob) = image.find_closest_mob(aggro_mobs.as_slice(), None, max_distance)
-                {
+                slog::debug!(self.logger, "Found mobs"; "mob_type" => "aggressive", "mob_count" => aggro_mobs.len());
+                let closest_mob = image.find_closest_mob(aggro_mobs.as_slice(), None, max_distance);
+                if let Some(mob) = closest_mob {
                     State::EnemyFound(*mob)
                 } else {
                     State::NoEnemyFound
                 }
             } else if !passive_mobs.is_empty() {
-                println!("Found {} passive mobs.", passive_mobs.len());
+                slog::debug!(self.logger, "Found mobs"; "mob_type" => "passive", "mob_count" => passive_mobs.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
                     if Instant::now().duration_since(self.last_kill_time)
                         < Duration::from_millis(2500)
                     {
-                        println!("Avoiding mob at {:?}", self.last_killed_mob_bounds);
+                        slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
                             passive_mobs.as_slice(),
                             Some(&self.last_killed_mob_bounds),
@@ -310,7 +315,7 @@ impl<'a> FarmingBehavior<'_> {
                     State::NoEnemyFound
                 }
             } else {
-                println!("Mobs were found, but they're neither aggro nor neutral???");
+                slog::warn!(self.logger, "Mob detection anomaly"; "description" => "mob list is not empty but contains neither aggro nor passive mobs");
 
                 // Transition to next state
                 State::NoEnemyFound
@@ -323,7 +328,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-        println!("Trying to attack mob at {}", point);
+        slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
         // let inner_size = window.inner_size().unwrap();
         // let (x_diff, y_diff) = (
         //     image.width() - inner_size.width,
