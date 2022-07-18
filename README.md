@@ -65,6 +65,7 @@ If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Sk
 | 🗡️         | Attack Skill     |
 | 🪄         | Buff Skill       |
 | ✈️         | Board/Mount      |
+| 💊         | Pill             |
 
 ## Support Automation / AutoShout
 Not yet implemented. Keep your eyes peeled for an update.

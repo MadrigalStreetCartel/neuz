@@ -11,7 +11,7 @@ type Props = {
     onChange?: (type: SlotType) => void,
 }
 
-const types: SlotType[] = ['Unused', 'Food', 'PickupPet', 'AttackSkill', 'BuffSkill', 'Flying']
+const types: SlotType[] = ['Unused', 'Food', 'PickupPet', 'AttackSkill', 'BuffSkill', 'Flying', 'Pill']
 
 const translateType = (type: SlotType) => {
     switch (type) {
@@ -21,6 +21,7 @@ const translateType = (type: SlotType) => {
         case 'AttackSkill': return '🗡️'
         case 'BuffSkill': return '🪄' 
         case 'Flying': return '✈️'
+        case 'Pill': return '💊'
     }
 }
 
