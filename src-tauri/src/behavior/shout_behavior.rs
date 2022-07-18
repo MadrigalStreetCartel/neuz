@@ -23,7 +23,7 @@ pub struct ShoutBehavior<'a> {
     state: State,
     last_shout_time: Instant,
     shown_messages: Vec<String>,
-    left_messages: Vec<String>
+    left_messages: Vec<String>,
 
 }
 
@@ -35,7 +35,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
             state: State::Shout,
             last_shout_time: Instant::now(),
             shown_messages: Vec::new(),
-            left_messages:Vec::new()
+            left_messages:Vec::new(),
         }
     }
 
@@ -45,10 +45,11 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
 
     fn run_iteration(&mut self, config: &BotConfig, analyzer:Option<ImageAnalyzer>) {
         let config = config.shout_config();
+        let iter =  config.shout_message().iter().map(|s| s as &str).cycle();
         // Check state machine
         self.state = match self.state {
             State::IdleShout => self.on_idle(config),
-            State::Shout => self.on_auto_shout(config),
+            State::Shout => self.on_auto_shout(iter,config),
         }
     }
 }
@@ -73,9 +74,9 @@ impl<'a> ShoutBehavior<'_> {
             State::Shout
     }
 
-    fn on_auto_shout(&mut self, config: &ShoutConfig) -> State {
+    fn on_auto_shout<I>(&mut self, iter: I, config: &ShoutConfig) -> State where I: Iterator<Item = str>  {
         self.last_shout_time = Instant::now();
-        // If it's first try or all messages have been displayed
+        /*// If it's first try or all messages have been displayed
         if self.left_messages.len() == 0 || self.left_messages.len() == self.shown_messages.len() {
             self.left_messages = config.shout_message().clone();
         }
@@ -88,14 +89,15 @@ impl<'a> ShoutBehavior<'_> {
         self.left_messages = self.left_messages.clone()
         .into_iter()
         .filter_map(|s|if s != message { Some(s)}else{None})
-        .collect();
+        .collect();*/
         
+        let message = iter.next();
         // Open chatbox
         send_keystroke(Key::Enter, KeyMode::Press);
         std::thread::sleep( Duration::from_millis(self.rng.gen_range(1..10)));
-
+        
         // Write message
-        send_message(message);
+        send_message(message.unwrap());
         //std::thread::sleep( Duration::from_millis(self.rng.gen_range(1..10)));
 
         // Send it
