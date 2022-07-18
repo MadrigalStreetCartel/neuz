@@ -31,7 +31,7 @@ impl From<Key> for Vk {
     }
 }
 
-pub fn send_keystroke(k:Key, mode: KeyMode) {
+pub fn send_keystroke(k: Key, mode: KeyMode) {
     let k: Vk = k.into();
     match mode {
         KeyMode::Press => winput::send(k),
@@ -39,6 +39,6 @@ pub fn send_keystroke(k:Key, mode: KeyMode) {
         KeyMode::Release => winput::release(k),
     }
 }
-pub fn send_message(s:&str){
+pub fn send_message(s: &str) {
     winput::send_str(s);
 }

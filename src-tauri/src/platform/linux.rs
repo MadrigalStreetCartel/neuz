@@ -25,7 +25,7 @@ impl From<Key> for char {
             S => 's',
             D => 'd',
             Space => ' ', // TODO
-            Esc => ' ', // TODO
+            Esc => ' ',   // TODO
             Enter => ' ', // TODO
         }
     }
@@ -42,8 +42,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     }
     .unwrap();
 }
-pub fn send_message(text:&str){
+pub fn send_message(text: &str) {
     // TODO
     let mut ctx = tfc::Context::new().unwrap();
-
 }

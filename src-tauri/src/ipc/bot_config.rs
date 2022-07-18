@@ -44,7 +44,7 @@ pub struct FarmingConfig {
     /// Slot configuration
     slots: Option<[Slot; 10]>,
     /// Disable farming
-    farming_enabled: Option<bool>
+    farming_enabled: Option<bool>,
 }
 
 impl FarmingConfig {
@@ -110,12 +110,10 @@ impl SupportConfig {
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
     shout_message: Option<Vec<String>>,
-    shout_enabled:Option<bool>,
+    shout_enabled: Option<bool>,
 }
 
 impl ShoutConfig {
-
-    
     pub fn shout_interval(&self) -> u64 {
         self.shout_interval.unwrap_or(60)
     }

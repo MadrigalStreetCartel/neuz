@@ -40,8 +40,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => enigo.key_up(k),
     }
 }
-pub fn send_message(text:&str){
+pub fn send_message(text: &str) {
     // TODO
     let mut enigo = Enigo::new();
-
 }

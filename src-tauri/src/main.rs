@@ -170,10 +170,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                     farming_behavior.run_iteration(config, Some(image_analyzer));
                 }
                 if config.shout_config().shout_enabled() {
-                    shout_behavior.run_iteration(config,None);
+                    shout_behavior.run_iteration(config, None);
                 }
-                
-                
             }
         }
     });
