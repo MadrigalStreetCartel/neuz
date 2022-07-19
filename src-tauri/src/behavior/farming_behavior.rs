@@ -110,16 +110,33 @@ impl<'a> FarmingBehavior<'_> {
                 // Use food ASAP if HP is critical.
                 // Wait a minimum of 333ms after last usage anyway to avoid detection.
                 // Spamming 3 times per second when low on HP seems legit for a real player.
-                let should_use_food_reason_hp_critical = hp_critical_threshold_reached;
+                let should_use_food_reason_hp_critical =
+                    ms_since_last_food > 333 && hp_critical_threshold_reached;
 
                 // Use food if nominal usage conditions are met
                 let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
 
                 // Check whether we should use food for any reason
-                let should_use_food = should_use_food_reason_nominal;
-                let should_use_pill = should_use_food_reason_hp_critical;
+                let should_use_food =
+                    should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
                 if should_use_food {
+                    if should_use_food_reason_hp_critical {
+                        if let Some(pill_index) = config.get_slot_index(SlotType::Pill) {
+                            // Send keystroke for first slot mapped to pill
+                            send_keystroke(pill_index.into(), KeyMode::Press);
+
+                            // Update state
+                            self.last_pot_time = current_time;
+                            self.last_food_hp = hp;
+
+                            // wait a few ms for the pill to be consumed
+                            std::thread::sleep(Duration::from_millis(100));
+                        } else {
+                            println!("[WARN] No slot is mapped to pill! using normal food now");
+                        }
+                    }
+
                     if let Some(food_index) = config.get_slot_index(SlotType::Food) {
                         // Send keystroke for first slot mapped to food
                         send_keystroke(food_index.into(), KeyMode::Press);
@@ -132,22 +149,6 @@ impl<'a> FarmingBehavior<'_> {
                         std::thread::sleep(Duration::from_millis(100));
                     } else {
                         slog::info!(self.logger, "No slot is mapped to food!");
-                    }
-                }
-
-                if should_use_pill {
-                    if let Some(pill_index) = config.get_slot_index(SlotType::Pill) {
-                        // Send keystroke for first slot mapped to pill
-                        send_keystroke(pill_index.into(), KeyMode::Press);
-
-                        // Update state
-                        self.last_pot_time = current_time;
-                        self.last_food_hp = hp;
-
-                        // wait a few ms for the pill to be consumed
-                        std::thread::sleep(Duration::from_millis(100));
-                    } else {
-                        println!("[WARN] No slot is mapped to pill!");
                     }
                 }
 
