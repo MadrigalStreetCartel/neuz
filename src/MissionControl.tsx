@@ -14,6 +14,7 @@ import ImageShout from './assets/btn_shout.png'
 
 import { BotConfigModel, ModeModel } from './models/BotConfig'
 import FarmingConfig from "./components/config/FarmingConfig"
+import ShoutConfig from "./components/config/ShoutConfig"
 
 type Bounds = {x: number, y: number, w: number, h: number}
 
@@ -91,7 +92,7 @@ const MissionControl = ({ className }: Props) => {
                         <div className="config-container">
                             {config?.mode === 'Farming' && (<FarmingConfig config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
                             {config?.mode === 'Support' && (<ConfigPanel>Not yet implemented. Heal yourself manually for now.</ConfigPanel>)}
-                            {config?.mode === 'AutoShout' && (<ConfigPanel>Not yet implemented. Shout manually for now.</ConfigPanel>)}
+                            {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
                         </div>
                     </>
                 )}
@@ -157,7 +158,7 @@ export default styled(MissionControl)`
             gap: 3rem;
         }
     }
-    
+
     & .container {
         overflow: hidden;
         position: relative;
@@ -193,7 +194,7 @@ export default styled(MissionControl)`
     & .enemy-rect {
         display: block;
         position: absolute;
-        border: 2px solid #00ff00; 
+        border: 2px solid #00ff00;
         z-index: 2000;
     }
 
