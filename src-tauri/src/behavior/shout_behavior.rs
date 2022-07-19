@@ -1,6 +1,8 @@
 use std::time::{Duration, Instant};
 
+use guard::guard;
 use rand::Rng;
+use slog::Logger;
 
 use crate::{
     image_analyzer::ImageAnalyzer,
@@ -10,108 +12,90 @@ use crate::{
 
 use super::Behavior;
 
-#[derive(Debug, Clone, Copy)]
-enum State {
-    IdleShout,
-    Shout,
-    //Moving,
-}
-
+#[allow(dead_code)]
 pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
+    logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
-    state: State,
     last_shout_time: Instant,
     shown_messages: Vec<String>,
-    left_messages: Vec<String>,
+    shout_interval: u64,
+    message_iter: Option<Box<dyn Iterator<Item = String>>>,
 }
 
 impl<'a> Behavior<'a> for ShoutBehavior<'a> {
-    fn new(platform: &'a PlatformAccessor<'a>) -> Self {
+    fn new(platform: &'a PlatformAccessor<'a>, logger: &'a Logger) -> Self {
         Self {
+            logger,
             platform,
             rng: rand::thread_rng(),
-            state: State::Shout,
             last_shout_time: Instant::now(),
             shown_messages: Vec::new(),
-            left_messages: Vec::new(),
+            shout_interval: 30000,
+            message_iter: None,
         }
     }
 
-    fn start(&mut self) {}
+    fn start(&mut self, config: &BotConfig) {
+        self.update(config);
+    }
 
-    fn stop(&mut self) {}
-
-    fn run_iteration(&mut self, config: &BotConfig, analyzer: Option<ImageAnalyzer>) {
+    fn update(&mut self, config: &BotConfig) {
         let config = config.shout_config();
-        let iter = config.shout_message().iter().map(|s| s as &str).cycle();
-        // Check state machine
-        self.state = match self.state {
-            State::IdleShout => self.on_idle(config),
-            State::Shout => self.on_auto_shout(iter, config),
-        }
+        self.shown_messages = config.shout_messages();
+        self.message_iter = Some(Box::new(self.shown_messages.clone().into_iter().cycle()));
+        self.shout_interval = config.shout_interval();
+    }
+
+    fn stop(&mut self, _config: &BotConfig) {
+        self.message_iter = None;
+    }
+
+    fn run_iteration(&mut self, config: &BotConfig, _analyzer: Option<ImageAnalyzer>) {
+        let config = config.shout_config();
+        self.shout(config);
     }
 }
 
 impl<'a> ShoutBehavior<'_> {
-    fn on_idle(&mut self, _config: &ShoutConfig) -> State {
-        let total_idle_duration = Duration::from_secs(_config.shout_interval());
-        let idle_chunks = self.rng.gen_range(1..4);
-        let idle_chunk_duration = total_idle_duration / idle_chunks;
-
-        // Do mostly nothing, but jump sometimes
-        for _ in 0..idle_chunks {
-            if self.rng.gen_bool(0.1) {
-                send_keystroke(Key::Space, KeyMode::Press);
-            }
-            std::thread::sleep(idle_chunk_duration);
+    fn shout(&mut self, _config: &ShoutConfig) {
+        // Return early if time since last shout is less than shout interval
+        if Instant::now()
+            .duration_since(self.last_shout_time)
+            .as_millis()
+            < self.shout_interval as u128
+        {
+            return;
         }
 
-        // Transition to next state
-        State::Shout
-    }
+        // Find next message to shout
+        guard!(let Some(mut messages) = self.message_iter.as_mut() else { return });
+        guard!(let Some(message) = messages.next() else { return });
 
-    fn on_auto_shout<I>(&mut self, iter: I, config: &ShoutConfig) -> State
-    where
-        I: Iterator<Item = str>,
-    {
-        self.last_shout_time = Instant::now();
-        /*// If it's first try or all messages have been displayed
-        if self.left_messages.len() == 0 || self.left_messages.len() == self.shown_messages.len() {
-            self.left_messages = config.shout_message().clone();
+        // Avoid sending empty messages
+        if message.trim().is_empty() {
+            return;
         }
 
-        // Randomly selected message and push it to shown_messages
-        let message:&str = &self.left_messages[self.rng.gen_range(0.. self.left_messages.len())].clone();
-        self.shown_messages.push(message.to_string());
+        // Log message
+        slog::debug!(self.logger, "Shouting"; "message" => &message);
 
-        // filter left_messages to update
-        self.left_messages = self.left_messages.clone()
-        .into_iter()
-        .filter_map(|s|if s != message { Some(s)}else{None})
-        .collect();*/
-
-        let message = iter.next();
         // Open chatbox
         send_keystroke(Key::Enter, KeyMode::Press);
-        std::thread::sleep(Duration::from_millis(self.rng.gen_range(1..10)));
+        std::thread::sleep(Duration::from_millis(self.rng.gen_range(100..250)));
 
         // Write message
-        send_message(message.unwrap());
-        //std::thread::sleep( Duration::from_millis(self.rng.gen_range(1..10)));
+        send_message(message.as_ref());
 
         // Send it
         send_keystroke(Key::Enter, KeyMode::Press);
-        //std::thread::sleep( Duration::from_millis(self.rng.gen_range(1..10)));
+        std::thread::sleep(Duration::from_millis(self.rng.gen_range(100..250)));
 
         // Closing chatbox
         send_keystroke(Key::Escape, KeyMode::Press);
         std::thread::sleep(Duration::from_millis(100));
 
-        if self.rng.gen_bool(0.9) {
-            State::IdleShout
-        } else {
-            State::Shout
-        }
+        // Update last shout time
+        self.last_shout_time = Instant::now();
     }
 }

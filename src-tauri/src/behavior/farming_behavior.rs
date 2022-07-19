@@ -60,9 +60,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
     }
 
-    fn start(&mut self) {}
-
-    fn stop(&mut self) {}
+    fn start(&mut self, _config: &BotConfig) {}
+    fn update(&mut self, _config: &BotConfig) {}
+    fn stop(&mut self, _config: &BotConfig) {}
 
     fn run_iteration(&mut self, config: &BotConfig, img: Option<ImageAnalyzer>) {
         let config = config.farming_config();

@@ -24,9 +24,9 @@ impl From<Key> for char {
             A => 'a',
             S => 's',
             D => 'd',
-            Space => ' ', // TODO
-            Esc => ' ',   // TODO
-            Enter => ' ', // TODO
+            Space => ' ',
+            Esc => todo!(),
+            Enter => todo!(),
         }
     }
 }
@@ -42,7 +42,8 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     }
     .unwrap();
 }
+
 pub fn send_message(text: &str) {
-    // TODO
     let mut ctx = tfc::Context::new().unwrap();
+    todo!("Seems to be hard to do with ftc. Maybe switch to enigo for all platforms?");
 }

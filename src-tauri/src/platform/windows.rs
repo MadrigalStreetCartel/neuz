@@ -39,6 +39,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => winput::release(k),
     }
 }
+
 pub fn send_message(s: &str) {
     winput::send_str(s);
 }
