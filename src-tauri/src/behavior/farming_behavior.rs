@@ -64,11 +64,11 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, img: Option<ImageAnalyzer>) {
+    fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
         let config = config.farming_config();
-        let image: ImageAnalyzer = img.unwrap();
+
         // Check whether food should be consumed
-        self.check_food(config, &image);
+        self.check_food(config, image);
 
         // Check state machine
         self.state = match self.state {
@@ -259,7 +259,7 @@ impl<'a> FarmingBehavior<'_> {
         State::SearchingForEnemy
     }
 
-    fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: ImageAnalyzer) -> State {
+    fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
         let mobs = image.identify_mobs();
         if mobs.is_empty() {
             // Transition to next state
@@ -355,7 +355,7 @@ impl<'a> FarmingBehavior<'_> {
         State::Attacking(mob)
     }
 
-    fn on_attacking(&mut self, config: &FarmingConfig, mob: Target, image: ImageAnalyzer) -> State {
+    fn on_attacking(&mut self, config: &FarmingConfig, mob: Target, image: &ImageAnalyzer) -> State {
         if !self.is_attacking {
             self.last_initial_attack_time = Instant::now();
             self.last_pot_time = Instant::now();
