@@ -1,6 +1,17 @@
 # Changelog
 Date format: `DD/MM/YYYY`
 
+<!-- maintainers -->
+[@genoxalmighty]: https://github.com/genoxalmighty
+[@slyker]: https://github.com/slyker
+<!-- /maintainers -->
+
+**0.11.0**
+> Released on 20.07.2022
+
+- Adds support for pill usage on critical health ([@genoxalmighty])
+- Adds auto-shout mode ([@slyker])
+
 **0.10.1**
 > Released on 18.07.2022
 

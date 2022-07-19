@@ -59,7 +59,7 @@ fn main() {
         slog_async::Async::new(drain).build().fuse()
     };
     let drain = sentry_slog::SentryDrain::new(drain).fuse();
-    let logger = Logger::root(drain.fuse(), slog::o!("version" => neuz_version));
+    let logger = Logger::root(drain.fuse(), slog::o!());
 
     // Build app
     tauri::Builder::default()

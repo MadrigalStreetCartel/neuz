@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use rand::{prelude::SliceRandom, Rng};
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
+use guard::guard;
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
@@ -120,24 +121,32 @@ impl<'a> FarmingBehavior<'_> {
                 let should_use_food =
                     should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
+                // Check whether we should use pills
+                let pill_available = config.get_slot_index(SlotType::Pill).is_some();
+                let should_use_pill = pill_available && should_use_food_reason_hp_critical;
+
                 if should_use_food {
-                    if should_use_food_reason_hp_critical {
-                        if let Some(pill_index) = config.get_slot_index(SlotType::Pill) {
-                            // Send keystroke for first slot mapped to pill
-                            send_keystroke(pill_index.into(), KeyMode::Press);
 
-                            // Update state
-                            self.last_pot_time = current_time;
-                            self.last_food_hp = hp;
+                    // Use pill
+                    if should_use_pill {
+                        guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
+                            self.last_hp = hp;
+                            return;
+                        });
 
-                            // wait a few ms for the pill to be consumed
-                            std::thread::sleep(Duration::from_millis(100));
-                        } else {
-                            println!("[WARN] No slot is mapped to pill! using normal food now");
-                        }
+                        // Send keystroke for first slot mapped to pill
+                        send_keystroke(pill_index.into(), KeyMode::Press);
+
+                        // Update state
+                        self.last_pot_time = current_time;
+                        self.last_food_hp = hp;
+
+                        // wait a few ms for the pill to be consumed
+                        std::thread::sleep(Duration::from_millis(100));
                     }
 
-                    if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                    // Use regular food
+                    else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
                         // Send keystroke for first slot mapped to food
                         send_keystroke(food_index.into(), KeyMode::Press);
 
@@ -371,7 +380,12 @@ impl<'a> FarmingBehavior<'_> {
         State::Attacking(mob)
     }
 
-    fn on_attacking(&mut self, config: &FarmingConfig, mob: Target, image: &ImageAnalyzer) -> State {
+    fn on_attacking(
+        &mut self,
+        config: &FarmingConfig,
+        mob: Target,
+        image: &ImageAnalyzer,
+    ) -> State {
         if !self.is_attacking {
             self.last_initial_attack_time = Instant::now();
             self.last_pot_time = Instant::now();
