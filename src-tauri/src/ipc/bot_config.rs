@@ -26,11 +26,22 @@ impl Default for Slot {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum BotMode {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BotMode {
     Farming,
     Support,
     AutoShout,
+}
+
+impl ToString for BotMode {
+    fn to_string(&self) -> String {
+        match self {
+            BotMode::Farming => "farming",
+            BotMode::Support => "support",
+            BotMode::AutoShout => "auto_shout",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -43,6 +54,8 @@ pub struct FarmingConfig {
     stay_in_area: Option<bool>,
     /// Slot configuration
     slots: Option<[Slot; 10]>,
+    /// Disable farming
+    farming_enabled: Option<bool>,
 }
 
 impl FarmingConfig {
@@ -62,6 +75,10 @@ impl FarmingConfig {
         self.slots
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
+    }
+
+    pub fn farming_enabled(&self) -> bool {
+        self.farming_enabled.unwrap_or(true)
     }
 
     /// Get the first matching slot index
@@ -103,7 +120,8 @@ impl SupportConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
-    shout_message: Option<String>,
+    shout_messages: Option<Vec<String>>,
+    shout_enabled: Option<bool>,
 }
 
 impl ShoutConfig {
@@ -111,8 +129,12 @@ impl ShoutConfig {
         self.shout_interval.unwrap_or(60)
     }
 
-    pub fn shout_message(&self) -> String {
-        self.shout_message.clone().unwrap_or_default()
+    pub fn shout_messages(&self) -> Vec<String> {
+        self.shout_messages.clone().unwrap_or_default()
+    }
+
+    pub fn shout_enabled(&self) -> bool {
+        self.shout_enabled.unwrap_or(false)
     }
 }
 
@@ -173,6 +195,10 @@ impl BotConfig {
 
     pub fn shout_config(&self) -> &ShoutConfig {
         &self.shout_config
+    }
+
+    pub fn mode(&self) -> Option<BotMode> {
+        self.mode.clone()
     }
 
     /// Serialize config to disk

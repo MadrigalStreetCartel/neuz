@@ -9,7 +9,7 @@ pub use self::shared::*;
 mod windows;
 
 #[cfg(target_os = "windows")]
-pub use windows::{send_keystroke, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
+pub use windows::{send_keystroke, send_message, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
 
 //
 // macOS
@@ -19,7 +19,7 @@ pub use windows::{send_keystroke, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
 mod macos;
 
 #[cfg(target_os = "macos")]
-pub use macos::{send_keystroke, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
+pub use macos::{send_keystroke, send_message, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
 
 //
 // Linux
@@ -29,4 +29,4 @@ pub use macos::{send_keystroke, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
 mod linux;
 
 #[cfg(target_os = "linux")]
-pub use linux::{send_keystroke, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};
+pub use linux::{send_keystroke, send_message, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP};

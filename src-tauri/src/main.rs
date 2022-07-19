@@ -5,12 +5,13 @@
 
 use std::{sync::Arc, time::Duration};
 
-use behavior::{Behavior, FarmingBehavior};
+use behavior::{Behavior, FarmingBehavior, ShoutBehavior};
+use guard::guard;
 use image_analyzer::ImageAnalyzer;
 use libscreenshot::WindowCaptureProvider;
 use parking_lot::RwLock;
 use platform::PlatformAccessor;
-use slog::{Drain, Logger};
+use slog::{Drain, Level, Logger};
 use tauri::{Manager, Window};
 
 mod behavior;
@@ -20,7 +21,10 @@ mod ipc;
 mod platform;
 mod utils;
 
-use crate::{ipc::BotConfig, utils::Timer};
+use crate::{
+    ipc::{BotConfig, BotMode},
+    utils::Timer,
+};
 
 struct AppState {
     logger: Logger,
@@ -48,7 +52,10 @@ fn main() {
     ));
     let drain = {
         let decorator = slog_term::TermDecorator::new().stdout().build();
-        let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+        let drain = slog_term::CompactFormat::new(decorator)
+            .build()
+            .filter_level(Level::Trace)
+            .fuse();
         slog_async::Async::new(drain).build().fuse()
     };
     let drain = sentry_slog::SentryDrain::new(drain).fuse();
@@ -135,6 +142,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&accessor, &logger);
+        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger);
+        let mut last_mode: Option<BotMode> = None;
 
         // Enter main loop
         loop {
@@ -146,6 +155,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 config.serialize();
                 send_config(config);
                 last_config_change_id = config.change_id();
+
+                // Update behaviors
+                farming_behavior.update(config);
+                shout_behavior.update(config);
             }
 
             // Continue early if the bot is not engaged
@@ -162,11 +175,49 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 continue;
             }
 
+            // Make sure an operation mode is set
+            guard!(let Some(mode) = config.mode() else {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                timer.silence();
+                continue;
+            });
+
+            // Check if mode is different from last mode
+            if let Some(last_mode) = last_mode.as_ref() {
+                if &mode != last_mode {
+                    slog::info!(logger, "Mode changed"; "old_mode" => last_mode.to_string(), "new_mode" => mode.to_string());
+
+                    // Stop all behaviors
+                    farming_behavior.stop(&config);
+                    shout_behavior.stop(&config);
+
+                    // Start the current behavior
+                    match mode {
+                        BotMode::Farming => farming_behavior.start(&config),
+                        BotMode::AutoShout => shout_behavior.start(&config),
+                        _ => (),
+                    }
+                }
+            }
+
             // Try capturing the window contents
             if let Some(image_analyzer) = capture_window(&logger, &window) {
                 // Run the current behavior
-                farming_behavior.run_iteration(config, image_analyzer);
+                guard!(let Some(mode) = config.mode() else { continue; });
+
+                match mode {
+                    BotMode::Farming => {
+                        farming_behavior.run_iteration(config, &image_analyzer);
+                    }
+                    BotMode::AutoShout => {
+                        shout_behavior.run_iteration(config, &image_analyzer);
+                    }
+                    _ => (),
+                }
             }
+
+            // Update last mode
+            last_mode = config.mode();
         }
     });
 }

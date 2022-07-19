@@ -3,9 +3,10 @@ import styled from 'styled-components'
 type Props = {
     className?: string,
     children: React.ReactNode,
+    reversed?: boolean,
 }
 
-const ConfigRow = ({ className, children }: Props) => {
+const ConfigRow = ({ className, children, reversed = false }: Props) => {
     return (
         <div className={className}>
             {children}

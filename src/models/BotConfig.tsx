@@ -23,7 +23,7 @@ export type SupportConfigModel = Partial<{
 
 export type ShoutConfigModel = Partial<{
     shout_interval: number,
-    shout_message: string,
+    shout_messages: string[],
 }>
 
 export type BotConfigModel = {
