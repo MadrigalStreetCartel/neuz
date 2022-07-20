@@ -28,6 +28,9 @@ impl Timer {
         if *self.is_silenced.borrow() {
             return;
         }
+        if std::env::var("NEUZ_TIMERS").is_err() {
+            return;
+        }
         println!(
             "[{} {}${}] took {:?}",
             self.label,
@@ -47,6 +50,9 @@ impl Timer {
 
     pub fn report(&self) {
         if *self.is_silenced.borrow() {
+            return;
+        }
+        if std::env::var("NEUZ_TIMERS").is_err() {
             return;
         }
         println!("[{}] took {:?}", self.label, self.elapsed());
