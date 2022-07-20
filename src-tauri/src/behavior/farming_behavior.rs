@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
+use guard::guard;
 use rand::{prelude::SliceRandom, Rng};
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
-use guard::guard;
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
@@ -126,7 +126,6 @@ impl<'a> FarmingBehavior<'_> {
                 let should_use_pill = pill_available && should_use_food_reason_hp_critical;
 
                 if should_use_food {
-
                     // Use pill
                     if should_use_pill {
                         guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
@@ -144,7 +143,6 @@ impl<'a> FarmingBehavior<'_> {
                         // wait a few ms for the pill to be consumed
                         std::thread::sleep(Duration::from_millis(100));
                     }
-
                     // Use regular food
                     else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
                         // Send keystroke for first slot mapped to food
@@ -199,6 +197,20 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
+        // Check if we are running fully unsupervised
+        if config.is_unsupervised() {
+            // Rotate in random direction for a random duration
+            let key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+            let rotation_duration = std::time::Duration::from_millis(self.rng.gen_range(100..250));
+            send_keystroke(*key, KeyMode::Hold);
+            std::thread::sleep(rotation_duration);
+            send_keystroke(*key, KeyMode::Release);
+            self.rotation_movement_tries += 1;
+
+            // Transition to next state
+            return State::SearchingForEnemy;
+        }
+
         // Try rotating first in order to locate nearby enemies
         if self.rotation_movement_tries < 20 {
             // Rotate in random direction for a random duration
@@ -301,10 +313,12 @@ impl<'a> FarmingBehavior<'_> {
                 .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
                 .cloned()
                 .collect::<Vec<_>>();
-            let max_distance = if config.should_stay_in_area() {
-                325
-            } else {
-                1000
+
+            // Calculate max distance of mobs
+            let max_distance = match (config.should_stay_in_area(), config.is_unsupervised()) {
+                (_, true) => 300,
+                (true, _) => 325,
+                (false, false) => 1000,
             };
 
             // Prioritize aggro mobs
@@ -432,16 +446,23 @@ impl<'a> FarmingBehavior<'_> {
                 // Summon pet
                 send_keystroke(index.into(), KeyMode::Press);
                 // Wait half a second to make sure everything is picked up
-                std::thread::sleep(std::time::Duration::from_millis(2000));
+                std::thread::sleep(Duration::from_millis(2000));
                 // Unsummon pet
                 send_keystroke(index.into(), KeyMode::Press);
             }
         }
 
-        if self.rng.gen_bool(0.1) {
-            State::Idle
-        } else {
-            State::SearchingForEnemy
+        // Check if we're running in unsupervised mode
+        if config.is_unsupervised() {
+            // Sleep until the killed mob has fully disappeared
+            let sleep_time = match config.should_use_on_demand_pet() {
+                true => Duration::from_millis(3000),
+                false => Duration::from_millis(5000),
+            };
+            std::thread::sleep(sleep_time);
         }
+
+        // Transition state
+        State::SearchingForEnemy
     }
 }
