@@ -9,6 +9,7 @@ use crate::{
     data::{Bounds, MobType, Target, TargetType},
     image_analyzer::{Hp, ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
+    movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
 };
 
@@ -28,6 +29,7 @@ pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
+    movement: &'a MovementAccessor<'a>,
     state: State,
     last_hp: Hp,
     last_food_hp: Hp,
@@ -42,10 +44,15 @@ pub struct FarmingBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
-    fn new(platform: &'a PlatformAccessor<'a>, logger: &'a Logger) -> Self {
+    fn new(
+        platform: &'a PlatformAccessor<'a>,
+        logger: &'a Logger,
+        movement: &'a MovementAccessor<'a>,
+    ) -> Self {
         Self {
             logger,
             platform,
+            movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
             last_hp: Hp::default(),
@@ -185,26 +192,28 @@ impl<'a> FarmingBehavior<'_> {
         let idle_chunk_duration = total_idle_duration / idle_chunks;
 
         // Do mostly nothing, but jump sometimes
-        for _ in 0..idle_chunks {
-            if self.rng.gen_bool(0.1) {
-                send_keystroke(Key::Space, KeyMode::Press);
+        self.movement.schedule(|movement| {
+            for _ in 0..idle_chunks {
+                movement.with_probability(0.1, |movement| {
+                    movement.jump();
+                });
+                std::thread::sleep(idle_chunk_duration);
             }
-            std::thread::sleep(idle_chunk_duration);
-        }
+        });
 
         // Transition to next state
         State::SearchingForEnemy
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
+        use crate::movement::prelude::*;
+
         // Check if we are running fully unsupervised
         if config.is_unsupervised() {
             // Rotate in random direction for a random duration
-            let key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-            let rotation_duration = std::time::Duration::from_millis(self.rng.gen_range(100..250));
-            send_keystroke(*key, KeyMode::Hold);
-            std::thread::sleep(rotation_duration);
-            send_keystroke(*key, KeyMode::Release);
+            self.movement.schedule(|movement| {
+                movement.play(&[Rotate(rot::Random, dur::Random(100..250))]);
+            });
             self.rotation_movement_tries += 1;
 
             // Transition to next state
@@ -213,17 +222,15 @@ impl<'a> FarmingBehavior<'_> {
 
         // Try rotating first in order to locate nearby enemies
         if self.rotation_movement_tries < 20 {
-            // Rotate in random direction for a random duration
-            let key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-            let rotation_duration = std::time::Duration::from_millis(self.rng.gen_range(100..250));
-            send_keystroke(*key, KeyMode::Hold);
-            std::thread::sleep(rotation_duration);
-            send_keystroke(*key, KeyMode::Release);
+            self.movement.schedule(|movement| {
+                movement.play(&[
+                    // Rotate in random direction for a random duration
+                    Rotate(rot::Random, dur::Random(100..250)),
+                    // Wait a bit to wait for monsters to enter view
+                    Wait(dur::Random(100..250)),
+                ]);
+            });
             self.rotation_movement_tries += 1;
-            // Wait a bit to wait for monsters to enter view
-            std::thread::sleep(std::time::Duration::from_millis(
-                self.rng.gen_range(100..250),
-            ));
 
             // Transition to next state
             return State::SearchingForEnemy;

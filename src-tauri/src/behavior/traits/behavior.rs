@@ -1,10 +1,17 @@
 use slog::Logger;
 
-use crate::{image_analyzer::ImageAnalyzer, ipc::BotConfig, platform::PlatformAccessor};
+use crate::{
+    image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
+    platform::PlatformAccessor,
+};
 
 pub trait Behavior<'a> {
     /// Runs on initialization
-    fn new(platform: &'a PlatformAccessor<'a>, logger: &'a Logger) -> Self;
+    fn new(
+        platform: &'a PlatformAccessor<'a>,
+        logger: &'a Logger,
+        movement_accessor: &'a MovementAccessor<'a>,
+    ) -> Self;
 
     /// Runs on activation
     fn start(&mut self, config: &BotConfig);
