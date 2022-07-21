@@ -3,26 +3,28 @@
     windows_subsystem = "windows"
 )]
 
-use std::{sync::Arc, time::Duration};
-
-use behavior::{Behavior, FarmingBehavior, ShoutBehavior};
-use guard::guard;
-use image_analyzer::ImageAnalyzer;
-use libscreenshot::WindowCaptureProvider;
-use parking_lot::RwLock;
-use platform::PlatformAccessor;
-use slog::{Drain, Level, Logger};
-use tauri::{Manager, Window};
-
 mod behavior;
 mod data;
 mod image_analyzer;
 mod ipc;
+mod movement;
 mod platform;
 mod utils;
 
+use std::{sync::Arc, time::Duration};
+
+use guard::guard;
+use libscreenshot::WindowCaptureProvider;
+use parking_lot::RwLock;
+use slog::{Drain, Level, Logger};
+use tauri::{Manager, Window};
+
 use crate::{
+    behavior::{Behavior, FarmingBehavior, ShoutBehavior},
+    image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
+    movement::MovementAccessor,
+    platform::PlatformAccessor,
     utils::Timer,
 };
 
@@ -140,9 +142,12 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             mouse: mouse_rs::Mouse::new(),
         };
 
+        // Create movement accessor
+        let movement = MovementAccessor::new(&accessor);
+
         // Instantiate behaviors
-        let mut farming_behavior = FarmingBehavior::new(&accessor, &logger);
-        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger);
+        let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement);
+        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement);
         let mut last_mode: Option<BotMode> = None;
 
         // Enter main loop
