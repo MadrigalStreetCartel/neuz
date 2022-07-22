@@ -33,11 +33,19 @@ impl ActionDuration {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Movement {
     Jump,
     Move(MovementDirection, ActionDuration),
     Rotate(RotationDirection, ActionDuration),
+    PressKey(Key),
+    HoldKeyFor(Key, ActionDuration),
+    HoldKey(Key),
+    HoldKeys(Vec<Key>),
+    ReleaseKey(Key),
+    ReleaseKeys(Vec<Key>),
+    Repeat(u64, Vec<Movement>),
     Type(String),
     Wait(ActionDuration),
 }
@@ -128,6 +136,35 @@ impl<'a> MovementCoordinator<'a> {
             Movement::Type(text) => {
                 send_message(&text);
             }
+            Movement::PressKey(key) => {
+                send_keystroke(key, KeyMode::Press);
+            },
+            Movement::HoldKeyFor(key, duration) => {
+                send_keystroke(key, KeyMode::Hold);
+                thread::sleep(duration.to_duration(&mut self.rng));
+                send_keystroke(key, KeyMode::Release);
+            },
+            Movement::HoldKey(key) => {
+                send_keystroke(key, KeyMode::Hold);
+            },
+            Movement::HoldKeys(keys) => {
+                for key in keys {
+                    send_keystroke(key, KeyMode::Hold);
+                }
+            },
+            Movement::ReleaseKey(key) => {
+                send_keystroke(key, KeyMode::Release);
+            },
+            Movement::ReleaseKeys(keys) => {
+                for key in keys {
+                    send_keystroke(key, KeyMode::Release);
+                }
+            },
+            Movement::Repeat(times, movements) => {
+                for _ in 0..times {
+                    self.play(&movements);
+                }
+            },
         }
     }
 

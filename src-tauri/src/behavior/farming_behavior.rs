@@ -10,7 +10,7 @@ use crate::{
     image_analyzer::{Hp, ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
-    platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
+    platform::{send_keystroke, Key, KeyMode, PlatformAccessor}, play,
 };
 
 use super::Behavior;
@@ -222,14 +222,12 @@ impl<'a> FarmingBehavior<'_> {
 
         // Try rotating first in order to locate nearby enemies
         if self.rotation_movement_tries < 20 {
-            self.movement.schedule(|movement| {
-                movement.play(&[
-                    // Rotate in random direction for a random duration
-                    Rotate(rot::Random, dur::Random(100..250)),
-                    // Wait a bit to wait for monsters to enter view
-                    Wait(dur::Random(100..250)),
-                ]);
-            });
+            play!(self.movement => [
+                // Rotate in random direction for a random duration
+                Rotate(rot::Random, dur::Random(100..250)),
+                // Wait a bit to wait for monsters to enter view
+                Wait(dur::Random(100..250)),
+            ]);
             self.rotation_movement_tries += 1;
 
             // Transition to next state
@@ -248,44 +246,38 @@ impl<'a> FarmingBehavior<'_> {
         // If rotating multiple times failed, try other movement patterns
         match self.rng.gen_range(0..3) {
             0 => {
-                // Move into a random direction while jumping
-                let key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                let rotation_duration = Duration::from_millis(self.rng.gen_range(100..350));
+                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+                let rotation_duration = self.rng.gen_range(100_u64..350_u64);
                 let movement_slices = self.rng.gen_range(1..4);
-                let movement_slice_duration = Duration::from_millis(self.rng.gen_range(250..500));
+                let movement_slice_duration = self.rng.gen_range(250_u64..500_u64);
                 let movement_overlap_duration =
-                    movement_slice_duration.saturating_sub(rotation_duration);
-                send_keystroke(Key::W, KeyMode::Hold);
-                send_keystroke(Key::Space, KeyMode::Hold);
-                for _ in 0..movement_slices {
-                    send_keystroke(*key, KeyMode::Hold);
+                movement_slice_duration.saturating_sub(rotation_duration);
 
-                    std::thread::sleep(rotation_duration);
-                    send_keystroke(*key, KeyMode::Release);
-                    std::thread::sleep(movement_overlap_duration);
-                }
-                send_keystroke(*key, KeyMode::Hold);
-                std::thread::sleep(rotation_duration);
-                send_keystroke(*key, KeyMode::Release);
-                send_keystroke(Key::Space, KeyMode::Release);
-                send_keystroke(Key::W, KeyMode::Release);
+                // Move into a random direction while jumping
+                play!(self.movement => [
+                    HoldKeys(vec![Key::W, Key::Space]),
+                    Repeat(movement_slices as u64, vec![
+                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                        Wait(dur::Fixed(movement_overlap_duration)),
+                    ]),
+                    HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                    ReleaseKeys(vec![Key::Space, Key::W]),
+                ]);
             }
             1 => {
                 // Move forwards while jumping
-                send_keystroke(Key::W, KeyMode::Hold);
-                send_keystroke(Key::Space, KeyMode::Hold);
-                std::thread::sleep(std::time::Duration::from_millis(
-                    self.rng.gen_range(1000..4000),
-                ));
-                send_keystroke(Key::Space, KeyMode::Release);
-                send_keystroke(Key::W, KeyMode::Release);
+                play!(self.movement => [
+                    HoldKeys(vec![Key::W, Key::Space]),
+                    Wait(dur::Random(1000..4000)),
+                    ReleaseKeys(vec![Key::Space, Key::W]),
+                ]);
             }
             2 => {
-                // Move forwards in a slalom pattern
-                let slalom_switch_duration =
-                    std::time::Duration::from_millis(self.rng.gen_range(350..650));
+                let slalom_switch_duration = Duration::from_millis(self.rng.gen_range(350..650));
                 let total_slaloms = self.rng.gen_range(4..8);
                 let mut left = self.rng.gen_bool(0.5);
+
+                // Move forwards in a slalom pattern
                 send_keystroke(Key::W, KeyMode::Hold);
                 for _ in 0..total_slaloms {
                     let cond = if left { Key::A } else { Key::D };
