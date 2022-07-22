@@ -10,7 +10,8 @@ use crate::{
     image_analyzer::{Hp, ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
-    platform::{send_keystroke, Key, KeyMode, PlatformAccessor}, play,
+    platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
+    play,
 };
 
 use super::Behavior;
@@ -251,7 +252,7 @@ impl<'a> FarmingBehavior<'_> {
                 let movement_slices = self.rng.gen_range(1..4);
                 let movement_slice_duration = self.rng.gen_range(250_u64..500_u64);
                 let movement_overlap_duration =
-                movement_slice_duration.saturating_sub(rotation_duration);
+                    movement_slice_duration.saturating_sub(rotation_duration);
 
                 // Move into a random direction while jumping
                 play!(self.movement => [

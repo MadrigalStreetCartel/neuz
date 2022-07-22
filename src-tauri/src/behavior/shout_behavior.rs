@@ -9,6 +9,7 @@ use crate::{
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
     platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
+    play,
 };
 
 use super::Behavior;
@@ -66,6 +67,8 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
 
 impl<'a> ShoutBehavior<'_> {
     fn shout(&mut self, _config: &ShoutConfig) {
+        use crate::movement::prelude::*;
+
         // Return early if time since last shout is less than shout interval
         if Instant::now()
             .duration_since(self.last_shout_time)
@@ -87,20 +90,23 @@ impl<'a> ShoutBehavior<'_> {
         // Log message
         slog::debug!(self.logger, "Shouting"; "message" => &message);
 
-        // Open chatbox
-        send_keystroke(Key::Enter, KeyMode::Press);
-        std::thread::sleep(Duration::from_millis(self.rng.gen_range(100..250)));
+        // Play movement
+        play!(self.movement => [
+            // Open chatbox
+            PressKey(Key::Enter),
+            Wait(dur::Random(100..250)),
 
-        // Write message
-        send_message(message.as_ref());
+            // Type message
+            Type(message.to_string()),
 
-        // Send it
-        send_keystroke(Key::Enter, KeyMode::Press);
-        std::thread::sleep(Duration::from_millis(self.rng.gen_range(100..250)));
+            // Send message
+            PressKey(Key::Enter),
+            Wait(dur::Random(100..250)),
 
-        // Closing chatbox
-        send_keystroke(Key::Escape, KeyMode::Press);
-        std::thread::sleep(Duration::from_millis(100));
+            // Close chatbox
+            PressKey(Key::Escape),
+            Wait(dur::Fixed(100)),
+        ]);
 
         // Update last shout time
         self.last_shout_time = Instant::now();
