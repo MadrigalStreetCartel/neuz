@@ -60,12 +60,14 @@ If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Sk
 
 | Slot Symbol | Flyff Equivalent |
 | ----------- | ---------------- |
-| 🍔         | Food Item        |
+| 🍔         | Food             |
+| 💊         | Pill             |
 | 🐶         | Pickup Pet       |
+| ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
 | 🗡️         | Attack Skill     |
 | 🪄         | Buff Skill       |
 | ✈️         | Board/Mount      |
-| 💊         | Pill             |
+
 
 ## Support Automation / AutoShout
 Not yet implemented. Keep your eyes peeled for an update.
