@@ -3,7 +3,8 @@ import styled from 'styled-components'
 import BooleanSlider from './BooleanSlider'
 import ConfigLabel from './ConfigLabel'
 import ConfigPanel from './ConfigPanel'
-import ConfigRow from './ConfigRow'
+import ConfigTable from './ConfigTable'
+import ConfigTableRow from './ConfigTableRow'
 
 import SlotBar from '../SlotBar'
 import { FarmingConfigModel, SlotBarModel, SlotModel, SlotType } from '../../models/BotConfig'
@@ -30,22 +31,24 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
         <>
             <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
             <ConfigPanel>
-                <ConfigRow>
-                    <BooleanSlider value={config.on_demand_pet ?? false} onChange={value => onChange?.({ ...config, on_demand_pet: value })} />
-                    <ConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically. Make sure the pet is NOT summoned before starting." />
-                </ConfigRow>
-                <ConfigRow>
-                    <BooleanSlider value={config.use_attack_skills ?? false} onChange={value => onChange?.({ ...config, use_attack_skills: value })} />
-                    <ConfigLabel name="Use Skills to Attack" helpText="Enables the use of skills configured in the action slot to attack. DO NOT ACTIVATE unless you got a Refresher Hold or Vital Drink X active (depending on whether it's an MP or FP skill)." />
-                </ConfigRow>
-                <ConfigRow>
-                    <BooleanSlider value={config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />
-                    <ConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />
-                </ConfigRow>
-                <ConfigRow>
-                    <BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />
-                    <ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move. Makes farming a bit slower, but also safer." />
-                </ConfigRow>
+                <ConfigTable>
+                    <ConfigTableRow
+                        label={<ConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically. Make sure the pet is NOT summoned before starting." />}
+                        item={<BooleanSlider value={config.on_demand_pet ?? false} onChange={value => onChange?.({ ...config, on_demand_pet: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Use Skills to Attack" helpText="Enables the use of skills configured in the action slot to attack. DO NOT ACTIVATE unless you got a Refresher Hold or Vital Drink X active (depending on whether it's an MP or FP skill)." />}
+                        item={<BooleanSlider value={config.use_attack_skills ?? false} onChange={value => onChange?.({ ...config, use_attack_skills: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />}
+                        item={<BooleanSlider value={config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move. Makes farming a bit slower, but also safer." />}
+                        item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
+                    />
+                </ConfigTable>
             </ConfigPanel>
         </>
     )
