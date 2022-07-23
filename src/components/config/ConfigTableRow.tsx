@@ -3,7 +3,12 @@ import styled from 'styled-components'
 type Props = {
     label: React.ReactNode,
     item: React.ReactNode,
-    layout?: "h" | "v"
+    layout?: "h" | "v",
+    disabled?: boolean,
+}
+
+type ItemProps = {
+    disabled: boolean,
 }
 
 const Label = styled.td`
@@ -17,14 +22,20 @@ const FlexLabel = styled.td`
     padding: .25rem 0;
 `
 
-const Item = styled.td`
+const Item = styled.td<ItemProps>`
     display: flex;
     justify-content: flex-end;
     align-items: flex-start;
     padding: .25rem 0;
+
+    &[disabled] {
+        opacity: .5;
+        filter: grayscale(100%);
+        pointer-events: none;
+    }
 `
 
-const ConfigTableRow = ({ label, item, layout = "h" }: Props) => {
+const ConfigTableRow = ({ label, item, layout = "h", disabled = false }: Props) => {
     return (
         <>
             {layout === "h" && (
@@ -33,7 +44,7 @@ const ConfigTableRow = ({ label, item, layout = "h" }: Props) => {
             {layout === "v" && (
                 <FlexLabel>{label}</FlexLabel>
             )}
-            <Item>{item}</Item>
+            <Item disabled={disabled}>{item}</Item>
         </>
     )
 }

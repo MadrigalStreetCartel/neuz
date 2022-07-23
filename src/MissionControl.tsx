@@ -15,6 +15,7 @@ import ImageShout from './assets/btn_shout.png'
 import { BotConfigModel, ModeModel } from './models/BotConfig'
 import FarmingConfig from "./components/config/FarmingConfig"
 import ShoutConfig from "./components/config/ShoutConfig"
+import Footer from "./components/Footer"
 
 type Bounds = {x: number, y: number, w: number, h: number}
 
@@ -112,6 +113,8 @@ const MissionControl = ({ className }: Props) => {
                     <div className="enemy-target" style={{ left: `${x}px`, top: `${y}px` }} />
                 ))}
             </div> */}
+
+            <Footer />
         </div>
     )
 }
@@ -124,6 +127,7 @@ export default styled(MissionControl)`
     justify-content: flex-start;
     overflow: auto;
     padding: 1rem 0;
+    padding-bottom: 0;
 
     & .vstack {
         display: flex;

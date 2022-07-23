@@ -41,11 +41,12 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<BooleanSlider value={config.use_attack_skills ?? false} onChange={value => onChange?.({ ...config, use_attack_skills: value })} />}
                     />
                     <ConfigTableRow
+                        disabled={config.unsupervised === true}
                         label={<ConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />}
-                        item={<BooleanSlider value={config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
+                        item={<BooleanSlider value={config.unsupervised === true ? false : config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
                     />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move. Makes farming a bit slower, but also safer." />}
+                        label={<ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move too far. Makes farming a bit slower, but also safer. Enabling this will override the 'Stay in Area' setting." />}
                         item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
                     />
                 </ConfigTable>
