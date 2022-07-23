@@ -3,31 +3,35 @@ import styled from 'styled-components'
 import BooleanSlider from './BooleanSlider'
 import ConfigLabel from './ConfigLabel'
 import ConfigPanel from './ConfigPanel'
-import ConfigRow from './ConfigRow'
 
 import NumericInput from './NumericInput'
 import StringList from './StringList'
 
 import { ShoutConfigModel, SlotBarModel, SlotModel, SlotType } from '../../models/BotConfig'
+import ConfigTable from './ConfigTable'
+import ConfigTableRow from './ConfigTableRow'
 
 type Props = {
-    className?: string,
     config: ShoutConfigModel,
     onChange?: (config: ShoutConfigModel) => void,
 }
 
-const ShoutConfig = ({ className, config, onChange }: Props) => {
+const ShoutConfig = ({ config, onChange }: Props) => {
     return (
         <>
             <ConfigPanel>
-                <ConfigRow reversed>
-                    <ConfigLabel name="Messages" helpText="Add messages to the list to shout multiple messages. One message per line." />
-                    <StringList messages={config.shout_messages ?? []} onChange={value => onChange?.({ ...config, shout_messages: value })} />
-                </ConfigRow>
-                <ConfigRow>
-                    <ConfigLabel name="Interval" helpText="Interval between shouts in milliseconds." />
-                    <NumericInput unit="ms" value={config.shout_interval ?? 30000} onChange={value => onChange?.({ ...config, shout_interval: value })} />
-                </ConfigRow>
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Messages" helpText="Add messages to the list to shout multiple messages. One message per line." />}
+                        item={<StringList messages={config.shout_messages ?? []} onChange={value => onChange?.({ ...config, shout_messages: value })} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Interval" helpText="Interval between shouts in milliseconds." />}
+                        item={<NumericInput unit="ms" value={config.shout_interval ?? 30000} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
+                    />
+                </ConfigTable>
                 {/* <ConfigRow>
                     <BooleanSlider value={config.shout_enabled ?? false} onChange={value => onChange?.({ ...config, shout_enabled: value })} />
                     <ConfigLabel name="Enable shouting" helpText="" />
@@ -37,5 +41,4 @@ const ShoutConfig = ({ className, config, onChange }: Props) => {
     )
 }
 
-export default styled(ShoutConfig)`
-`
+export default ShoutConfig;

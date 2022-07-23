@@ -27,7 +27,7 @@ export default styled(SlotBar)`
     gap: .25rem;
     background: hsla(0,0%,0%,.75);
     backdrop-filter: blur(.5rem);
-    padding: .5rem 2.5rem .75rem 2.5rem;
+    padding: .5rem 2.5rem 1rem 2.5rem;
     border-radius: 100rem;
     border: 1px solid hsl(48,58%,43%);
 `

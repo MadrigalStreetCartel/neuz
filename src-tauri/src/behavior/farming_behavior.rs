@@ -92,6 +92,42 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl<'a> FarmingBehavior<'_> {
+    /// Pickup items on the ground.
+    fn pickup_items(&mut self, config: &FarmingConfig) {
+        use crate::movement::prelude::*;
+
+        let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
+        let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
+
+        match (config.should_use_on_demand_pet(), pickup_pet_slot, pickup_motion_slot) {
+            // Pickup using pet
+            (true, Some(index), _) => {
+                play!(self.movement => [
+                    // Summon pet
+                    PressKey(index.into()),
+                    // Wait a bit to make sure everything is picked up
+                    Wait(dur::Fixed(2000)),
+                    // Unsummon pet
+                    PressKey(index.into()),
+                ]);
+            }
+            // Pickup using motion
+            (false, _, Some(index)) => {
+                play!(self.movement => [
+                    Repeat(6, vec![
+                        // Press the motion key
+                        PressKey(index.into()),
+                        // Wait a bit
+                        Wait(dur::Random(200..300)),
+                    ]),
+                ]);
+            },
+            _ => {
+                // Do nothing, we have no way to pickup items
+            }
+        }
+    }
+
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
@@ -212,9 +248,10 @@ impl<'a> FarmingBehavior<'_> {
         // Check if we are running fully unsupervised
         if config.is_unsupervised() {
             // Rotate in random direction for a random duration
-            self.movement.schedule(|movement| {
-                movement.play(&[Rotate(rot::Random, dur::Random(100..250))]);
-            });
+            play!(self.movement => [
+                Rotate(rot::Random, dur::Random(100..300)),
+                Wait(dur::Random(100..300)),
+            ]);
             self.rotation_movement_tries += 1;
 
             // Transition to next state
@@ -440,17 +477,8 @@ impl<'a> FarmingBehavior<'_> {
         self.kill_count += 1;
         self.last_kill_time = Instant::now();
 
-        // Check for on-demand pet config
-        if config.should_use_on_demand_pet() {
-            if let Some(index) = config.get_slot_index(SlotType::PickupPet) {
-                // Summon pet
-                send_keystroke(index.into(), KeyMode::Press);
-                // Wait half a second to make sure everything is picked up
-                std::thread::sleep(Duration::from_millis(2000));
-                // Unsummon pet
-                send_keystroke(index.into(), KeyMode::Press);
-            }
-        }
+        // Pickup items
+        self.pickup_items(config);
 
         // Check if we're running in unsupervised mode
         if config.is_unsupervised() {

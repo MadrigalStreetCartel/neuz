@@ -8,6 +8,7 @@ pub enum SlotType {
     Unused,
     Food,
     PickupPet,
+    PickupMotion,
     AttackSkill,
     BuffSkill,
     Flying,
@@ -82,10 +83,6 @@ impl FarmingConfig {
         self.slots
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
-    }
-
-    pub fn farming_enabled(&self) -> bool {
-        self.farming_enabled.unwrap_or(true)
     }
 
     /// Get the first matching slot index

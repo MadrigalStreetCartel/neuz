@@ -1,6 +1,7 @@
 import styled from 'styled-components'
 
 import { SlotType } from '../models/BotConfig'
+import IconMotionPickup from '../assets/icon_motion_pickup.png'
 
 const SLOT_SIZE_PX = 40;
 
@@ -11,17 +12,31 @@ type Props = {
     onChange?: (type: SlotType) => void,
 }
 
-const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'AttackSkill', 'BuffSkill', 'Flying']
+const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
 
 const translateType = (type: SlotType) => {
     switch (type) {
         case 'Unused': return ''
         case 'Food': return '🍔'
-        case 'PickupPet': return '🐶'
-        case 'AttackSkill': return '🗡️'
-        case 'BuffSkill': return '🪄' 
-        case 'Flying': return '✈️'
         case 'Pill': return '💊'
+        case 'PickupPet': return '🐶'
+        case 'PickupMotion': return IconMotionPickup
+        case 'AttackSkill': return '🗡️'
+        case 'BuffSkill': return '🪄'
+        case 'Flying': return '✈️'
+    }
+}
+
+const translateDesc = (type: SlotType) => {
+    switch (type) {
+        case 'Unused': return ''
+        case 'Food': return 'Food'
+        case 'Pill': return 'Pill'
+        case 'PickupPet': return 'Pet'
+        case 'PickupMotion': return 'Pickup'
+        case 'AttackSkill': return 'Attack'
+        case 'BuffSkill': return 'Buff'
+        case 'Flying': return 'Board'
     }
 }
 
@@ -31,10 +46,19 @@ const Slot = ({ className, type = 'Unused', index, onChange }: Props) => {
         onChange?.(nextType)
     }
 
+    const symbolOrIcon = translateType(type)
+    const useIcon = symbolOrIcon.startsWith('data:');
+
     return (
         <div className={className} onClick={handleChange}>
             <div className="index">{index}</div>
-            <div className="type">{translateType(type)}</div>
+            {useIcon && (
+                <img className="type" src={symbolOrIcon} alt="Slot icon" />
+            )}
+            {!useIcon && (
+                <div className="type">{translateType(type)}</div>
+            )}
+            <div className="desc">{translateDesc(type)}</div>
         </div>
     )
 }
@@ -51,7 +75,7 @@ export default styled(Slot)`
     position: relative;
     margin-top: .5rem;
     cursor: pointer;
-    
+
     &:first-child {
         order: 1;
     }
@@ -63,16 +87,34 @@ export default styled(Slot)`
 
     & .index {
         position: absolute;
-        top: -${SLOT_SIZE_PX / 3}px;
+        top: calc(-${SLOT_SIZE_PX / 3}px - 0.2rem);
         width: 100%;
         text-align: center;
-        font-size: 1rem;
+        font-size: 0.75rem;
         color: hsl(48,75%,75%);
         text-shadow: 0 0 4px black;
     }
 
-    & .type {
+    & .desc {
+        position: absolute;
+        bottom: calc(-${SLOT_SIZE_PX / 3}px - 0.1rem);
+        width: 100%;
+        text-align: center;
+        font-size: .75rem;
+        color: hsl(48,75%,75%);
+        text-shadow: 0 0 4px black;
+    }
+
+    & div.type {
         color: white;
         font-size: 1.5rem;
+    }
+
+    & img.type {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: .25rem;
+        border-radius: .25rem;
     }
 `
