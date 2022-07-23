@@ -49,8 +49,6 @@
     "@types/node": "^16.7.13",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@types/react-icons": "^3.0.0",
-    "@types/recoil": "^0.0.9",
     "@types/styled-components": "^5.1.25",
     "cross-env": "^7.0.3"
   }
