@@ -114,11 +114,11 @@ impl<'a> FarmingBehavior<'_> {
             // Pickup using motion
             (false, _, Some(index)) => {
                 play!(self.movement => [
-                    Repeat(6, vec![
+                    Repeat(5, vec![
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(200..300)),
+                        Wait(dur::Random(350..750)),
                     ]),
                 ]);
             },
