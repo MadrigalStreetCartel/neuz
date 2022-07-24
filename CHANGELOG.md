@@ -6,6 +6,17 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.12.0**
+> Released on 24.07.2022
+
+- Adds experimental unsupervised mode
+- Adds pickup support without pickup pet
+- Improves user interface
+  - Includes updated slot configurator with labels
+  - Includes better user interface interactions
+  - Adds footer with quick access to Discord and GitHub
+- Improves movement backend and code architecture
+
 **0.11.0**
 > Released on 20.07.2022
 
