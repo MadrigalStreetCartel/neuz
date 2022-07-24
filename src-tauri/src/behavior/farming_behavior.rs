@@ -7,7 +7,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{Hp, ImageAnalyzer},
+    image_analyzer::{Stat, ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -32,8 +32,8 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
-    last_hp: Hp,
-    last_food_hp: Hp,
+    last_hp: Stat,
+    last_food_hp: Stat,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
     last_attack_skill_usage_time: Instant,
@@ -56,8 +56,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            last_hp: Hp::default(),
-            last_food_hp: Hp::default(),
+            last_hp: Stat::default(),
+            last_food_hp: Stat::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
@@ -76,6 +76,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
         let config = config.farming_config();
 
+        //DEBUG PURPOSE
+        self.debug_stats_bar(config,image);
         // Check whether food should be consumed
         self.check_food(config, image);
 
@@ -127,20 +129,38 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
     }
+    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer){
+        let fp  = image.detect_stats_bar(self.last_hp,"FP");
+        let fpp = fp.unwrap_or_default();
 
+        let mp  = image.detect_stats_bar(self.last_hp,"MP");
+        let mpp = mp.unwrap_or_default();
+
+        let hp  = image.detect_stats_bar(self.last_hp,"HP");
+        let hpp = hp.unwrap_or_default();
+
+        let exp  = image.detect_stats_bar(self.last_hp,"EXP");
+        let expp = exp.unwrap_or_default();
+
+        slog::debug!(self.logger,  "Trying to Bars ",   ; " " => "");
+        slog::debug!(self.logger,  "Trying to detect FP ",   ; "FP PERCENT " => fpp.value);
+        slog::debug!(self.logger,  "Trying to detect MP ",   ; "MP PERCENT " => mpp.value);
+        slog::debug!(self.logger,  "Trying to detect HP ",   ; "HP PERCENT " => hpp.value);
+        slog::debug!(self.logger,  "Trying to detect EXP ",   ; "EXP PERCENT " => expp.value);
+    }
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
-        match image.detect_hp(self.last_hp) {
+        match image.detect_stats_bar(self.last_hp,"HP") {
             // HP bar detected, use HP-based potting logic
             Some(hp) => {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
                 // If HP is < 15% we need to use food ASAP.
-                let hp_threshold_reached = hp.hp <= 75;
-                let hp_critical_threshold_reached = hp.hp <= 15;
+                let hp_threshold_reached = hp.value <= 75;
+                let hp_critical_threshold_reached = hp.value <= 15;
 
                 // Calculate ms since last food usage
                 let ms_since_last_food = Instant::now()
@@ -467,7 +487,11 @@ impl<'a> FarmingBehavior<'_> {
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {
+                use crate::movement::prelude::*;
                 // Lost target without attacking?
+                play!(self.movement => [
+                    Wait(dur::Random(1000..2000)),
+                ]);
                 State::SearchingForEnemy
             }
         }
