@@ -10,23 +10,39 @@ use crate::{
 };
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct Hp {
+pub struct Stat {
     pub max_w: u32,
-    pub hp: u32,
+    pub value: u32,
 }
 
-impl PartialEq for Hp {
+impl PartialEq for Stat {
     fn eq(&self, other: &Self) -> bool {
-        self.hp == other.hp
+        self.value == other.value
     }
 }
 
-impl PartialOrd for Hp {
+impl PartialOrd for Stat {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.hp.cmp(&other.hp))
+        Some(self.value.cmp(&other.value))
+    }
+}
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Bar {
+    pub max_search_x:u32,
+    pub max_search_y:u32,
+    pub refs: [[u8; 3]; 4],
+}
+
+impl PartialEq for Bar {
+    fn eq(&self, other: &Self) -> bool {
+        self.refs == other.refs && self.max_search_x == other.max_search_x
     }
 }
 
+const HP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]]};
+const MP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[20, 84, 196], [36, 132, 220], [44, 164, 228], [56, 188, 232]]};
+const FP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]]};
+const EXP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[48, 185, 244], [128, 212, 245], [52, 196, 252], [92, 236, 252]]};
 pub struct ImageAnalyzer {
     image: ImageBuffer,
 }
@@ -243,10 +259,19 @@ impl ImageAnalyzer {
         }
     }
 
-    pub fn detect_hp(&self, last_hp: Hp) -> Option<Hp> {
-        const MAX_SEARCH_X: u32 = 310;
-        const MAX_SEARCH_Y: u32 = 120;
-        let refs: [[u8; 3]; 4] = [[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]];
+    pub fn detect_stats_bar(&self, last_hp: Stat,bar_name:&str) -> Option<Stat> {
+       let bar_option: Option<Bar> = match bar_name  {
+            "HP" => Some(HP_BAR),
+            "MP" => Some(MP_BAR),
+            "FP" => Some(FP_BAR),
+            "EXP" => Some(EXP_BAR),
+            &_ => None,
+        };
+
+        let bar = bar_option.unwrap_or_default();
+        if bar == Default::default() {
+            return None;
+        }
 
         let (snd, recv) = sync_channel::<Point>(4096);
         self.image
@@ -256,15 +281,15 @@ impl ImageAnalyzer {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if y <= IGNORE_AREA_TOP
                     || y > self.image.height() - IGNORE_AREA_BOTTOM
-                    || y > IGNORE_AREA_TOP + MAX_SEARCH_Y
+                    || y > IGNORE_AREA_TOP + bar.max_search_y
                 {
                     return;
                 }
                 'outer: for (x, _, px) in row {
-                    if px.0[3] != 255 || x >= MAX_SEARCH_X {
+                    if px.0[3] != 255 || x >= bar.max_search_x {
                         return;
                     }
-                    for ref_color in refs.iter() {
+                    for ref_color in bar.refs.iter() {
                         if Self::pixel_matches(&px.0, &ref_color, 5) {
                             #[allow(clippy::drop_copy)]
                             drop(snd.send(Point::new(x, y)));
@@ -290,9 +315,9 @@ impl ImageAnalyzer {
         let max_w = bounds.w.max(last_hp.max_w);
         let hp_frac = bounds.w as f32 / max_w as f32;
         let hp_scaled = ((hp_frac * 100_f32) as u32).max(0).min(100);
-        let hp = Hp {
+        let hp = Stat {
             max_w,
-            hp: hp_scaled,
+            value: hp_scaled,
         };
 
         Some(hp)
