@@ -7,7 +7,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{Stat, ImageAnalyzer},
+    image_analyzer::{ImageAnalyzer, Stat, StatusBar},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -33,6 +33,9 @@ pub struct FarmingBehavior<'a> {
     movement: &'a MovementAccessor<'a>,
     state: State,
     last_hp: Stat,
+    last_fp: Stat,
+    last_mp: Stat,
+    last_xp: Stat,
     last_food_hp: Stat,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
@@ -57,6 +60,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
             last_hp: Stat::default(),
+            last_fp: Stat::default(),
+            last_mp: Stat::default(),
+            last_xp: Stat::default(),
             last_food_hp: Stat::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
@@ -77,7 +83,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         let config = config.farming_config();
 
         //DEBUG PURPOSE
-        self.debug_stats_bar(config,image);
+        self.debug_stats_bar(config, image);
         // Check whether food should be consumed
         self.check_food(config, image);
 
@@ -101,7 +107,11 @@ impl<'a> FarmingBehavior<'_> {
         let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
         let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
 
-        match (config.should_use_on_demand_pet(), pickup_pet_slot, pickup_motion_slot) {
+        match (
+            config.should_use_on_demand_pet(),
+            pickup_pet_slot,
+            pickup_motion_slot,
+        ) {
             // Pickup using pet
             (true, Some(index), _) => {
                 play!(self.movement => [
@@ -123,30 +133,28 @@ impl<'a> FarmingBehavior<'_> {
                         Wait(dur::Random(350..750)),
                     ]),
                 ]);
-            },
+            }
             _ => {
                 // Do nothing, we have no way to pickup items
             }
         }
     }
-    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer){
-        let fp  = image.detect_stats_bar(self.last_hp,"FP");
-        let fpp = fp.unwrap_or_default();
+    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
+        // Getting all stats
+        self.last_fp = image.detect_stats_bar(self.last_fp, StatusBar::Fp).unwrap();
 
-        let mp  = image.detect_stats_bar(self.last_hp,"MP");
-        let mpp = mp.unwrap_or_default();
+        self.last_mp = image.detect_stats_bar(self.last_mp, StatusBar::Mp).unwrap();
 
-        let hp  = image.detect_stats_bar(self.last_hp,"HP");
-        let hpp = hp.unwrap_or_default();
+        self.last_hp = image.detect_stats_bar(self.last_hp, StatusBar::Hp).unwrap();
 
-        let exp  = image.detect_stats_bar(self.last_hp,"EXP");
-        let expp = exp.unwrap_or_default();
+        self.last_xp = image.detect_stats_bar(self.last_xp, StatusBar::Xp).unwrap();
 
-        slog::debug!(self.logger,  "Trying to Bars ",   ; " " => "");
-        slog::debug!(self.logger,  "Trying to detect FP ",   ; "FP PERCENT " => fpp.value);
-        slog::debug!(self.logger,  "Trying to detect MP ",   ; "MP PERCENT " => mpp.value);
-        slog::debug!(self.logger,  "Trying to detect HP ",   ; "HP PERCENT " => hpp.value);
-        slog::debug!(self.logger,  "Trying to detect EXP ",   ; "EXP PERCENT " => expp.value);
+        // Print them
+        slog::debug!(self.logger,  "Getting stats ",   ; " " => "");
+        slog::debug!(self.logger,  "Trying to detect FP ",   ; "FP PERCENT " =>  self.last_fp.value);
+        slog::debug!(self.logger,  "Trying to detect MP ",   ; "MP PERCENT " => self.last_mp.value);
+        slog::debug!(self.logger,  "Trying to detect HP ",   ; "HP PERCENT " => self.last_hp.value);
+        slog::debug!(self.logger,  "Trying to detect EXP ",   ; "EXP PERCENT " => self.last_xp.value);
     }
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
@@ -154,7 +162,7 @@ impl<'a> FarmingBehavior<'_> {
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
-        match image.detect_stats_bar(self.last_hp,"HP") {
+        match image.detect_stats_bar(self.last_hp, StatusBar::Hp) {
             // HP bar detected, use HP-based potting logic
             Some(hp) => {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
