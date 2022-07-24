@@ -39,6 +39,23 @@ pub struct StatusBarConfig {
     pub max_search_y: u32,
     pub refs: [[u8; 3]; 4],
 }
+impl Bar {
+    pub fn new(colors: [[u8; 3]; 4]) -> Self {
+        Self {
+            refs: colors,
+            ..Default::default()
+        }
+    }
+}
+impl Default for Bar {
+    fn default() -> Self {
+        Self {
+            max_search_x: 310,
+            max_search_y: 120,
+            refs: [[0; 3]; 4],
+        }
+    }
+}
 
 impl StatusBarConfig {
     pub fn new(colors: [[u8; 3]; 4]) -> Self {
@@ -92,10 +109,36 @@ impl PartialEq for StatusBarConfig {
     }
 }
 
-const HP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]]};
-const MP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[20, 84, 196], [36, 132, 220], [44, 164, 228], [56, 188, 232]]};
-const FP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]]};
-const EXP_BAR:Bar = Bar{max_search_x:310,max_search_y:120,refs:[[48, 185, 244], [128, 212, 245], [52, 196, 252], [92, 236, 252]]};
+const HP_BAR: Bar = Bar {
+    max_search_x: 310,
+    max_search_y: 120,
+    refs: [[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]],
+};
+const MP_BAR: Bar = Bar {
+    max_search_x: 310,
+    max_search_y: 120,
+    refs: [
+        [20, 84, 196],
+        [36, 132, 220],
+        [44, 164, 228],
+        [56, 188, 232],
+    ],
+};
+const FP_BAR: Bar = Bar {
+    max_search_x: 310,
+    max_search_y: 120,
+    refs: [[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]],
+};
+const XP_BAR: Bar = Bar {
+    max_search_x: 310,
+    max_search_y: 120,
+    refs: [
+        [48, 185, 244],
+        [128, 212, 245],
+        [52, 196, 252],
+        [92, 236, 252],
+    ],
+};
 pub struct ImageAnalyzer {
     image: ImageBuffer,
 }

@@ -143,9 +143,9 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
     }
-    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer){
-        let fp  = image.detect_stats_bar(self.last_hp,"FP");
-        let fpp = fp.unwrap_or_default();
+    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
+        // Getting all stats
+        self.last_fp = image.detect_stats_bar(self.last_fp, StatusBar::Fp).unwrap();
 
     /// Print debug info for stat detection
     #[cfg(debug_assertions)]
