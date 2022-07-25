@@ -10,6 +10,7 @@ pub enum MobType {
 pub enum TargetType {
     Mob(MobType),
     TargetMarker,
+    StatsBar,
 }
 
 /// A target in 2D space.
