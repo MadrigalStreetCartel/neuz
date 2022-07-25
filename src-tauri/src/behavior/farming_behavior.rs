@@ -7,7 +7,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{ImageAnalyzer, Stat, StatusBar},
+    image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -32,17 +32,18 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
-    last_hp: Stat,
-    last_fp: Stat,
-    last_mp: Stat,
-    last_xp: Stat,
-    last_food_hp: Stat,
+    last_hp: StatInfo,
+    last_fp: StatInfo,
+    last_mp: StatInfo,
+    last_xp: StatInfo,
+    last_food_hp: StatInfo,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
     last_attack_skill_usage_time: Instant,
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
     rotation_movement_tries: u32,
+    hp_bar_not_detected_warn_count: u32,
     is_attacking: bool,
     kill_count: u32,
 }
@@ -59,16 +60,17 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            last_hp: Stat::default(),
-            last_fp: Stat::default(),
-            last_mp: Stat::default(),
-            last_xp: Stat::default(),
-            last_food_hp: Stat::default(),
+            last_hp: StatInfo::default(),
+            last_fp: StatInfo::default(),
+            last_mp: StatInfo::default(),
+            last_xp: StatInfo::default(),
+            last_food_hp: StatInfo::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
             last_attack_skill_usage_time: Instant::now(),
+            hp_bar_not_detected_warn_count: 0,
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -82,8 +84,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
         let config = config.farming_config();
 
-        //DEBUG PURPOSE
+        // Print debug values for stats
+        #[cfg(debug_assertions)]
         self.debug_stats_bar(config, image);
+
         // Check whether food should be consumed
         self.check_food(config, image);
 
@@ -139,30 +143,31 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
     }
-    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
-        // Getting all stats
-        self.last_fp = image.detect_stats_bar(self.last_fp, StatusBar::Fp).unwrap();
 
-        self.last_mp = image.detect_stats_bar(self.last_mp, StatusBar::Mp).unwrap();
-
-        self.last_hp = image.detect_stats_bar(self.last_hp, StatusBar::Hp).unwrap();
-
-        self.last_xp = image.detect_stats_bar(self.last_xp, StatusBar::Xp).unwrap();
-
-        // Print them
-        slog::debug!(self.logger,  "Getting stats ",   ; " " => "");
-        slog::debug!(self.logger,  "Trying to detect FP ",   ; "FP PERCENT " =>  self.last_fp.value);
-        slog::debug!(self.logger,  "Trying to detect MP ",   ; "MP PERCENT " => self.last_mp.value);
-        slog::debug!(self.logger,  "Trying to detect HP ",   ; "HP PERCENT " => self.last_hp.value);
-        slog::debug!(self.logger,  "Trying to detect EXP ",   ; "EXP PERCENT " => self.last_xp.value);
+    /// Print debug info for stat detection
+    #[cfg(debug_assertions)]
+    fn debug_stats_bar(&mut self, _config: &FarmingConfig, image: &ImageAnalyzer) {
+        if let Some(hp) = image.detect_status_bar(self.last_hp, StatusBarKind::Hp) {
+            slog::debug!(self.logger, "Detecting stat value"; "kind" => "hp", "value" => hp.value);
+        }
+        if let Some(fp) = image.detect_status_bar(self.last_fp, StatusBarKind::Fp) {
+            slog::debug!(self.logger, "Detecting stat value"; "kind" => "fp", "value" => fp.value);
+        }
+        if let Some(mp) = image.detect_status_bar(self.last_mp, StatusBarKind::Mp) {
+            slog::debug!(self.logger, "Detecting stat value"; "kind" => "mp", "value" => mp.value);
+        }
+        if let Some(xp) = image.detect_status_bar(self.last_xp, StatusBarKind::Xp) {
+            slog::debug!(self.logger, "Detecting stat value"; "kind" => "xp", "value" => xp.value);
+        }
     }
+
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
-        match image.detect_stats_bar(self.last_hp, StatusBar::Hp) {
+        match image.detect_status_bar(self.last_hp, StatusBarKind::Hp) {
             // HP bar detected, use HP-based potting logic
             Some(hp) => {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
@@ -237,6 +242,18 @@ impl<'a> FarmingBehavior<'_> {
             // HP bar not found, use legacy potting logic
             // => Pot every 5 seconds and only while in a fight
             None => {
+                // Log warning to sentry, but prevent flooding the logs
+                if self.hp_bar_not_detected_warn_count <= 1000
+                    && self.hp_bar_not_detected_warn_count % 100 == 0
+                {
+                    slog::warn!(
+                        self.logger, "No HP bar detected, using fallback logic";
+                        "occurrence_count" => self.hp_bar_not_detected_warn_count + 1,
+                        "hp_bar_detected_before" => self.last_hp.value != 0
+                    );
+                    self.hp_bar_not_detected_warn_count += 1;
+                }
+
                 if self.is_attacking
                     && current_time.duration_since(self.last_initial_attack_time)
                         > min_pot_time_diff
