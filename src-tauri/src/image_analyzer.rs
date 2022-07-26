@@ -9,7 +9,7 @@ use crate::{
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug, Default, Clone,Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
     #[default]
     Hp,
@@ -50,24 +50,6 @@ pub struct StatusBarConfig {
     pub max_search_y: u32,
     pub refs: [[u8; 3]; 4],
 }
-impl Bar {
-    pub fn new(colors: [[u8; 3]; 4]) -> Self {
-        Self {
-            refs: colors,
-            ..Default::default()
-        }
-    }
-}
-impl Default for Bar {
-    fn default() -> Self {
-        Self {
-            max_search_x: 310,
-            max_search_y: 120,
-            refs: [[0; 3]; 4],
-        }
-    }
-}
-
 impl StatusBarConfig {
     pub fn new(colors: [[u8; 3]; 4]) -> Self {
         Self {
