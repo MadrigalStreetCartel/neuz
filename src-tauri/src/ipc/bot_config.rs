@@ -7,12 +7,14 @@ use serde::{Deserialize, Serialize};
 pub enum SlotType {
     Unused,
     Food,
+    Pill,
+    Refresher,
+    VitalDrink,
     PickupPet,
     PickupMotion,
     AttackSkill,
     BuffSkill,
     Flying,
-    Pill,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
