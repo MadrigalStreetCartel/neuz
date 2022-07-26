@@ -10,7 +10,7 @@ use crate::{
     utils::Timer,
 };
 
-#[derive(Debug, Clone ,Copy, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum StatusBar {
     Hp,
     Mp,
@@ -99,7 +99,7 @@ const XP_BAR: Bar = Bar {
 pub struct ImageAnalyzer {
     image: ImageBuffer,
 }
-#[derive(Debug,  Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct DetectionTarget(u32, u32, TargetType);
 #[derive(Debug, Clone)]
 pub struct Color {
@@ -146,7 +146,12 @@ impl ImageAnalyzer {
         Self { image }
     }
 
-    pub fn find_color(&self, color_set: ColorSet, analyze_zone: Option<AnalyzeZone>,tolerance:u8) -> (PointCloud, Vec<DetectionTarget>) {
+    pub fn find_color(
+        &self,
+        color_set: ColorSet,
+        analyze_zone: Option<AnalyzeZone>,
+        tolerance: u8,
+    ) -> (PointCloud, Vec<DetectionTarget>) {
         let detect_zone: AnalyzeZone = analyze_zone.unwrap_or_default();
         let (snd, recv) = sync_channel::<DetectionTarget>(4096);
         self.image
@@ -154,7 +159,6 @@ impl ImageAnalyzer {
             .par_bridge()
             .for_each(move |(y, row)| {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-
                 if y <= IGNORE_AREA_TOP
                     || y > self.image.height() - IGNORE_AREA_BOTTOM
                     || (detect_zone.max_y > 0 && y > IGNORE_AREA_TOP + detect_zone.max_y)
@@ -168,14 +172,15 @@ impl ImageAnalyzer {
 
                 for (x, _, px) in row {
                     if px.0[3] != 255
-                     ||  (detect_zone.max_x > 0 && x >= detect_zone.max_x)
-                     ||  (detect_zone.start_x > 0 && x <= detect_zone.start_x) // not working, makes the whole return dunno why
+                        || (detect_zone.max_x > 0 && x >= detect_zone.max_x)
+                        || (detect_zone.start_x > 0 && x <= detect_zone.start_x)
+                    // not working, makes the whole return dunno why
                     {
                         //println!("X not passsed X VALUE {} ", x);
                         return;
                     }
                     //println!("X passsed X VALUE {} ", x);
-                       for color in color_set.colors.iter() {
+                    for color in color_set.colors.iter() {
                         if Self::pixel_matches(
                             &px.0,
                             &[color.refs[0], color.refs[1], color.refs[2]],
@@ -192,12 +197,12 @@ impl ImageAnalyzer {
             let mut cloud = PointCloud::default();
             let mut targets: Vec<DetectionTarget> = [].to_vec();
             while let Ok(point) = recv.recv() {
-                cloud.push(Point::new(point.0,point.1));
+                cloud.push(Point::new(point.0, point.1));
                 targets.push(point)
             }
-            (cloud,targets)
+            (cloud, targets)
         };
-        (cloud,targets)
+        (cloud, targets)
     }
 
     fn merge_cloud_into_mobs(
@@ -276,17 +281,19 @@ impl ImageAnalyzer {
                         ref_color_pas[0],
                         ref_color_pas[1],
                         ref_color_pas[2],
-                        |x, y| DetectionTarget(x, y, TargetType::Mob(MobType::Passive))),
+                        |x, y| DetectionTarget(x, y, TargetType::Mob(MobType::Passive)),
+                    ),
                     Color::new(
                         ref_color_agg[0],
                         ref_color_agg[1],
                         ref_color_agg[2],
-                        |x, y| DetectionTarget(x, y, TargetType::Mob(MobType::Aggressive))),
+                        |x, y| DetectionTarget(x, y, TargetType::Mob(MobType::Aggressive)),
+                    ),
                 ]
                 .to_vec(),
             },
             Some(AnalyzeZone::new(0, 0, 0, 0)),
-            2
+            2,
         );
 
         let (snd, recv) = sync_channel::<DetectionTarget>(4096);
@@ -338,7 +345,7 @@ impl ImageAnalyzer {
         // Reference color
         let ref_color: [u8; 3] = [246, 90, 106];
 
-        let (cloud,_) = self.find_color(
+        let (cloud, _) = self.find_color(
             ColorSet {
                 colors: [Color::new(
                     ref_color[0],
@@ -349,11 +356,11 @@ impl ImageAnalyzer {
                 .to_vec(),
             },
             Some(AnalyzeZone::new(0, 0, 0, 0)),
-            2
+            2,
         );
         // Identify target marker entities
         let target_markers =
-            Self::merge_cloud_into_mobs(&PointCloud::new(cloud ), TargetType::TargetMarker, true);
+            Self::merge_cloud_into_mobs(&PointCloud::new(cloud), TargetType::TargetMarker, true);
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
@@ -425,10 +432,10 @@ impl ImageAnalyzer {
                 DetectionTarget(x, y, TargetType::StatsBar)
             }));
         }
-        let (cloud,targets) = self.find_color(
+        let (cloud, targets) = self.find_color(
             ColorSet { colors: colors },
             Some(AnalyzeZone::new(200, 100, 0, 30)),
-            5
+            5,
         );
         // Calculate bounds
         let bounds = cloud.to_bounds();

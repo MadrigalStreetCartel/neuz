@@ -2,6 +2,8 @@ import styled from 'styled-components'
 
 import { SlotType } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
+import IconRefresher from '../assets/icon_Refresher.png'
+import IconVitalDrink from '../assets/icon_VitalDrink.png'
 
 const SLOT_SIZE_PX = 40;
 
@@ -12,13 +14,15 @@ type Props = {
     onChange?: (type: SlotType) => void,
 }
 
-const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
+const types: SlotType[] = ['Unused', 'Food', 'Pill','Refresher', 'VitalDrink', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
 
 const translateType = (type: SlotType) => {
     switch (type) {
         case 'Unused': return ''
         case 'Food': return '🍔'
         case 'Pill': return '💊'
+        case 'Refresher': return IconRefresher
+        case 'VitalDrink': return IconVitalDrink
         case 'PickupPet': return '🐶'
         case 'PickupMotion': return IconMotionPickup
         case 'AttackSkill': return '🗡️'
