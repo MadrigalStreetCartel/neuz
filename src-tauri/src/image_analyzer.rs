@@ -9,8 +9,9 @@ use crate::{
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug)]
+#[derive(Debug, Default, Clone,Copy)]
 pub enum StatusBarKind {
+    #[default]
     Hp,
     Mp,
     Fp,
@@ -107,12 +108,12 @@ impl PartialEq for StatusBarConfig {
     }
 }
 
-const HP_BAR: Bar = Bar {
+const HP_BAR: StatusBarConfig = StatusBarConfig {
     max_search_x: 310,
     max_search_y: 120,
     refs: [[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]],
 };
-const MP_BAR: Bar = Bar {
+const MP_BAR: StatusBarConfig = StatusBarConfig {
     max_search_x: 310,
     max_search_y: 120,
     refs: [
@@ -122,12 +123,12 @@ const MP_BAR: Bar = Bar {
         [56, 188, 232],
     ],
 };
-const FP_BAR: Bar = Bar {
+const FP_BAR: StatusBarConfig = StatusBarConfig {
     max_search_x: 310,
     max_search_y: 120,
     refs: [[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]],
 };
-const XP_BAR: Bar = Bar {
+const XP_BAR: StatusBarConfig = StatusBarConfig {
     max_search_x: 310,
     max_search_y: 120,
     refs: [
