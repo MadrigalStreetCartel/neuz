@@ -7,7 +7,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{self, ImageAnalyzer, Stat, StatusBar},
+    image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -387,6 +387,7 @@ impl<'a> FarmingBehavior<'_> {
             Some(hp) => {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
                 // If HP is < 15% we need to use food ASAP.
+
                 let hp_threshold_reached = hp.value <= threshold_value;
                 let hp_critical_threshold_reached = hp.value <= 50;
 
