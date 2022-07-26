@@ -105,9 +105,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         #[cfg(debug_assertions)]
         self.debug_stats_bar(config, image);
 
-        // Check if bars are displayed
-        self.check_bars_exists();
-
         // Check whether something should be consumed
         if config.get_slot_index(SlotType::Refresher).is_some() {
             self.check_bar(config, image, StatusBarKind::Mp);
@@ -254,25 +251,6 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Xp => {
                 // Well nothing to do
             }
-        }
-    }
-
-    fn check_bars_exists(&mut self) {
-        // Log warning to sentry, but prevent flooding the logs
-        let mut detected = true;
-        if self.last_hp.value == 0 && self.last_mp.value == 0 && self.last_fp.value == 0 {
-            detected = false;
-            slog::warn!(
-                self.logger, "No bars detected, will try to open after 10 times";
-                "occurrence_count" => self.bars_not_detected_warn_count + 1,
-                "bar_detected_before" => self.last_hp.value != 0
-            );
-            self.bars_not_detected_warn_count += 1;
-        }
-        if detected == false && self.bars_not_detected_warn_count == 3 {
-            self.bars_not_detected_warn_count = 0;
-            slog::warn!(self.logger, "Trying to open bar");
-            send_keystroke(Key::T, KeyMode::Press);
         }
     }
 

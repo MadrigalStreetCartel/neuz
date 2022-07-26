@@ -21,10 +21,10 @@ use tauri::{Manager, Window};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior},
-    image_analyzer::ImageAnalyzer,
+    image_analyzer::{ImageAnalyzer, StatInfo},
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    platform::PlatformAccessor,
+    platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     utils::Timer,
 };
 
@@ -209,15 +209,47 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             if let Some(image_analyzer) = capture_window(&logger, &window) {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
+                let hp_value = image_analyzer
+                    .detect_status_bar(StatInfo::default(), image_analyzer::StatusBarKind::Hp)
+                    .unwrap()
+                    .value;
+                let mp_value = image_analyzer
+                    .detect_status_bar(StatInfo::default(), image_analyzer::StatusBarKind::Mp)
+                    .unwrap()
+                    .value;
+                let fp_value = image_analyzer
+                    .detect_status_bar(StatInfo::default(), image_analyzer::StatusBarKind::Fp)
+                    .unwrap()
+                    .value;
 
-                match mode {
-                    BotMode::Farming => {
-                        farming_behavior.run_iteration(config, &image_analyzer);
+                // Check if bars are displayed
+                let mut bars_not_detected_warn_count = 0;
+                let mut detected = true;
+                if hp_value == 0 && mp_value == 0 && fp_value == 0 {
+                    detected = false;
+                    bars_not_detected_warn_count += 1;
+                }
+                if detected == false && bars_not_detected_warn_count == 3 {
+                    bars_not_detected_warn_count = 0;
+                    send_keystroke(Key::T, KeyMode::Press);
+                }
+                let mut is_alive = true;
+                if hp_value == 0 {
+                    if is_alive {
+                        println!("Bot died");
                     }
-                    BotMode::AutoShout => {
-                        shout_behavior.run_iteration(config, &image_analyzer);
+                    is_alive = false;
+                }
+                if is_alive {
+                    match mode {
+                        BotMode::Farming => {
+                            farming_behavior.run_iteration(config, &image_analyzer);
+                        }
+                        BotMode::AutoShout => {
+                            shout_behavior.run_iteration(config, &image_analyzer);
+                        }
+                        _ => (),
                     }
-                    _ => (),
                 }
             }
 
