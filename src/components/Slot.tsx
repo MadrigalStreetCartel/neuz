@@ -2,8 +2,8 @@ import styled from 'styled-components'
 
 import { SlotType } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
-import IconRefresher from '../assets/icon_Refresher.png'
-import IconVitalDrink from '../assets/icon_VitalDrink.png'
+import IconRefresher from '../assets/icon_refresher.png'
+import IconVitalDrink from '../assets/icon_vitaldrink.png'
 
 const SLOT_SIZE_PX = 40;
 
