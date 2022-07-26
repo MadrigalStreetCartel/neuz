@@ -9,7 +9,7 @@ use crate::{
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug, Default, Clone,Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
     #[default]
     Hp,
@@ -29,7 +29,6 @@ pub enum StatusBar {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StatInfo {
-
     pub max_w: u32,
     pub value: u32,
 }
@@ -41,20 +40,17 @@ impl PartialEq for StatInfo {
 }
 
 impl PartialOrd for StatInfo {
-
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.value.cmp(&other.value))
     }
 }
 #[derive(Debug, Clone, Copy)]
 pub struct StatusBarConfig {
-
     pub max_search_x: u32,
     pub max_search_y: u32,
     pub refs: [[u8; 3]; 4],
 }
 impl StatusBarConfig {
-
     pub fn new(colors: [[u8; 3]; 4]) -> Self {
         Self {
             refs: colors,
@@ -91,7 +87,6 @@ impl From<StatusBarKind> for StatusBarConfig {
 }
 
 impl Default for StatusBarConfig {
-
     fn default() -> Self {
         Self {
             max_search_x: 310,
@@ -100,7 +95,6 @@ impl Default for StatusBarConfig {
         }
     }
 }
-
 
 impl PartialEq for StatusBarConfig {
     fn eq(&self, other: &Self) -> bool {
@@ -529,7 +523,6 @@ impl ImageAnalyzer {
         let value = StatInfo {
             max_w,
             value: value_scaled,
-
         };
 
         Some(value)
