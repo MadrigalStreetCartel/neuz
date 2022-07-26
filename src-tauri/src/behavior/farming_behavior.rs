@@ -7,7 +7,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{self, ImageAnalyzer, Stat, StatusBar},
+    image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -38,6 +38,7 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
+
     current_status_bar: StatusBar,
     last_hp: Stat,
     last_fp: Stat,
@@ -54,6 +55,7 @@ pub struct FarmingBehavior<'a> {
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
     rotation_movement_tries: u32,
+    hp_bar_not_detected_warn_count: u32,
     is_attacking: bool,
     kill_count: u32,
 }
@@ -85,6 +87,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
             last_attack_skill_usage_time: Instant::now(),
+            hp_bar_not_detected_warn_count: 0,
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -97,6 +100,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
         let config = config.farming_config();
+
+        // Print debug values for stats
+        #[cfg(debug_assertions)]
+        self.debug_stats_bar(config, image);
 
         // Check whether food should be consumed
         self.check_bar(config, image, StatusBar::Mp);
@@ -259,6 +266,7 @@ impl<'a> FarmingBehavior<'_> {
         set_val: bool,
         value: Stat,
     ) -> (Stat, Option<Instant>) {
+
         let current_time = Instant::now();
 
         let mut current_value: Stat = Stat::default();
@@ -349,12 +357,15 @@ impl<'a> FarmingBehavior<'_> {
 
         // Decide which fooding logic to use based on HP
         match image.detect_stats_bar(last_value, bar) {
+
             // HP bar detected, use HP-based potting logic
             Some(hp) => {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
                 // If HP is < 15% we need to use food ASAP.
+
                 let hp_threshold_reached = hp.value <= threshold_value;
                 let hp_critical_threshold_reached = hp.value <= 50;
+
 
                 // Calculate ms since last food usage
                 let last_x_time = self
@@ -408,6 +419,7 @@ impl<'a> FarmingBehavior<'_> {
             // HP bar not found, use legacy potting logic
             // => Pot every 5 seconds and only while in a fight
             None => {}
+
         }
     }
 
