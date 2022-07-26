@@ -36,6 +36,8 @@ const translateDesc = (type: SlotType) => {
         case 'Unused': return ''
         case 'Food': return 'Food'
         case 'Pill': return 'Pill'
+        case 'Refresher': return 'MP'
+        case 'VitalDrink': return 'FP'
         case 'PickupPet': return 'Pet'
         case 'PickupMotion': return 'Pickup'
         case 'AttackSkill': return 'Attack'
