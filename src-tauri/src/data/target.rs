@@ -6,15 +6,16 @@ pub enum MobType {
     Aggressive,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum TargetType {
     Mob(MobType),
     TargetMarker,
+    #[default]
     StatsBar,
 }
 
 /// A target in 2D space.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Target {
     pub target_type: TargetType,
     pub bounds: Bounds,

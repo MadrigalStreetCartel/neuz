@@ -179,10 +179,11 @@ impl<'a> FarmingBehavior<'_> {
         // Print stats
         if false {
             slog::debug!(self.logger,  "Getting stats ",   ; " " => "");
-            slog::debug!(self.logger,  "Trying to detect FP ",   ; "FP PERCENT " =>  self.last_fp.value);
-            slog::debug!(self.logger,  "Trying to detect MP ",   ; "MP PERCENT " => self.last_mp.value);
-            slog::debug!(self.logger,  "Trying to detect HP ",   ; "HP PERCENT " => self.last_hp.value);
-            slog::debug!(self.logger,  "Trying to detect EXP ",   ; "EXP PERCENT " => self.last_xp.value);
+            slog::debug!(self.logger,  "Trying to detect FP ",   ;
+                "FP PERCENT " =>  self.last_fp.value,
+                "MP PERCENT " => self.last_mp.value,
+                "HP PERCENT " => self.last_hp.value,
+                "EXP PERCENT " => self.last_xp.value);
         }
     }
 
@@ -202,13 +203,11 @@ impl<'a> FarmingBehavior<'_> {
                 let slot_available = config.get_slot_index(SlotType::Pill).is_some();
                 let should_use = slot_available;
 
-                // Use pill
                 if should_use {
                     guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
                         return;
                     });
-                    // Send keystroke for first slot mapped to pill
-
+                    // Send keystroke for first mapped slot
                     self.check_mp_fp_hp(image, 1000, StatusBarKind::Hp, 75, pill_index);
                 }
                 // Use regular food
@@ -389,7 +388,8 @@ impl<'a> FarmingBehavior<'_> {
                 // If HP is < 15% we need to use food ASAP.
 
                 let hp_threshold_reached = hp.value <= threshold_value;
-                let hp_critical_threshold_reached = hp.value <= 50;
+                let critical_threshold = (100.0 - (threshold_value as f32 * 0.75 )) as u32;
+                let hp_critical_threshold_reached = hp.value <= critical_threshold ;
 
                 // Calculate ms since last food usage
                 let last_x_time = self
@@ -435,7 +435,9 @@ impl<'a> FarmingBehavior<'_> {
                 }
 
                 if should_use_food && last_value.value > 0 {
-                    slog::info!(self.logger, "Stats"; "Triggered slot for " => self.stat_name(bar));
+                    slog::debug!(self.logger,  "Stats ",   ;
+                    "Triggered slot for " => self.stat_name(bar),
+                    "value" => last_value.value);
 
                     // Send keystroke for first slot mapped to pill
                     send_keystroke(slot_index.into(), KeyMode::Press);
@@ -569,6 +571,10 @@ impl<'a> FarmingBehavior<'_> {
 
     fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
         let mobs = image.identify_mobs();
+        if config.is_stop_fighting() {
+           return State::Attacking(Target::default());
+        }
+
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound

@@ -13,8 +13,8 @@ import ImageSupport from './assets/btn_full_support.png'
 import ImageShout from './assets/btn_shout.png'
 
 import { BotConfigModel, ModeModel } from './models/BotConfig'
-import FarmingConfig from "./components/config/FarmingConfig"
-import ShoutConfig from "./components/config/ShoutConfig"
+import FarmingConfig from "./components/behavior/FarmingConfig"
+import ShoutConfig from "./components/behavior/ShoutConfig"
 import Footer from "./components/Footer"
 
 type Bounds = {x: number, y: number, w: number, h: number}

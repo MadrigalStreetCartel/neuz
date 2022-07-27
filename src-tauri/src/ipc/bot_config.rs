@@ -58,6 +58,8 @@ pub struct FarmingConfig {
     stay_in_area: Option<bool>,
     /// Whether the bot should try to level in a fully unsupervised way
     unsupervised: Option<bool>,
+    /// Will disable searching monsters
+    stop_fighting: Option<bool>,
     /// Slot configuration
     slots: Option<[Slot; 10]>,
     /// Disable farming
@@ -75,6 +77,10 @@ impl FarmingConfig {
 
     pub fn should_stay_in_area(&self) -> bool {
         self.stay_in_area.unwrap_or(false)
+    }
+
+    pub fn is_stop_fighting(&self) -> bool {
+        self.stop_fighting.unwrap_or(false)
     }
 
     pub fn is_unsupervised(&self) -> bool {

@@ -1,15 +1,15 @@
 import styled from 'styled-components'
 
-import BooleanSlider from './BooleanSlider'
-import ConfigLabel from './ConfigLabel'
-import ConfigPanel from './ConfigPanel'
+import BooleanSlider from '../config/BooleanSlider'
+import ConfigLabel from '../config/ConfigLabel'
+import ConfigPanel from '../config/ConfigPanel'
 
-import NumericInput from './NumericInput'
-import StringList from './StringList'
+import NumericInput from '../config/NumericInput'
+import StringList from '../config/StringList'
 
 import { ShoutConfigModel, SlotBarModel, SlotModel, SlotType } from '../../models/BotConfig'
-import ConfigTable from './ConfigTable'
-import ConfigTableRow from './ConfigTableRow'
+import ConfigTable from '../config/ConfigTable'
+import ConfigTableRow from '../config/ConfigTableRow'
 
 type Props = {
     config: ShoutConfigModel,

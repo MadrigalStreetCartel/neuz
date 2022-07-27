@@ -15,6 +15,7 @@ export type FarmingConfigModel = Partial<{
     use_attack_skills: boolean,
     stay_in_area: boolean,
     unsupervised: boolean,
+    stop_fighting:boolean,
     slots: SlotBarModel,
 }>
 

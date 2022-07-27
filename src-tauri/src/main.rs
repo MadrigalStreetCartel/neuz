@@ -30,6 +30,8 @@ use crate::{
 
 struct AppState {
     logger: Logger,
+    is_alive:bool,
+    bars_not_detected_warn_count:i32,
 }
 
 fn main() {
@@ -66,7 +68,7 @@ fn main() {
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
-        .manage(AppState { logger })
+        .manage(AppState { logger, is_alive:true,bars_not_detected_warn_count:0 })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
         .expect("error while running tauri application");
@@ -96,6 +98,8 @@ fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
+    let mut is_alive = state.is_alive.clone();
+    let mut bars_not_detected_warn_count = state.bars_not_detected_warn_count.clone();
 
     std::thread::spawn(move || {
         let logger = logger.clone();
@@ -223,23 +227,30 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                     .value;
 
                 // Check if bars are displayed
-                let mut bars_not_detected_warn_count = 0;
-                let mut detected = true;
+
                 if hp_value == 0 && mp_value == 0 && fp_value == 0 {
-                    detected = false;
+                    slog::warn!(logger, "Stat tray not detected";"bars_not_detected_warn_count" => bars_not_detected_warn_count);
                     bars_not_detected_warn_count += 1;
-                }
-                if detected == false && bars_not_detected_warn_count == 3 {
-                    bars_not_detected_warn_count = 0;
-                    send_keystroke(Key::T, KeyMode::Press);
-                }
-                let mut is_alive = true;
-                if hp_value == 0 {
-                    if is_alive {
-                        println!("Bot died");
+                    if bars_not_detected_warn_count == 3 {
+                        bars_not_detected_warn_count = 0;
+                        slog::warn!(logger, "Trying to open stat tray");
+                        send_keystroke(Key::T, KeyMode::Press);
                     }
-                    is_alive = false;
+                }else{
+                    if hp_value == 0 {
+                        if is_alive {
+                            slog::warn!(logger, "Bot died");
+                        }
+                        is_alive = false;
+                    }else{
+                        if !is_alive {
+                            slog::warn!(logger, "Bot respawned");
+                        }
+                        is_alive = true;
+                    }
                 }
+
+
                 if is_alive {
                     match mode {
                         BotMode::Farming => {

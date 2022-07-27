@@ -1,13 +1,14 @@
 import styled from 'styled-components'
 
-import BooleanSlider from './BooleanSlider'
-import ConfigLabel from './ConfigLabel'
-import ConfigPanel from './ConfigPanel'
-import ConfigTable from './ConfigTable'
-import ConfigTableRow from './ConfigTableRow'
+import BooleanSlider from '../config/BooleanSlider'
+import ConfigLabel from '../config/ConfigLabel'
+import ConfigPanel from '../config/ConfigPanel'
+import ConfigTable from '../config/ConfigTable'
+import ConfigTableRow from '../config/ConfigTableRow'
 
 import SlotBar from '../SlotBar'
 import { FarmingConfigModel, SlotBarModel, SlotModel, SlotType } from '../../models/BotConfig'
+import { useState } from 'react'
 
 type Props = {
     className?: string,
@@ -49,6 +50,10 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         label={<ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move too far. Makes farming a bit slower, but also safer. Enabling this will override the 'Stay in Area' setting." />}
                         item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
                     />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Disable mob searching" helpText="The bot will not try to find and attack mobs but will consume items for HP/MP/FP restoration " />}
+                        item={<BooleanSlider value={config.stop_fighting ?? false} onChange={value => onChange?.({ ...config, stop_fighting: value })} />}
+                    />
                 </ConfigTable>
             </ConfigPanel>
         </>
@@ -56,4 +61,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 }
 
 export default styled(FarmingConfig)`
+
+
+
 `
