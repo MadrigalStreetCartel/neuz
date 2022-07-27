@@ -30,8 +30,8 @@ use crate::{
 
 struct AppState {
     logger: Logger,
-    is_alive:bool,
-    bars_not_detected_warn_count:i32,
+    is_alive: bool,
+    bars_not_detected_warn_count: i32,
 }
 
 fn main() {
@@ -68,7 +68,11 @@ fn main() {
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
-        .manage(AppState { logger, is_alive:true,bars_not_detected_warn_count:0 })
+        .manage(AppState {
+            logger,
+            is_alive: true,
+            bars_not_detected_warn_count: 0,
+        })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
         .expect("error while running tauri application");
@@ -236,20 +240,19 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                         slog::warn!(logger, "Trying to open stat tray");
                         send_keystroke(Key::T, KeyMode::Press);
                     }
-                }else{
+                } else {
                     if hp_value == 0 {
                         if is_alive {
                             slog::warn!(logger, "Bot died");
                         }
                         is_alive = false;
-                    }else{
+                    } else {
                         if !is_alive {
                             slog::warn!(logger, "Bot respawned");
                         }
                         is_alive = true;
                     }
                 }
-
 
                 if is_alive {
                     match mode {

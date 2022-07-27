@@ -388,8 +388,8 @@ impl<'a> FarmingBehavior<'_> {
                 // If HP is < 15% we need to use food ASAP.
 
                 let hp_threshold_reached = hp.value <= threshold_value;
-                let critical_threshold = (100.0 - (threshold_value as f32 * 0.75 )) as u32;
-                let hp_critical_threshold_reached = hp.value <= critical_threshold ;
+                let critical_threshold = (100.0 - (threshold_value as f32 * 0.75)) as u32;
+                let hp_critical_threshold_reached = hp.value <= critical_threshold;
 
                 // Calculate ms since last food usage
                 let last_x_time = self
@@ -572,7 +572,7 @@ impl<'a> FarmingBehavior<'_> {
     fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
         let mobs = image.identify_mobs();
         if config.is_stop_fighting() {
-           return State::Attacking(Target::default());
+            return State::Attacking(Target::default());
         }
 
         if mobs.is_empty() {
