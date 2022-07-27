@@ -119,6 +119,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
 
         //DEBUG PURPOSE
+        #[cfg(debug_assertions)]
         self.debug_stats_bar(config, image);
 
         // Check state machine
