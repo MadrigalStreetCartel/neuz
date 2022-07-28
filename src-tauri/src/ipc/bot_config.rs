@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,7 @@ pub enum SlotType {
 pub struct Slot {
     slot_type: SlotType,
     slot_cooldown: Option<u32>,
-    slot_priority:u32,
+    slot_priority: u32,
     slot_threshold: Option<u32>,
 }
 
@@ -30,7 +30,7 @@ impl Default for Slot {
         Self {
             slot_type: SlotType::Unused,
             slot_cooldown: Some(0),
-            slot_priority:0,
+            slot_priority: 0,
             slot_threshold: Some(0),
         }
     }
@@ -105,6 +105,21 @@ impl FarmingConfig {
             .unwrap_or_default()
             .iter()
             .position(|slot| slot.slot_type == slot_type)
+    }
+
+    /// Get the first matching slot threshold
+    pub fn get_slot_threshold(&self, slot_index: usize) -> Option<u32> {
+        self.slots.unwrap_or_default()[slot_index].slot_threshold
+    }
+
+    /// Get the first matching slot cooldown
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u32> {
+        self.slots.unwrap_or_default()[slot_index].slot_cooldown
+    }
+
+    /// Get the first matching slot priority
+    pub fn get_slot_priority(&self, slot_index: usize) -> Option<u32> {
+        Some(self.slots.unwrap_or_default()[slot_index].slot_priority)
     }
 
     /// Get a random matching slot index

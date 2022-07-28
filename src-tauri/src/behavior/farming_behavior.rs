@@ -8,7 +8,7 @@ use tauri::{PhysicalPosition, Position};
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
     image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
-    ipc::{BotConfig, FarmingConfig, SlotType},
+    ipc::{BotConfig, FarmingConfig, Slot, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
@@ -205,15 +205,15 @@ impl<'a> FarmingBehavior<'_> {
                 let should_use = slot_available;
 
                 if should_use {
-                    guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Pill) else {
                         return;
                     });
                     // Send keystroke for first mapped slot
-                    self.check_mp_fp_hp(image, 1000, StatusBarKind::Hp, 75, pill_index);
+                    self.check_mp_fp_hp(config, image, StatusBarKind::Hp, slot_index);
                 }
                 // Use regular food
-                else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
-                    self.check_mp_fp_hp(image, 1000, StatusBarKind::Hp, 75, food_index);
+                else if let Some(slot_index) = config.get_slot_index(SlotType::Food) {
+                    self.check_mp_fp_hp(config, image, StatusBarKind::Hp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to HP!");
                 }
@@ -224,11 +224,11 @@ impl<'a> FarmingBehavior<'_> {
 
                 // Use pill
                 if should_use {
-                    guard!(let Some(pill_index) = config.get_slot_index(SlotType::Refresher) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Refresher) else {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
-                    self.check_mp_fp_hp(image, 1000, StatusBarKind::Mp, 75, pill_index);
+                    self.check_mp_fp_hp(config, image, StatusBarKind::Mp, slot_index);
                 } else {
                     // slog::info!(self.logger, "No slot is mapped to MP!");
                 }
@@ -239,11 +239,11 @@ impl<'a> FarmingBehavior<'_> {
 
                 // Use pill
                 if should_use {
-                    guard!(let Some(pill_index) = config.get_slot_index(SlotType::VitalDrink) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::VitalDrink) else {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
-                    self.check_mp_fp_hp(image, 1000, StatusBarKind::Mp, 75, pill_index);
+                    self.check_mp_fp_hp(config, image, StatusBarKind::Mp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to FP!");
                 }
@@ -368,12 +368,16 @@ impl<'a> FarmingBehavior<'_> {
     /// Consume based on value.
     fn check_mp_fp_hp(
         &mut self,
+        config: &FarmingConfig,
         image: &ImageAnalyzer,
-        pot_cooldown: u64,
         bar: StatusBarKind,
-        threshold_value: u32,
         slot_index: usize,
     ) {
+        let (threshold, pot_cooldown) = (
+            config.get_slot_threshold(slot_index).unwrap_or(60),
+            config.get_slot_cooldown(slot_index).unwrap_or(1000).into(),
+        );
+
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(pot_cooldown);
         //let last_value = self.stats_value(ctype,false,StatInfo::default(),false);
@@ -388,8 +392,8 @@ impl<'a> FarmingBehavior<'_> {
                 // HP threshold. We probably shouldn't use food at > 75% HP.
                 // If HP is < 15% we need to use food ASAP.
 
-                let hp_threshold_reached = hp.value <= threshold_value;
-                let critical_threshold = (100.0 - (threshold_value as f32 * 0.75)) as u32;
+                let hp_threshold_reached = hp.value <= threshold;
+                let critical_threshold = (100.0 - (threshold as f32 * 0.75)) as u32;
                 let hp_critical_threshold_reached = hp.value <= critical_threshold;
 
                 // Calculate ms since last food usage

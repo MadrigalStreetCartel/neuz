@@ -3,6 +3,8 @@ export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { 
 export let SlotTypes:string[] = ["Unused" , "Food" , "Pill" , "Refresher" , "VitalDrink" , "PickupPet" , "PickupMotion" , "AttackSkill" , "BuffSkill" , "Flying"]
 export let CooldowwnSlotTypes:string[] = ["AttackSkill" , "BuffSkill"]
 export let ThresholdSlotTypes:string[] = ["Food" , "Pill","Refresher","VitalDrink"]
+export let NothingSlotTypes:string[] = ["Unused", "Flying", "PickupMotion"]
+
 export type SlotType = typeof SlotTypes[number];
 
 export type SlotModel = {

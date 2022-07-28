@@ -2,7 +2,7 @@ import styled from 'styled-components'
 
 import Slot from './Slot'
 
-import { SlotType, SlotBarModel, SlotModel, CooldowwnSlotTypes, FarmingConfigModel, ThresholdSlotTypes } from '../models/BotConfig'
+import { SlotType, SlotBarModel, SlotModel, CooldowwnSlotTypes, FarmingConfigModel, ThresholdSlotTypes, NothingSlotTypes } from '../models/BotConfig'
 import ConfigCollapsible from './config/ConfigCollapsible'
 import { useCallback, useEffect, useState } from 'react'
 import SlotList from './config/ConfigSlotList'
@@ -62,22 +62,25 @@ const SlotBar = ({ className, slots,config, onChange }: Props) => {
                         <div className="slotConfigPanel">
                             <ConfigCollapsible open={currentId!=-1}>
                                     <SlotList parentId={currentId} parentSlot={currentSlot} onChange={select}  slots={slots}></SlotList>
+
+                            {/*!NothingSlotTypes.includes(currentSlot.slot_type) &&
+                                <ConfigTableRow
+                                        layout="v"
+                                        label={<ConfigLabel name="Priority" helpText="Prioritze you skills." />}
+                                        item={<NumericInput value={currentSlot.slot_priority} onChange={value => SlotParamsChange(value,"slot_priority")} />} />
+                            */}
+                            {CooldowwnSlotTypes.includes(currentSlot.slot_type) &&
                                     <ConfigTableRow
-                                            layout="v"
-                                            label={<ConfigLabel name="Priority" helpText="Prioritze you skills." />}
-                                            item={<NumericInput value={currentSlot.slot_priority} onChange={value => SlotParamsChange(value,"slot_priority")} />} />
-                        {CooldowwnSlotTypes.includes(currentSlot.slot_type) &&
-                                <ConfigTableRow
-                                            layout="v"
-                                            label={<ConfigLabel name="Cooldown" helpText="Interval between cast in milliseconds." />}
-                                            item={<NumericInput unit="ms" value={currentSlot.slot_cooldown??0} onChange={value => SlotParamsChange(value,"slot_cooldown")} />} />
-                        }
-                        {ThresholdSlotTypes.includes(currentSlot.slot_type) &&
-                                <ConfigTableRow
-                                            layout="v"
-                                            label={<ConfigLabel name="Threshold" helpText="Minimum HP/Mp/Fp value to trigger." />}
-                                            item={<NumericInput unit="ms" value={currentSlot.slot_threshold??75} onChange={value => SlotParamsChange(value,"slot_threshold")} />} />
-                        }                                <button className='btn' onClick={()=> {setCurrentId(-1);setCurrentSlot(undefined)}}>Close</button>
+                                                layout="v"
+                                                label={<ConfigLabel name="Cooldown" helpText="Interval between cast in milliseconds." />}
+                                                item={<NumericInput unit="ms" value={currentSlot.slot_cooldown??0} onChange={value => SlotParamsChange(value,"slot_cooldown")} />} />
+                            }
+                            {ThresholdSlotTypes.includes(currentSlot.slot_type) &&
+                                    <ConfigTableRow
+                                                layout="v"
+                                                label={<ConfigLabel name="Threshold" helpText="Minimum HP/Mp/Fp value to trigger." />}
+                                                item={<NumericInput value={currentSlot.slot_threshold??60} onChange={value => SlotParamsChange(value,"slot_threshold")} />} />
+                            }                                <button className='btn' onClick={()=> {setCurrentId(-1);setCurrentSlot(undefined)}}>Close</button>
 
                             </ConfigCollapsible>
                         </div>
