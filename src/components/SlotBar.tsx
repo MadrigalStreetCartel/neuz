@@ -2,7 +2,7 @@ import styled from 'styled-components'
 
 import Slot from './Slot'
 
-import { SlotType, SlotBarModel, SlotModel, CooldowwnSlotTypes, FarmingConfigModel } from '../models/BotConfig'
+import { SlotType, SlotBarModel, SlotModel, CooldowwnSlotTypes, FarmingConfigModel, ThresholdSlotTypes } from '../models/BotConfig'
 import ConfigCollapsible from './config/ConfigCollapsible'
 import { useCallback, useEffect, useState } from 'react'
 import SlotList from './config/ConfigSlotList'
@@ -39,6 +39,9 @@ const SlotBar = ({ className, slots,config, onChange }: Props) => {
             case 'slot_cooldown':
                 currentSlot.slot_cooldown = value
                 break;
+            case 'slot_threshold':
+                currentSlot.slot_threshold = value
+                break;
             default:
               console.log(`Unable to find type ${selector}.`);
           }
@@ -63,13 +66,18 @@ const SlotBar = ({ className, slots,config, onChange }: Props) => {
                                             layout="v"
                                             label={<ConfigLabel name="Priority" helpText="Prioritze you skills." />}
                                             item={<NumericInput value={currentSlot.slot_priority} onChange={value => SlotParamsChange(value,"slot_priority")} />} />
-                    {CooldowwnSlotTypes.includes(currentSlot.slot_type) &&
-                            <ConfigTableRow
-                                        layout="v"
-                                        label={<ConfigLabel name="Cooldown" helpText="Interval between cast in milliseconds." />}
-                                        item={<NumericInput unit="ms" value={currentSlot.slot_cooldown??0} onChange={value => SlotParamsChange(value,"slot_cooldown")} />} />
-                    }
-                                <button className='btn' onClick={()=> {setCurrentId(-1);setCurrentSlot(undefined)}}>Close</button>
+                        {CooldowwnSlotTypes.includes(currentSlot.slot_type) &&
+                                <ConfigTableRow
+                                            layout="v"
+                                            label={<ConfigLabel name="Cooldown" helpText="Interval between cast in milliseconds." />}
+                                            item={<NumericInput unit="ms" value={currentSlot.slot_cooldown??0} onChange={value => SlotParamsChange(value,"slot_cooldown")} />} />
+                        }
+                        {ThresholdSlotTypes.includes(currentSlot.slot_type) &&
+                                <ConfigTableRow
+                                            layout="v"
+                                            label={<ConfigLabel name="Threshold" helpText="Minimum HP/Mp/Fp value to trigger." />}
+                                            item={<NumericInput unit="ms" value={currentSlot.slot_threshold??75} onChange={value => SlotParamsChange(value,"slot_threshold")} />} />
+                        }                                <button className='btn' onClick={()=> {setCurrentId(-1);setCurrentSlot(undefined)}}>Close</button>
 
                             </ConfigCollapsible>
                         </div>

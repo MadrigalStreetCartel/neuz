@@ -22,6 +22,7 @@ pub struct Slot {
     slot_type: SlotType,
     slot_cooldown: Option<u32>,
     slot_priority:u32,
+    slot_threshold: Option<u32>,
 }
 
 impl Default for Slot {
@@ -30,6 +31,7 @@ impl Default for Slot {
             slot_type: SlotType::Unused,
             slot_cooldown: Some(0),
             slot_priority:0,
+            slot_threshold: Some(0),
         }
     }
 }
