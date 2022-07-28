@@ -1,7 +1,35 @@
-use std::{fs::File, time::Instant};
+use std::{fs::File, time::{Instant, Duration}};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
+
+mod approx_instant {
+    use std::time::{Instant, SystemTime, Duration};
+    use serde::{Serialize, Serializer, Deserialize, Deserializer, de::Error};
+
+    pub fn serialize<S>(instant: &Option<Instant>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if instant.is_some() {
+            let duration = instant.unwrap().elapsed();
+            duration.serialize(serializer)
+        }else{
+            serialize(instant, serializer)
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Instant>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let duration = Duration::deserialize(deserializer)?;
+        let now = Instant::now();
+        let instant = now.checked_sub(duration).ok_or_else(|| Error::custom("Erreur checked_add"))?;
+        Ok(Some(instant))
+    }
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlotType {
@@ -20,9 +48,13 @@ pub enum SlotType {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
-    slot_cooldown: Option<u32>,
-    slot_priority: u32,
+    slot_cooldown: Option<u128>,
+    slot_priority: Option<u32>,
     slot_threshold: Option<u32>,
+    #[serde(with = "approx_instant")]
+    #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
+    slot_last_time:Option<Instant>,
 }
 
 impl Default for Slot {
@@ -30,8 +62,9 @@ impl Default for Slot {
         Self {
             slot_type: SlotType::Unused,
             slot_cooldown: Some(0),
-            slot_priority: 0,
+            slot_priority: Some(0),
             slot_threshold: Some(0),
+            slot_last_time:None,
         }
     }
 }
@@ -67,7 +100,7 @@ pub struct FarmingConfig {
     /// Will disable searching monsters
     stop_fighting: Option<bool>,
     /// Slot configuration
-    slots: Option<[Slot; 10]>,
+    slots: Option<[Slot;10]>,
     /// Disable farming
     farming_enabled: Option<bool>,
 }
@@ -102,9 +135,34 @@ impl FarmingConfig {
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
         self.slots
+        .unwrap_or_default()
+        .iter_mut()
+        .for_each(|slot:&mut Slot| {
+            if slot.slot_cooldown.is_some() && slot.slot_last_time.is_some()  {
+                if slot.slot_last_time.unwrap().elapsed().as_millis() > slot.slot_cooldown.unwrap() {
+                    slot.slot_last_time = None;
+                }
+            }
+        } );
+        self.slots
             .unwrap_or_default()
             .iter()
-            .position(|slot| slot.slot_type == slot_type)
+            .position(|slot:&Slot| slot.slot_type == slot_type && slot.slot_last_time.is_none())
+    }
+
+    /// Get number of castable slots
+    pub fn get_usable_len(&self, slot_type: SlotType) -> u32 {
+        let mut count = 0;
+        self.slots
+        .unwrap_or_default()
+        .iter_mut()
+        .for_each(|slot:&mut Slot| {
+            if slot.slot_type == slot_type && slot.slot_last_time.is_none() {
+                count +=1;
+            }
+        } );
+        count
+
     }
 
     /// Get the first matching slot threshold
@@ -113,13 +171,24 @@ impl FarmingConfig {
     }
 
     /// Get the first matching slot cooldown
-    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u32> {
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u128> {
         self.slots.unwrap_or_default()[slot_index].slot_cooldown
     }
 
+    /// Get the first matching last cast time
+    pub fn get_slot_last_time(&self, slot_index: usize) -> Option<Instant> {
+        self.slots.unwrap_or_default()[slot_index].slot_last_time
+    }
+
+    /// Update slot_last_time
+    pub fn set_slot_last_time(&self, slot_index: usize)  {
+        self.slots.unwrap_or_default()[slot_index].slot_last_time = Some(Instant::now());
+    }
+
+
     /// Get the first matching slot priority
     pub fn get_slot_priority(&self, slot_index: usize) -> Option<u32> {
-        Some(self.slots.unwrap_or_default()[slot_index].slot_priority)
+        self.slots.unwrap_or_default()[slot_index].slot_priority
     }
 
     /// Get a random matching slot index

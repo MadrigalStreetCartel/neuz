@@ -8,7 +8,7 @@ use tauri::{PhysicalPosition, Position};
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
     image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
-    ipc::{BotConfig, FarmingConfig, Slot, SlotType},
+    ipc::{BotConfig, FarmingConfig, Slot,  SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
@@ -38,7 +38,6 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
-
     current_status_bar: StatusBarKind,
     last_hp: StatInfo,
     last_fp: StatInfo,
@@ -375,11 +374,11 @@ impl<'a> FarmingBehavior<'_> {
     ) {
         let (threshold, pot_cooldown) = (
             config.get_slot_threshold(slot_index).unwrap_or(60),
-            config.get_slot_cooldown(slot_index).unwrap_or(1000).into(),
+            config.get_slot_cooldown(slot_index).unwrap_or(1000),
         );
 
         let current_time = Instant::now();
-        let min_pot_time_diff = Duration::from_millis(pot_cooldown);
+        let min_pot_time_diff = Duration::from_millis(pot_cooldown.try_into().unwrap());
         //let last_value = self.stats_value(ctype,false,StatInfo::default(),false);
         let last_value = self
             .stats_values(image, bar, StatValue::last_x, false, StatInfo::default())
@@ -446,6 +445,9 @@ impl<'a> FarmingBehavior<'_> {
 
                     // Send keystroke for first slot mapped to pill
                     send_keystroke(slot_index.into(), KeyMode::Press);
+
+                    // Update slot last time
+                    config.set_slot_last_time(slot_index);
 
                     // Update state
                     self.update_stats(image, bar, hp, true);
@@ -692,14 +694,16 @@ impl<'a> FarmingBehavior<'_> {
             self.last_killed_mob_bounds = marker.bounds;
 
             // Try to use attack skill
-            if let Some(index) = config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
+            if let Some(slot_index) = config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
             {
                 // Only use attack skill if enabled and once a second at most
                 if config.should_use_attack_skills()
-                    && self.last_attack_skill_usage_time.elapsed() > Duration::from_secs(1)
                 {
                     self.last_attack_skill_usage_time = Instant::now();
-                    send_keystroke(index.into(), KeyMode::Press);
+
+                    send_keystroke(slot_index.into(), KeyMode::Press);
+
+                    config.set_slot_last_time(slot_index)
                 }
             }
 

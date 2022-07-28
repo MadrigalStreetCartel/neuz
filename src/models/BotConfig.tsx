@@ -10,8 +10,9 @@ export type SlotType = typeof SlotTypes[number];
 export type SlotModel = {
     slot_type: SlotType,
     slot_cooldown?:number,
-    slot_priority:number,
+    slot_priority?:number,
     slot_threshold?:number,
+    slot_last_time?:number,
 
 }
 

@@ -44,7 +44,6 @@ const SlotList = ({ className, slots,parentSlot, parentId,onChange }: Props) => 
                                         <Slot hideIndex isSelected={currentSlot.slot_type == slotType  } onSelected={()=>select({
                                             slot_type: slotType,
                                             slot_cooldown: 0,
-                                            slot_priority: 0
                                         },parentId)  } key={index} type={slotType} index={index} />
                                     ))}
                                 </div>

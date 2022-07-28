@@ -158,6 +158,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement);
         let mut last_mode: Option<BotMode> = None;
 
+
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
