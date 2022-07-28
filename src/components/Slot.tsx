@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 
-import { SlotType } from '../models/BotConfig'
+import { SlotType, SlotTypes } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import IconRefresher from '../assets/icon_refresher.png'
 import IconVitalDrink from '../assets/icon_vitaldrink.png'
@@ -11,10 +11,12 @@ type Props = {
     className?: string,
     type: SlotType,
     index: number,
+    isSelected:boolean,
     onChange?: (type: SlotType) => void,
+    onSelected?:(val:number) =>void,
+    hideIndex?:boolean,
 }
 
-const types: SlotType[] = ['Unused', 'Food', 'Pill','Refresher', 'VitalDrink', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
 
 const translateType = (type: SlotType) => {
     switch (type) {
@@ -33,7 +35,7 @@ const translateType = (type: SlotType) => {
 
 const translateDesc = (type: SlotType) => {
     switch (type) {
-        case 'Unused': return ''
+        case 'Unused': return 'None'
         case 'Food': return 'Food'
         case 'Pill': return 'Pill'
         case 'Refresher': return 'MP'
@@ -46,47 +48,71 @@ const translateDesc = (type: SlotType) => {
     }
 }
 
-const Slot = ({ className, type = 'Unused', index, onChange }: Props) => {
+const Slot = ({ className, type = 'Unused', index, onChange, onSelected,isSelected, hideIndex=false }: Props) => {
     const handleChange = () => {
-        const nextType: SlotType = types[(types.indexOf(type) + 1) % types.length];
+        const nextType: SlotType = SlotTypes[(SlotTypes.indexOf(type) + 1) % SlotTypes.length];
         onChange?.(nextType)
     }
+    const onClick = () => {
+        if(onSelected != undefined){
+            onSelected(index)
+        }
 
-    const symbolOrIcon = translateType(type)
-    const useIcon = symbolOrIcon.startsWith('data:');
+    }
+
+    const symbolOrIcon = translateType(type);
+    const useIcon = symbolOrIcon?.startsWith('data:');
 
     return (
-        <div className={className} onClick={handleChange}>
-            <div className="index">{index}</div>
-            {useIcon && (
-                <img className="type" src={symbolOrIcon} alt="Slot icon" />
-            )}
-            {!useIcon && (
-                <div className="type">{translateType(type)}</div>
-            )}
-            <div className="desc">{translateDesc(type)}</div>
+        <div className={className} onClick={onClick}>
+            <div className={`${
+                        isSelected
+                            ? "selected panel"
+                            : "panel"
+                        }`}>
+
+
+                {!hideIndex &&
+                    <div className='index'>{index}</div>
+                }
+
+                {useIcon && (
+                    <img className="type" src={symbolOrIcon} alt="Slot icon" />
+                )}
+                {!useIcon && (
+                    <div style={(translateDesc(type) == "None")? {height:"100%",width:"100%"}: {}} className="type">{translateType(type)}</div>
+                )}
+                <div className="desc">{translateDesc(type)}</div>
+            </div>
         </div>
     )
 }
 
 export default styled(Slot)`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: ${SLOT_SIZE_PX}px;
-    height: ${SLOT_SIZE_PX}px;
-    background-color: hsla(0,0%,100%,.05);
-    border: 1px solid hsl(48,58%,43%);
-    border-radius: .25rem;
-    position: relative;
-    margin-top: .5rem;
-    cursor: pointer;
+
+    & .panel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: ${SLOT_SIZE_PX}px;
+        height: ${SLOT_SIZE_PX}px;
+        background-color: hsla(0,0%,100%,.05);
+        border: 1px solid hsl(48,58%,43%);
+        border-radius: .25rem;
+        position: relative;
+        margin-top: .5rem;
+        cursor: pointer;
+    }
+    & .selected {
+        border: 1px solid hsl(0,100%,50%) !important;
+
+    }
 
     &:first-child {
         order: 1;
     }
 
-    &:hover {
+    & img.type:hover, div.type:hover {
         background-color: hsla(0,0%,100%,.1);
         border: 1px solid hsl(48,65%,50%);
     }
@@ -114,6 +140,9 @@ export default styled(Slot)`
     & div.type {
         color: white;
         font-size: 1.5rem;
+        width: 100%;
+        height: 100%;
+        text-align: center;
     }
 
     & img.type {

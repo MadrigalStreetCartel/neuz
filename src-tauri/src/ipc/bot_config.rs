@@ -20,12 +20,16 @@ pub enum SlotType {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
+    slot_cooldown: Option<u32>,
+    slot_priority:u32,
 }
 
 impl Default for Slot {
     fn default() -> Self {
         Self {
             slot_type: SlotType::Unused,
+            slot_cooldown: Some(0),
+            slot_priority:0,
         }
     }
 }

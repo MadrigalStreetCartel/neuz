@@ -9,6 +9,7 @@ import ConfigTableRow from '../config/ConfigTableRow'
 import SlotBar from '../SlotBar'
 import { FarmingConfigModel, SlotBarModel, SlotModel, SlotType } from '../../models/BotConfig'
 import { useState } from 'react'
+import ConfigCollapsible from '../config/ConfigCollapsible'
 
 type Props = {
     className?: string,
@@ -17,20 +18,22 @@ type Props = {
 }
 
 const createSlotBar = () => (
-    [...new Array(10)].map(_ => ({ slot_type: 'Unused' } as SlotModel)) as SlotBarModel
+    [...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_priority:0 } as SlotModel)) as SlotBarModel
 )
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
-    const handleSlotChange = (type: SlotType, index: number) => {
-        if (!onChange) return
+    const handleSlotChange = (type: SlotModel, index: number) => {
+        if (!onChange ) return
         const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
-        newConfig.slots[index] = { slot_type: type }
+        newConfig.slots[index] = type ?? {slot_type:"Unused",slot_cooldown:0,slot_priority:0}
+
         onChange(newConfig)
+
     }
 
     return (
         <>
-            <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
+            <SlotBar config={config}  slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -61,7 +64,5 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 }
 
 export default styled(FarmingConfig)`
-
-
 
 `

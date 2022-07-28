@@ -1,9 +1,15 @@
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export type SlotType = "Unused" | "Food" | "Pill" | "Refresher" | "VitalDrink" | "PickupPet" | "PickupMotion" | "AttackSkill" | "BuffSkill" | "Flying"
+export let SlotTypes:string[] = ["Unused" , "Food" , "Pill" , "Refresher" , "VitalDrink" , "PickupPet" , "PickupMotion" , "AttackSkill" , "BuffSkill" , "Flying"]
+export let CooldowwnSlotTypes:string[] = ["AttackSkill" , "BuffSkill"]
+
+export type SlotType = typeof SlotTypes[number];
 
 export type SlotModel = {
     slot_type: SlotType,
+    slot_cooldown?:number,
+    slot_priority:number,
+
 }
 
 export type SlotBarModel = FixedArray<SlotModel, 10>
