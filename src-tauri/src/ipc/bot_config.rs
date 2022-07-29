@@ -107,8 +107,7 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
-    /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
+    pub fn slot_timers_update(&self){
         self.slots
             .unwrap_or_default()
             .iter_mut()
@@ -120,15 +119,36 @@ impl FarmingConfig {
                     )
                     .signed_duration_since(Utc::now())
                     .num_milliseconds();
+                    println!("count {}  cd :{}",count,slot.slot_cooldown.unwrap());
                     if count > slot.slot_cooldown.unwrap() {
                         slot.slot_last_time = None;
                     }
                 }
             });
-        self.slots
+    }
+
+    /// Get the first matching slot index
+    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
+        self.slot_timers_update();
+            self.slots
             .unwrap_or_default()
             .iter()
             .position(|slot: &Slot| slot.slot_type == slot_type && slot.slot_last_time.is_none())
+    }
+
+    /// Get a random matching slot index
+    pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
+    where
+        R: Rng,
+    {
+        self.slot_timers_update();
+        self.slots
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| slot.slot_type == slot_type  && slot.slot_last_time.is_none())
+            .choose(rng)
+            .map(|(index, _)| index)
     }
 
     /// Get number of castable slots
@@ -174,8 +194,20 @@ impl FarmingConfig {
 
     /// Update slot_last_time
     pub fn set_slot_last_time(&self, slot_index: usize) {
-        self.slots.unwrap_or_default()[slot_index].slot_last_time =
-            Some(Utc::now().timestamp_millis());
+        let time = Utc::now().timestamp_millis();
+        let mut new_slots = self.slots.clone();
+
+        for slot in new_slots.iter_mut() {
+            slot[slot_index].slot_last_time = Some(time);
+        }
+
+        //self.slots = new_slots;
+
+
+        println!("{}", self.slots.unwrap_or_default()[slot_index].slot_last_time.unwrap_or(0));
+
+
+
     }
 
     /// Get the first matching slot priority
@@ -183,19 +215,7 @@ impl FarmingConfig {
         self.slots.unwrap_or_default()[slot_index].slot_priority
     }
 
-    /// Get a random matching slot index
-    pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
-    where
-        R: Rng,
-    {
-        self.slots
-            .unwrap_or_default()
-            .iter()
-            .enumerate()
-            .filter(|(_, slot)| slot.slot_type == slot_type)
-            .choose(rng)
-            .map(|(index, _)| index)
-    }
+
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -279,7 +299,7 @@ impl BotConfig {
         self
     }
 
-    pub fn farming_config(&self) -> &FarmingConfig {
+    pub fn farming_config(& self) -> &FarmingConfig {
         &self.farming_config
     }
 
