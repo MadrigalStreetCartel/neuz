@@ -204,7 +204,7 @@ impl FarmingConfig {
         //self.slots = new_slots;
 
 
-        println!("{}", self.slots.unwrap_or_default()[slot_index].slot_last_time.unwrap_or(0));
+        //println!("{}", self.slots.unwrap_or_default()[slot_index].slot_last_time.unwrap_or(0));
 
 
 
