@@ -141,6 +141,7 @@ impl<'a> FarmingBehavior<'_> {
         let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
         let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
 
+
         match (
             config.should_use_on_demand_pet(),
             pickup_pet_slot,
@@ -159,12 +160,14 @@ impl<'a> FarmingBehavior<'_> {
             }
             // Pickup using motion
             (false, _, Some(index)) => {
+                let rnd = self.rng.gen_range(7..10);
                 play!(self.movement => [
-                    Repeat(5, vec![
+                    Wait(dur::Random(200..300)),
+                    Repeat(rnd, vec![
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(350..750)),
+                        Wait(dur::Random(100..200)),
                     ]),
                 ]);
             }
@@ -693,12 +696,12 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = true;
             self.last_killed_mob_bounds = marker.bounds;
 
+             // Only use attack skill if enabled and once a second at most
+            if config.should_use_attack_skills() {
             // Try to use attack skill
-            if let Some(slot_index) =
-                config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
-            {
-                // Only use attack skill if enabled and once a second at most
-                if config.should_use_attack_skills() {
+                if let Some(slot_index) =
+                    config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
+                {
                     self.last_attack_skill_usage_time = Instant::now();
 
                     send_keystroke(slot_index.into(), KeyMode::Press);

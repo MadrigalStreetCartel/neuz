@@ -217,6 +217,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             if let Some(image_analyzer) = capture_window(&logger, &window) {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
+
                 let hp_value = image_analyzer
                     .detect_status_bar(StatInfo::default(), image_analyzer::StatusBarKind::Hp)
                     .unwrap()
