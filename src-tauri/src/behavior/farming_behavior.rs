@@ -8,7 +8,7 @@ use tauri::{PhysicalPosition, Position};
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
     image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
-    ipc::{BotConfig, FarmingConfig, Slot, SlotType},
+    ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
@@ -27,9 +27,9 @@ enum State {
 }
 #[derive(Debug, Clone, Copy)]
 pub enum StatValue {
-    last_x,
-    last_x_time,
-    last_food_x,
+    LastX,
+    LastXTime,
+    LastUseX,
 }
 
 pub struct FarmingBehavior<'a> {
@@ -54,7 +54,6 @@ pub struct FarmingBehavior<'a> {
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
     rotation_movement_tries: u32,
-    bars_not_detected_warn_count: u32,
     is_attacking: bool,
     kill_count: u32,
 }
@@ -86,7 +85,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
             last_attack_skill_usage_time: Instant::now(),
-            bars_not_detected_warn_count: 0,
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -97,29 +95,41 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
+    fn run_iteration(
+        &mut self,
+        config: &BotConfig,
+        image: &ImageAnalyzer,
+        hp: StatInfo,
+        mp: StatInfo,
+        fp: StatInfo,
+    ) {
         let config = config.farming_config();
 
-        // Print debug values for stats
-        #[cfg(debug_assertions)]
-        self.debug_stats_bar(config, image);
+        self.last_hp = hp;
+        self.last_food_hp = hp;
+
+        self.last_mp = mp;
+        self.last_food_mp = mp;
+
+        self.last_fp = fp;
+        self.last_food_fp = fp;
 
         // Check whether something should be consumed
         if config.get_slot_index(SlotType::Refresher).is_some() {
-            self.check_bar(config, image, StatusBarKind::Mp);
+            self.check_bar(config, StatusBarKind::Mp);
         }
         if config.get_slot_index(SlotType::Pill).is_some()
             || config.get_slot_index(SlotType::Food).is_some()
         {
-            self.check_bar(config, image, StatusBarKind::Hp);
+            self.check_bar(config, StatusBarKind::Hp);
         }
         if config.get_slot_index(SlotType::VitalDrink).is_some() {
-            self.check_bar(config, image, StatusBarKind::Fp);
+            self.check_bar(config, StatusBarKind::Fp);
         }
 
         //DEBUG PURPOSE
         #[cfg(debug_assertions)]
-        self.debug_stats_bar(config, image);
+        self.debug_stats_bar();
 
         // Check state machine
         self.state = match self.state {
@@ -140,7 +150,6 @@ impl<'a> FarmingBehavior<'_> {
 
         let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
         let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
-
 
         match (
             config.should_use_on_demand_pet(),
@@ -178,7 +187,7 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     #[cfg(debug_assertions)]
-    fn debug_stats_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
+    fn debug_stats_bar(&mut self) {
         // Print stats
         if false {
             slog::debug!(self.logger,  "Getting stats ",   ; " " => "");
@@ -186,7 +195,8 @@ impl<'a> FarmingBehavior<'_> {
                 "FP PERCENT " =>  self.last_fp.value,
                 "MP PERCENT " => self.last_mp.value,
                 "HP PERCENT " => self.last_hp.value,
-                "EXP PERCENT " => self.last_xp.value);
+                "EXP PERCENT " => self.last_xp.value
+            );
         }
     }
 
@@ -200,7 +210,7 @@ impl<'a> FarmingBehavior<'_> {
         return str.to_string();
     }
 
-    fn check_bar(&mut self, config: &FarmingConfig, image: &ImageAnalyzer, bar: StatusBarKind) {
+    fn check_bar(&mut self, config: &FarmingConfig, bar: StatusBarKind) {
         match bar {
             StatusBarKind::Hp => {
                 let slot_available = config.get_slot_index(SlotType::Pill).is_some();
@@ -211,11 +221,11 @@ impl<'a> FarmingBehavior<'_> {
                         return;
                     });
                     // Send keystroke for first mapped slot
-                    self.check_mp_fp_hp(config, image, StatusBarKind::Hp, slot_index);
+                    self.check_mp_fp_hp(config, StatusBarKind::Hp, slot_index);
                 }
                 // Use regular food
                 else if let Some(slot_index) = config.get_slot_index(SlotType::Food) {
-                    self.check_mp_fp_hp(config, image, StatusBarKind::Hp, slot_index);
+                    self.check_mp_fp_hp(config, StatusBarKind::Hp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to HP!");
                 }
@@ -230,7 +240,7 @@ impl<'a> FarmingBehavior<'_> {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
-                    self.check_mp_fp_hp(config, image, StatusBarKind::Mp, slot_index);
+                    self.check_mp_fp_hp(config, StatusBarKind::Mp, slot_index);
                 } else {
                     // slog::info!(self.logger, "No slot is mapped to MP!");
                 }
@@ -245,7 +255,7 @@ impl<'a> FarmingBehavior<'_> {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
-                    self.check_mp_fp_hp(config, image, StatusBarKind::Mp, slot_index);
+                    self.check_mp_fp_hp(config, StatusBarKind::Mp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to FP!");
                 }
@@ -256,24 +266,17 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn update_stats(
-        &mut self,
-        image: &ImageAnalyzer,
-        ctype: StatusBarKind,
-        value: StatInfo,
-        update_time: bool,
-    ) {
-        self.stats_values(image, ctype, StatValue::last_x, true, value);
-        self.stats_values(image, ctype, StatValue::last_food_x, true, value);
+    fn update_stats(&mut self, ctype: StatusBarKind, value: StatInfo, update_time: bool) {
+        self.stats_values(ctype, StatValue::LastX, true, value);
+        self.stats_values(ctype, StatValue::LastUseX, true, value);
 
         if update_time {
-            self.stats_values(image, ctype, StatValue::last_x_time, true, value);
+            self.stats_values(ctype, StatValue::LastXTime, true, value);
         }
     }
 
     fn stats_values(
         &mut self,
-        image: &ImageAnalyzer,
         ctype: StatusBarKind,
         stat_value: StatValue,
         set_val: bool,
@@ -288,19 +291,15 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Hp => {
                 if set_val {
                     match stat_value {
-                        StatValue::last_x => self.last_hp = value,
-                        StatValue::last_food_x => self.last_food_hp = value,
-                        StatValue::last_x_time => self.last_hp_time = current_time,
+                        StatValue::LastX => self.last_hp = value,
+                        StatValue::LastUseX => self.last_food_hp = value,
+                        StatValue::LastXTime => self.last_hp_time = current_time,
                     };
                 } else {
                     match stat_value {
-                        StatValue::last_x => {
-                            current_value = image
-                                .detect_status_bar(self.last_hp, StatusBarKind::Hp)
-                                .unwrap()
-                        }
-                        StatValue::last_food_x => current_value = self.last_food_hp,
-                        StatValue::last_x_time => current_value_time = Some(self.last_hp_time),
+                        StatValue::LastX => current_value = self.last_hp,
+                        StatValue::LastUseX => current_value = self.last_food_hp,
+                        StatValue::LastXTime => current_value_time = Some(self.last_hp_time),
                     };
                 }
                 self.current_status_bar = StatusBarKind::Hp
@@ -308,19 +307,15 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Mp => {
                 if set_val {
                     match stat_value {
-                        StatValue::last_x => self.last_mp = value,
-                        StatValue::last_food_x => self.last_food_mp = value,
-                        StatValue::last_x_time => self.last_mp_time = current_time,
+                        StatValue::LastX => self.last_mp = value,
+                        StatValue::LastUseX => self.last_food_mp = value,
+                        StatValue::LastXTime => self.last_mp_time = current_time,
                     };
                 } else {
                     match stat_value {
-                        StatValue::last_x => {
-                            current_value = image
-                                .detect_status_bar(self.last_mp, StatusBarKind::Mp)
-                                .unwrap()
-                        }
-                        StatValue::last_food_x => current_value = self.last_food_mp,
-                        StatValue::last_x_time => current_value_time = Some(self.last_mp_time),
+                        StatValue::LastX => current_value = self.last_mp,
+                        StatValue::LastUseX => current_value = self.last_food_mp,
+                        StatValue::LastXTime => current_value_time = Some(self.last_mp_time),
                     };
                 }
                 self.current_status_bar = StatusBarKind::Hp
@@ -328,19 +323,15 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Fp => {
                 if set_val {
                     match stat_value {
-                        StatValue::last_x => self.last_fp = value,
-                        StatValue::last_food_x => self.last_food_fp = value,
-                        StatValue::last_x_time => self.last_fp_time = current_time,
+                        StatValue::LastX => self.last_fp = value,
+                        StatValue::LastUseX => self.last_food_fp = value,
+                        StatValue::LastXTime => self.last_fp_time = current_time,
                     };
                 } else {
                     match stat_value {
-                        StatValue::last_x => {
-                            current_value = image
-                                .detect_status_bar(self.last_fp, StatusBarKind::Fp)
-                                .unwrap()
-                        }
-                        StatValue::last_food_x => current_value = self.last_food_fp,
-                        StatValue::last_x_time => current_value_time = Some(self.last_fp_time),
+                        StatValue::LastX => current_value = self.last_fp,
+                        StatValue::LastUseX => current_value = self.last_food_fp,
+                        StatValue::LastXTime => current_value_time = Some(self.last_fp_time),
                     };
                 }
                 self.current_status_bar = StatusBarKind::Hp
@@ -368,13 +359,7 @@ impl<'a> FarmingBehavior<'_> {
             "last_x_time" => last_x_time.elapsed().as_secs());
     }
     /// Consume based on value.
-    fn check_mp_fp_hp(
-        &mut self,
-        config: &FarmingConfig,
-        image: &ImageAnalyzer,
-        bar: StatusBarKind,
-        slot_index: usize,
-    ) {
+    fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
         let (threshold, pot_cooldown) = (
             config.get_slot_threshold(slot_index).unwrap_or(60),
             config.get_slot_cooldown(slot_index).unwrap_or(1000),
@@ -382,91 +367,65 @@ impl<'a> FarmingBehavior<'_> {
 
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(pot_cooldown.try_into().unwrap());
-        //let last_value = self.stats_value(ctype,false,StatInfo::default(),false);
-        let last_value = self
-            .stats_values(image, bar, StatValue::last_x, false, StatInfo::default())
+
+        let x_value = self
+            .stats_values(bar, StatValue::LastX, false, StatInfo::default())
             .0;
+        let last_x = self
+            .stats_values(bar, StatValue::LastUseX, false, StatInfo::default())
+            .0;
+        let last_x_time = self.stats_values(bar, StatValue::LastXTime, false, StatInfo::default());
 
-        // Decide which fooding logic to use based on HP
-        match image.detect_status_bar(last_value, bar) {
-            // HP bar detected, use HP-based potting logic
-            Some(hp) => {
-                // HP threshold. We probably shouldn't use food at > 75% HP.
-                // If HP is < 15% we need to use food ASAP.
+        // HP threshold. We probably shouldn't use food at > 75% HP.
+        // If HP is < 15% we need to use food ASAP.
 
-                let hp_threshold_reached = hp.value <= threshold;
-                let critical_threshold = (100.0 - (threshold as f32 * 0.75)) as u32;
-                let hp_critical_threshold_reached = hp.value <= critical_threshold;
+        let hp_threshold_reached = x_value.value <= threshold;
+        let critical_threshold = (100.0 - (threshold as f32 * 0.75)) as u32;
+        let hp_critical_threshold_reached = x_value.value <= critical_threshold;
 
-                // Calculate ms since last food usage
-                let last_x_time = self
-                    .stats_values(
-                        image,
-                        bar,
-                        StatValue::last_x_time,
-                        false,
-                        StatInfo::default(),
-                    )
-                    .1
-                    .unwrap();
-                let last_food_x = self
-                    .stats_values(
-                        image,
-                        bar,
-                        StatValue::last_x_time,
-                        false,
-                        StatInfo::default(),
-                    )
-                    .0;
-                let ms_since_last_food = Instant::now().duration_since(last_x_time).as_millis();
+        // Calculate ms since last food usage
+        let ms_since_last_food = Instant::now()
+            .duration_since(last_x_time.1.unwrap())
+            .as_millis();
 
-                // Check whether we can use food again.
-                // This is based on a very generous limit of 1s between food uses.
-                let can_use_food = current_time.duration_since(last_x_time) > min_pot_time_diff;
+        // Check whether we can use food again.
+        // This is based on a very generous limit of 1s between food uses.
+        let can_use_food = current_time.duration_since(last_x_time.1.unwrap()) > min_pot_time_diff;
 
-                // Use food ASAP if HP is critical.
-                // Wait a minimum of 333ms after last usage anyway to avoid detection.
-                // Spamming 3 times per second when low on HP seems legit for a real player.
-                let should_use_food_reason_hp_critical =
-                    ms_since_last_food > 333 && hp_critical_threshold_reached;
+        // Use food ASAP if HP is critical.
+        // Wait a minimum of 333ms after last usage anyway to avoid detection.
+        // Spamming 3 times per second when low on HP seems legit for a real player.
+        let should_use_food_reason_hp_critical =
+            ms_since_last_food > 333 && hp_critical_threshold_reached;
 
-                // Use food if nominal usage conditions are met
-                let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
+        // Use food if nominal usage conditions are met
+        let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
 
-                // Check whether we should use food for any reason
-                let should_use_food =
-                    should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+        // Check whether we should use food for any reason
+        let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
-                if false {
-                    self.debug_bar_cheking(last_value, bar, last_food_x, last_x_time);
-                }
-
-                if should_use_food && last_value.value > 0 {
-                    slog::debug!(self.logger,  "Stats ",   ;
-                    "Triggered slot for " => self.stat_name(bar),
-                    "value" => last_value.value);
-
-                    // Send keystroke for first slot mapped to pill
-                    send_keystroke(slot_index.into(), KeyMode::Press);
-
-                    // Update slot last time
-                    config.set_slot_last_time(slot_index);
-
-                    // Update state
-                    self.update_stats(image, bar, hp, true);
-
-                    // wait a few ms for the pill to be consumed
-                    std::thread::sleep(Duration::from_millis(100));
-                }
-                self.update_stats(image, bar, hp, false);
-            }
-
-            // HP bar not found, use legacy potting logic
-            // => Pot every 5 seconds and only while in a fight
-            None => {
-                slog::debug!(self.logger, "Bar not found ?");
-            }
+        if false {
+            self.debug_bar_cheking(last_x, bar, last_x_time.0, last_x_time.1.unwrap());
         }
+
+        if should_use_food && last_x.value > 0 {
+            slog::debug!(self.logger,  "Stats ",   ;
+            "Triggered slot for " => self.stat_name(bar),
+            "value" => x_value.value);
+
+            // Send keystroke for first slot mapped to pill
+            send_keystroke(slot_index.into(), KeyMode::Press);
+
+            // Update slot last time
+            config.set_slot_last_time(slot_index);
+
+            // Update state
+            self.update_stats(bar, x_value, true);
+
+            // wait a few ms for the pill to be consumed
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        self.update_stats(bar, x_value, false);
     }
 
     fn on_idle(&mut self, _config: &FarmingConfig) -> State {
@@ -696,9 +655,9 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = true;
             self.last_killed_mob_bounds = marker.bounds;
 
-             // Only use attack skill if enabled and once a second at most
+            // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
-            // Try to use attack skill
+                // Try to use attack skill
                 if let Some(slot_index) =
                     config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
                 {
@@ -706,6 +665,7 @@ impl<'a> FarmingBehavior<'_> {
 
                     send_keystroke(slot_index.into(), KeyMode::Press);
 
+                    //WHAT NEED TO BE DONE FOR SPELLS COOLDOWN
                     config.set_slot_last_time(slot_index)
                 }
             }

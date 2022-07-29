@@ -5,7 +5,7 @@ use rand::Rng;
 use slog::Logger;
 
 use crate::{
-    image_analyzer::ImageAnalyzer,
+    image_analyzer::{ImageAnalyzer, StatInfo},
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
     platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
@@ -59,7 +59,14 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         self.message_iter = None;
     }
 
-    fn run_iteration(&mut self, config: &BotConfig, _analyzer: &ImageAnalyzer) {
+    fn run_iteration(
+        &mut self,
+        config: &BotConfig,
+        _analyzer: &ImageAnalyzer,
+        hp: StatInfo,
+        mp: StatInfo,
+        fp: StatInfo,
+    ) {
         let config = config.shout_config();
         self.shout(config);
     }
