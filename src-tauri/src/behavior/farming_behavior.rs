@@ -8,7 +8,7 @@ use tauri::{PhysicalPosition, Position};
 use crate::{
     data::{Bounds, MobType, Target, TargetType},
     image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
-    ipc::{BotConfig, FarmingConfig, Slot,  SlotType},
+    ipc::{BotConfig, FarmingConfig, Slot, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
@@ -694,11 +694,11 @@ impl<'a> FarmingBehavior<'_> {
             self.last_killed_mob_bounds = marker.bounds;
 
             // Try to use attack skill
-            if let Some(slot_index) = config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
+            if let Some(slot_index) =
+                config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
             {
                 // Only use attack skill if enabled and once a second at most
-                if config.should_use_attack_skills()
-                {
+                if config.should_use_attack_skills() {
                     self.last_attack_skill_usage_time = Instant::now();
 
                     send_keystroke(slot_index.into(), KeyMode::Press);
