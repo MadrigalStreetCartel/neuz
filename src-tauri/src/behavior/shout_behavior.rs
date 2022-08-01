@@ -1,14 +1,14 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use guard::guard;
-use rand::Rng;
+
 use slog::Logger;
 
 use crate::{
     image_analyzer::{ImageAnalyzer, StatInfo},
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
-    platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
+    platform::{Key, PlatformAccessor},
     play,
 };
 
@@ -63,9 +63,9 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         &mut self,
         config: &BotConfig,
         _analyzer: &ImageAnalyzer,
-        hp: StatInfo,
-        mp: StatInfo,
-        fp: StatInfo,
+        _hp: StatInfo,
+        _mp: StatInfo,
+        _fp: StatInfo,
     ) {
         let config = config.shout_config();
         self.shout(config);

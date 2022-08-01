@@ -18,6 +18,7 @@ use super::Behavior;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
+
     Idle,
     NoEnemyFound,
     SearchingForEnemy,
@@ -38,6 +39,8 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
+
+    // HP/FP/MP Detection
     current_status_bar: StatusBarKind,
     last_hp: StatInfo,
     last_fp: StatInfo,
@@ -49,6 +52,9 @@ pub struct FarmingBehavior<'a> {
     last_hp_time: Instant,
     last_fp_time: Instant,
     last_mp_time: Instant,
+    last_slots_usage: [Option<Instant>; 10],
+
+    // Attack
     last_initial_attack_time: Instant,
     last_attack_skill_usage_time: Instant,
     last_kill_time: Instant,
@@ -70,6 +76,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
+
+            // HP/FP/MP Detection
             current_status_bar: StatusBarKind::default(),
             last_hp: StatInfo::default(),
             last_fp: StatInfo::default(),
@@ -81,6 +89,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_hp_time: Instant::now(),
             last_fp_time: Instant::now(),
             last_mp_time: Instant::now(),
+            last_slots_usage: [None; 10],
+
+            // Attack
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
@@ -114,16 +125,42 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         self.last_fp = fp;
         self.last_food_fp = fp;
 
+        // Update slot timers
+        let mut count = 0;
+
+        for last_time in self.last_slots_usage {
+            if config.get_slot_cooldown(count).is_some() {
+                let cooldown = config.get_slot_cooldown(count).unwrap().try_into();
+                if last_time.is_some() && cooldown.is_ok() {
+                    let slot_last_time = last_time.unwrap().elapsed().as_millis();
+                    if slot_last_time > cooldown.unwrap() {
+                        self.last_slots_usage[count] = None;
+                    }
+                }
+            }
+            count += 1;
+        }
+
         // Check whether something should be consumed
-        if config.get_slot_index(SlotType::Refresher).is_some() {
+        if config
+            .get_slot_index(SlotType::Refresher, self.last_slots_usage)
+            .is_some()
+        {
             self.check_bar(config, StatusBarKind::Mp);
         }
-        if config.get_slot_index(SlotType::Pill).is_some()
-            || config.get_slot_index(SlotType::Food).is_some()
+        if config
+            .get_slot_index(SlotType::Pill, self.last_slots_usage)
+            .is_some()
+            || config
+                .get_slot_index(SlotType::Food, self.last_slots_usage)
+                .is_some()
         {
             self.check_bar(config, StatusBarKind::Hp);
         }
-        if config.get_slot_index(SlotType::VitalDrink).is_some() {
+        if config
+            .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
+            .is_some()
+        {
             self.check_bar(config, StatusBarKind::Fp);
         }
 
@@ -148,8 +185,9 @@ impl<'a> FarmingBehavior<'_> {
     fn pickup_items(&mut self, config: &FarmingConfig) {
         use crate::movement::prelude::*;
 
-        let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
-        let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
+        let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet, self.last_slots_usage);
+        let pickup_motion_slot =
+            config.get_slot_index(SlotType::PickupMotion, self.last_slots_usage);
 
         match (
             config.should_use_on_demand_pet(),
@@ -213,30 +251,36 @@ impl<'a> FarmingBehavior<'_> {
     fn check_bar(&mut self, config: &FarmingConfig, bar: StatusBarKind) {
         match bar {
             StatusBarKind::Hp => {
-                let slot_available = config.get_slot_index(SlotType::Pill).is_some();
+                let slot_available = config
+                    .get_slot_index(SlotType::Pill, self.last_slots_usage)
+                    .is_some();
                 let should_use = slot_available;
 
                 if should_use {
-                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Pill) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Pill,self.last_slots_usage) else {
                         return;
                     });
                     // Send keystroke for first mapped slot
                     self.check_mp_fp_hp(config, StatusBarKind::Hp, slot_index);
                 }
                 // Use regular food
-                else if let Some(slot_index) = config.get_slot_index(SlotType::Food) {
+                else if let Some(slot_index) =
+                    config.get_slot_index(SlotType::Food, self.last_slots_usage)
+                {
                     self.check_mp_fp_hp(config, StatusBarKind::Hp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to HP!");
                 }
             }
             StatusBarKind::Mp => {
-                let slot_available = config.get_slot_index(SlotType::Refresher).is_some();
+                let slot_available = config
+                    .get_slot_index(SlotType::Refresher, self.last_slots_usage)
+                    .is_some();
                 let should_use = slot_available;
 
                 // Use pill
                 if should_use {
-                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Refresher) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::Refresher,self.last_slots_usage) else {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
@@ -246,12 +290,14 @@ impl<'a> FarmingBehavior<'_> {
                 }
             }
             StatusBarKind::Fp => {
-                let slot_available = config.get_slot_index(SlotType::VitalDrink).is_some();
+                let slot_available = config
+                    .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
+                    .is_some();
                 let should_use = slot_available;
 
                 // Use pill
                 if should_use {
-                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::VitalDrink) else {
+                    guard!(let Some(slot_index) = config.get_slot_index(SlotType::VitalDrink,self.last_slots_usage) else {
                         return;
                     });
                     // Send keystroke for first slot mapped to pill
@@ -358,6 +404,7 @@ impl<'a> FarmingBehavior<'_> {
             "last_food_x.max_w" => last_food_x.max_w,
             "last_x_time" => last_x_time.elapsed().as_secs());
     }
+
     /// Consume based on value.
     fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
         let (threshold, pot_cooldown) = (
@@ -417,10 +464,9 @@ impl<'a> FarmingBehavior<'_> {
             send_keystroke(slot_index.into(), KeyMode::Press);
 
             // Update slot last time
-            config.set_slot_last_time(slot_index);
+            self.last_slots_usage[slot_index] = Some(Instant::now());
 
-            // Update state
-            self.update_stats(bar, x_value, true);
+            //self.update_stats(bar, x_value, true);
 
             // wait a few ms for the pill to be consumed
             std::thread::sleep(Duration::from_millis(100));
@@ -658,15 +704,16 @@ impl<'a> FarmingBehavior<'_> {
             // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
                 // Try to use attack skill
-                if let Some(slot_index) =
-                    config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
-                {
+                if let Some(slot_index) = config.get_random_slot_index(
+                    SlotType::AttackSkill,
+                    &mut self.rng,
+                    self.last_slots_usage,
+                ) {
                     self.last_attack_skill_usage_time = Instant::now();
 
                     send_keystroke(slot_index.into(), KeyMode::Press);
 
-                    //WHAT NEED TO BE DONE FOR SPELLS COOLDOWN
-                    config.set_slot_last_time(slot_index)
+                    self.last_slots_usage[slot_index] = Some(Instant::now());
                 }
             }
 

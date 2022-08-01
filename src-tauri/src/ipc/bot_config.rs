@@ -1,10 +1,4 @@
-use chrono::prelude::*;
-
-use std::{
-    alloc::System,
-    fs::File,
-    time::{Duration, Instant, SystemTime},
-};
+use std::{alloc::System, fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -29,7 +23,6 @@ pub struct Slot {
     slot_cooldown: Option<i64>,
     slot_priority: Option<u32>,
     slot_threshold: Option<u32>,
-    slot_last_time: Option<i64>,
 }
 
 impl Default for Slot {
@@ -39,7 +32,6 @@ impl Default for Slot {
             slot_cooldown: Some(0),
             slot_priority: Some(0),
             slot_threshold: Some(0),
-            slot_last_time: None,
         }
     }
 }
@@ -107,62 +99,45 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
-    pub fn slot_timers_update(&self) {
-        self.slots
-            .unwrap_or_default()
-            .iter_mut()
-            .for_each(|slot: &mut Slot| {
-                if slot.slot_cooldown.is_some() && slot.slot_last_time.is_some() {
-                    let count = DateTime::<Utc>::from_utc(
-                        NaiveDateTime::from_timestamp(slot.slot_last_time.unwrap(), 0),
-                        Utc,
-                    )
-                    .signed_duration_since(Utc::now())
-                    .num_milliseconds();
-                    println!("count {}  cd :{}", count, slot.slot_cooldown.unwrap());
-                    if count > slot.slot_cooldown.unwrap() {
-                        slot.slot_last_time = None;
-                    }
-                }
-            });
-    }
-
-    /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
-        self.slot_timers_update();
-        self.slots
-            .unwrap_or_default()
-            .iter()
-            .position(|slot: &Slot| slot.slot_type == slot_type && slot.slot_last_time.is_none())
-    }
-
-    /// Get a random matching slot index
-    pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
-    where
-        R: Rng,
-    {
-        self.slot_timers_update();
+    pub fn get_slot_index(
+        &self,
+        slot_type: SlotType,
+        last_trigger_list: [Option<Instant>; 10],
+    ) -> Option<usize> {
         self.slots
             .unwrap_or_default()
             .iter()
             .enumerate()
-            .filter(|(_, slot)| slot.slot_type == slot_type && slot.slot_last_time.is_none())
-            .choose(rng)
-            .map(|(index, _)| index)
+            .filter_map(|(index, slot)| {
+                let id = index.clone();
+                if slot.slot_type == slot_type && last_trigger_list[id].is_none() {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .last()
     }
 
-    /// Get number of castable slots
-    pub fn get_usable_len(&self, slot_type: SlotType) -> u32 {
-        let mut count = 0;
+    /// Get a random matching slot index
+    pub fn get_random_slot_index<R>(
+        &self,
+        slot_type: SlotType,
+        rng: &mut R,
+        last_trigger_list: [Option<Instant>; 10],
+    ) -> Option<usize>
+    where
+        R: Rng,
+    {
         self.slots
             .unwrap_or_default()
-            .iter_mut()
-            .for_each(|slot: &mut Slot| {
-                if slot.slot_type == slot_type && slot.slot_last_time.is_none() {
-                    count += 1;
-                }
-            });
-        count
+            .iter()
+            .enumerate()
+            .filter(|(index, slot)| {
+                slot.slot_type == slot_type && last_trigger_list[*index].is_none()
+            })
+            .choose(rng)
+            .map(|(index, _)| index)
     }
 
     /// Get the first matching slot threshold
@@ -173,37 +148,6 @@ impl FarmingConfig {
     /// Get the first matching slot cooldown
     pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<i64> {
         self.slots.unwrap_or_default()[slot_index].slot_cooldown
-    }
-
-    /// Get the first matching last cast time
-    pub fn get_slot_last_time(&self, slot_index: usize) -> Option<i64> {
-        Some(
-            DateTime::<Utc>::from_utc(
-                NaiveDateTime::from_timestamp(
-                    self.slots.unwrap_or_default()[slot_index]
-                        .slot_last_time
-                        .unwrap(),
-                    0,
-                ),
-                Utc,
-            )
-            .signed_duration_since(Utc::now())
-            .num_milliseconds(),
-        )
-    }
-
-    /// Update slot_last_time
-    pub fn set_slot_last_time(&self, slot_index: usize) {
-        let time = Utc::now().timestamp_millis();
-        let mut new_slots = self.slots.clone();
-
-        for slot in new_slots.iter_mut() {
-            slot[slot_index].slot_last_time = Some(time);
-        }
-
-        //self.slots = new_slots;
-
-        //println!("{}", self.slots.unwrap_or_default()[slot_index].slot_last_time.unwrap_or(0));
     }
 
     /// Get the first matching slot priority
