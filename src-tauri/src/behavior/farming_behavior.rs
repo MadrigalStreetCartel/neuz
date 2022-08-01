@@ -127,7 +127,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         // Update slot timers
         let mut count = 0;
-
         for last_time in self.last_slots_usage {
             if config.get_slot_cooldown(count).is_some() {
                 let cooldown = config.get_slot_cooldown(count).unwrap().try_into();
@@ -148,6 +147,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         {
             self.check_bar(config, StatusBarKind::Mp);
         }
+
         if config
             .get_slot_index(SlotType::Pill, self.last_slots_usage)
             .is_some()
@@ -157,6 +157,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         {
             self.check_bar(config, StatusBarKind::Hp);
         }
+
         if config
             .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
             .is_some()
@@ -166,7 +167,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         //DEBUG PURPOSE
         #[cfg(debug_assertions)]
-        self.debug_stats_bar();
+        self.debug_stats_bars();
 
         // Check state machine
         self.state = match self.state {
@@ -224,12 +225,28 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
+    // Debug values
     #[cfg(debug_assertions)]
-    fn debug_stats_bar(&mut self) {
+    fn debug_stats_bar(
+        &self,
+        last_value: StatInfo,
+        bar: StatusBarKind,
+        last_food_x: StatInfo,
+        last_x_time: Instant,
+    ) {
+        slog::debug!(self.logger, "Stats";"Currently detecting" => self.stat_name(bar),
+            "last_value.value" => last_value.value,
+            "last_value.max_w" => last_value.max_w,
+            "last_food_x.value" => last_food_x.value,
+            "last_food_x.max_w" => last_food_x.max_w,
+            "last_x_time" => last_x_time.elapsed().as_secs());
+    }
+
+    #[cfg(debug_assertions)]
+    fn debug_stats_bars(&self) {
         // Print stats
         if false {
-            slog::debug!(self.logger,  "Getting stats ",   ; " " => "");
-            slog::debug!(self.logger,  "Trying to detect FP ",   ;
+            slog::debug!(self.logger,  "Trying to detect stats ",   ;
                 "FP PERCENT " =>  self.last_fp.value,
                 "MP PERCENT " => self.last_mp.value,
                 "HP PERCENT " => self.last_hp.value,
@@ -238,7 +255,16 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn stat_name(&mut self, bar: StatusBarKind) -> String {
+    #[cfg(debug_assertions)]
+    fn debug_threshold_reached(&self,  config:&FarmingConfig , bar_name:&str , value: u32,slot_index:usize) {
+        slog::debug!(self.logger,  "Stats ",   ;
+        "Threshold reached for " => bar_name,
+        "value" => value,
+        "Triggered slot " => slot_index,
+        "Slot threshold " => config.get_slot_threshold(slot_index));
+    }
+
+    fn stat_name(&self, bar: StatusBarKind) -> String {
         let str = match bar {
             StatusBarKind::Hp => "HP",
             StatusBarKind::Fp => "FP",
@@ -249,6 +275,7 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn check_bar(&mut self, config: &FarmingConfig, bar: StatusBarKind) {
+        // Check wich bar is asked
         match bar {
             StatusBarKind::Hp => {
                 let slot_available = config
@@ -278,12 +305,11 @@ impl<'a> FarmingBehavior<'_> {
                     .is_some();
                 let should_use = slot_available;
 
-                // Use pill
                 if should_use {
                     guard!(let Some(slot_index) = config.get_slot_index(SlotType::Refresher,self.last_slots_usage) else {
                         return;
                     });
-                    // Send keystroke for first slot mapped to pill
+                    // Send keystroke for first slot mapped
                     self.check_mp_fp_hp(config, StatusBarKind::Mp, slot_index);
                 } else {
                     // slog::info!(self.logger, "No slot is mapped to MP!");
@@ -295,12 +321,11 @@ impl<'a> FarmingBehavior<'_> {
                     .is_some();
                 let should_use = slot_available;
 
-                // Use pill
                 if should_use {
                     guard!(let Some(slot_index) = config.get_slot_index(SlotType::VitalDrink,self.last_slots_usage) else {
                         return;
                     });
-                    // Send keystroke for first slot mapped to pill
+                    // Send keystroke for first slot mapped
                     self.check_mp_fp_hp(config, StatusBarKind::Mp, slot_index);
                 } else {
                     //slog::info!(self.logger, "No slot is mapped to FP!");
@@ -390,30 +415,10 @@ impl<'a> FarmingBehavior<'_> {
 
         (current_value, current_value_time)
     }
-    fn debug_bar_cheking(
-        &mut self,
-        last_value: StatInfo,
-        bar: StatusBarKind,
-        last_food_x: StatInfo,
-        last_x_time: Instant,
-    ) {
-        slog::debug!(self.logger, "Stats";"Currently detecting" => self.stat_name(bar),
-            "last_value.value" => last_value.value,
-            "last_value.max_w" => last_value.max_w,
-            "last_food_x.value" => last_food_x.value,
-            "last_food_x.max_w" => last_food_x.max_w,
-            "last_x_time" => last_x_time.elapsed().as_secs());
-    }
 
     /// Consume based on value.
     fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
-        let (threshold, pot_cooldown) = (
-            config.get_slot_threshold(slot_index).unwrap_or(60),
-            config.get_slot_cooldown(slot_index).unwrap_or(1000),
-        );
-
-        let current_time = Instant::now();
-        let min_pot_time_diff = Duration::from_millis(pot_cooldown.try_into().unwrap());
+        let threshold = config.get_slot_threshold(slot_index).unwrap_or(60);
 
         let x_value = self
             .stats_values(bar, StatValue::LastX, false, StatInfo::default())
@@ -425,48 +430,35 @@ impl<'a> FarmingBehavior<'_> {
 
         // HP threshold. We probably shouldn't use food at > 75% HP.
         // If HP is < 15% we need to use food ASAP.
-
         let hp_threshold_reached = x_value.value <= threshold;
         let critical_threshold = (100.0 - (threshold as f32 * 0.75)) as u32;
         let hp_critical_threshold_reached = x_value.value <= critical_threshold;
 
-        // Calculate ms since last food usage
-        let ms_since_last_food = Instant::now()
-            .duration_since(last_x_time.1.unwrap())
-            .as_millis();
-
-        // Check whether we can use food again.
-        // This is based on a very generous limit of 1s between food uses.
-        let can_use_food = current_time.duration_since(last_x_time.1.unwrap()) > min_pot_time_diff;
-
-        // Use food ASAP if HP is critical.
         // Wait a minimum of 333ms after last usage anyway to avoid detection.
         // Spamming 3 times per second when low on HP seems legit for a real player.
-        let should_use_food_reason_hp_critical =
-            ms_since_last_food > 333 && hp_critical_threshold_reached;
+        let should_use_food_reason_hp_critical = hp_critical_threshold_reached;
 
         // Use food if nominal usage conditions are met
-        let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
+        let should_use_food_reason_nominal = hp_threshold_reached;
 
         // Check whether we should use food for any reason
         let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
         if false {
-            self.debug_bar_cheking(last_x, bar, last_x_time.0, last_x_time.1.unwrap());
+            #[cfg(debug_assertions)]
+            self.debug_stats_bar(last_x, bar, last_x_time.0, last_x_time.1.unwrap());
         }
 
+        // Never trigger something if we're dead
         if should_use_food && last_x.value > 0 {
-            slog::debug!(self.logger,  "Stats ",   ;
-            "Triggered slot for " => self.stat_name(bar),
-            "value" => x_value.value);
+            #[cfg(debug_assertions)]
+            self.debug_threshold_reached(config,self.stat_name(bar).as_str(),x_value.value,slot_index);
 
-            // Send keystroke for first slot mapped to pill
+            // Send keystroke for first slot mapped
             send_keystroke(slot_index.into(), KeyMode::Press);
 
             // Update slot last time
             self.last_slots_usage[slot_index] = Some(Instant::now());
-
-            //self.update_stats(bar, x_value, true);
 
             // wait a few ms for the pill to be consumed
             std::thread::sleep(Duration::from_millis(100));

@@ -37,7 +37,7 @@ struct AppState {
     bars_not_detected_warn_count: i32,
 }
 
-fn main() {
+ fn main() {
     // Generate tauri context
     let context = tauri::generate_context!();
     let neuz_version = context
@@ -109,6 +109,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
 
+    // Stats
     let mut hp = state.hp.clone();
     let mut mp = state.mp.clone();
     let mut fp = state.fp.clone();
@@ -229,6 +230,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
+                // Check HP/MP/FP values and store them
                 hp = image_analyzer
                     .detect_status_bar(hp, image_analyzer::StatusBarKind::Hp)
                     .unwrap_or_default();
@@ -239,8 +241,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                     .detect_status_bar(fp, image_analyzer::StatusBarKind::Fp)
                     .unwrap_or_default();
 
-                // Check if bars are displayed
-
+                // Check whether bars are displayed
                 if hp.value == 0 && mp.value == 0 && fp.value == 0 {
                     slog::warn!(logger, "Stat tray not detected";"bars_not_detected_warn_count" => bars_not_detected_warn_count);
                     bars_not_detected_warn_count += 1;
@@ -250,14 +251,15 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                         send_keystroke(Key::T, KeyMode::Press);
                     }
                 } else {
+                    // If bars are found, check if bot is alive by using hp value
                     if hp.value == 0 {
                         if is_alive {
-                            slog::warn!(logger, "Bot died");
+                            slog::info!(logger, "Bot died");
                         }
                         is_alive = false;
                     } else {
                         if !is_alive {
-                            slog::warn!(logger, "Bot respawned");
+                            slog::info!(logger, "Bot respawned");
                         }
                         is_alive = true;
                     }

@@ -23,5 +23,7 @@ yarn-debug.log*
 yarn-error.log*
 todo-notes
 
+.botconfig
+
 # keep .gitkeep files
 !/**/.gitkeep
