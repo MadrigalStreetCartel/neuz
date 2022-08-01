@@ -1,9 +1,19 @@
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export type SlotType = "Unused" | "Food" | "PickupPet" | "PickupMotion" | "AttackSkill" | "BuffSkill" | "Flying" | "Pill"
+export let SlotTypes:string[] = ["Unused" , "Food" , "Pill" , "Refresher" , "VitalDrink" , "PickupPet" , "PickupMotion" , "AttackSkill" , "BuffSkill" , "Flying"]
+export let CooldowwnSlotTypes:string[] = ["AttackSkill" , "BuffSkill"]
+export let ThresholdSlotTypes:string[] = ["Food" , "Pill","Refresher","VitalDrink"]
+export let NothingSlotTypes:string[] = ["Unused", "Flying", "PickupMotion"]
+
+export type SlotType = typeof SlotTypes[number];
 
 export type SlotModel = {
     slot_type: SlotType,
+    slot_cooldown?:number,
+    slot_priority?:number,
+    slot_threshold?:number,
+    slot_last_time?:number,
+
 }
 
 export type SlotBarModel = FixedArray<SlotModel, 10>
@@ -15,6 +25,7 @@ export type FarmingConfigModel = Partial<{
     use_attack_skills: boolean,
     stay_in_area: boolean,
     unsupervised: boolean,
+    stop_fighting:boolean,
     slots: SlotBarModel,
 }>
 

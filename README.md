@@ -64,12 +64,17 @@ If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Sk
 | 💊         | Pill             |
 | 🐶         | Pickup Pet       |
 | ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
+| ![](./src/assets/icon_refresher_16x16.png) | HP |
+| ![](./src/assets/icon_vitaldrink_16x16.png) | FP |
 | 🗡️         | Attack Skill     |
 | 🪄         | Buff Skill       |
 | ✈️         | Board/Mount      |
 
+## AutoShout
+Configure AutoShout by adding you sentences 1 per line.
+Engage and enjoy spamming our chat
 
-## Support Automation / AutoShout
+## Support Automation
 Not yet implemented. Keep your eyes peeled for an update.
 
 # FAQ

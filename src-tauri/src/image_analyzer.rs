@@ -8,8 +8,9 @@ use crate::{
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
+    #[default]
     Hp,
     Mp,
     Fp,

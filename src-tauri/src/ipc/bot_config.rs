@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{alloc::System, fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -7,23 +7,31 @@ use serde::{Deserialize, Serialize};
 pub enum SlotType {
     Unused,
     Food,
+    Pill,
+    Refresher,
+    VitalDrink,
     PickupPet,
     PickupMotion,
     AttackSkill,
     BuffSkill,
     Flying,
-    Pill,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
+    slot_cooldown: Option<i64>,
+    slot_priority: Option<u32>,
+    slot_threshold: Option<u32>,
 }
 
 impl Default for Slot {
     fn default() -> Self {
         Self {
             slot_type: SlotType::Unused,
+            slot_cooldown: Some(0),
+            slot_priority: Some(0),
+            slot_threshold: Some(0),
         }
     }
 }
@@ -56,6 +64,8 @@ pub struct FarmingConfig {
     stay_in_area: Option<bool>,
     /// Whether the bot should try to level in a fully unsupervised way
     unsupervised: Option<bool>,
+    /// Will disable searching monsters
+    stop_fighting: Option<bool>,
     /// Slot configuration
     slots: Option<[Slot; 10]>,
     /// Disable farming
@@ -75,6 +85,10 @@ impl FarmingConfig {
         self.stay_in_area.unwrap_or(false)
     }
 
+    pub fn is_stop_fighting(&self) -> bool {
+        self.stop_fighting.unwrap_or(false)
+    }
+
     pub fn is_unsupervised(&self) -> bool {
         self.unsupervised.unwrap_or(false)
     }
@@ -85,16 +99,33 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
-    /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
+    pub fn get_slot_index(
+        &self,
+        slot_type: SlotType,
+        last_trigger_list: [Option<Instant>; 10],
+    ) -> Option<usize> {
         self.slots
             .unwrap_or_default()
             .iter()
-            .position(|slot| slot.slot_type == slot_type)
+            .enumerate()
+            .filter_map(|(index, slot)| {
+                let id = index.clone();
+                if slot.slot_type == slot_type && last_trigger_list[id].is_none() {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .last()
     }
 
     /// Get a random matching slot index
-    pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
+    pub fn get_random_slot_index<R>(
+        &self,
+        slot_type: SlotType,
+        rng: &mut R,
+        last_trigger_list: [Option<Instant>; 10],
+    ) -> Option<usize>
     where
         R: Rng,
     {
@@ -102,9 +133,26 @@ impl FarmingConfig {
             .unwrap_or_default()
             .iter()
             .enumerate()
-            .filter(|(_, slot)| slot.slot_type == slot_type)
+            .filter(|(index, slot)| {
+                slot.slot_type == slot_type && last_trigger_list[*index].is_none()
+            })
             .choose(rng)
             .map(|(index, _)| index)
+    }
+
+    /// Get the first matching slot threshold
+    pub fn get_slot_threshold(&self, slot_index: usize) -> Option<u32> {
+        self.slots.unwrap_or_default()[slot_index].slot_threshold
+    }
+
+    /// Get the first matching slot cooldown
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<i64> {
+        self.slots.unwrap_or_default()[slot_index].slot_cooldown
+    }
+
+    /// Get the first matching slot priority
+    pub fn get_slot_priority(&self, slot_index: usize) -> Option<u32> {
+        self.slots.unwrap_or_default()[slot_index].slot_priority
     }
 }
 
