@@ -33,13 +33,13 @@ struct AppState {
     hp: StatInfo,
     mp: StatInfo,
     fp: StatInfo,
-    enemy_hp:StatInfo,
-    spell_cast:StatInfo,
+    enemy_hp: StatInfo,
+    spell_cast: StatInfo,
     is_alive: bool,
     bars_not_detected_warn_count: i32,
 }
 
- fn main() {
+fn main() {
     // Generate tauri context
     let context = tauri::generate_context!();
     let neuz_version = context
@@ -280,10 +280,26 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, hp, mp, fp,enemy_hp,spel_cast);
+                            farming_behavior.run_iteration(
+                                config,
+                                &image_analyzer,
+                                hp,
+                                mp,
+                                fp,
+                                enemy_hp,
+                                spel_cast,
+                            );
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, hp, mp, fp,enemy_hp,spel_cast);
+                            shout_behavior.run_iteration(
+                                config,
+                                &image_analyzer,
+                                hp,
+                                mp,
+                                fp,
+                                enemy_hp,
+                                spel_cast,
+                            );
                         }
                         _ => (),
                     }

@@ -59,7 +59,9 @@ impl From<StatusBarKind> for StatusBarConfig {
         use StatusBarKind::*;
 
         match kind {
-            Hp => StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]]),
+            Hp => {
+                StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]])
+            }
 
             Mp => StatusBarConfig::new([
                 [20, 84, 196],
@@ -67,7 +69,9 @@ impl From<StatusBarKind> for StatusBarConfig {
                 [44, 164, 228],
                 [56, 188, 232],
             ]),
-            Fp => StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]]),
+            Fp => {
+                StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
+            }
 
             Xp => StatusBarConfig::new([
                 [48, 185, 244],
@@ -76,7 +80,12 @@ impl From<StatusBarKind> for StatusBarConfig {
                 [92, 236, 252],
             ]),
             EnemyHp => {
-                let mut enemy_hp_bar = StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]]);
+                let mut enemy_hp_bar = StatusBarConfig::new([
+                    [174, 18, 55],
+                    [188, 24, 62],
+                    [204, 30, 70],
+                    [220, 36, 78],
+                ]);
                 enemy_hp_bar.min_search_x = 310;
                 enemy_hp_bar.min_search_y = 30;
 
@@ -87,11 +96,11 @@ impl From<StatusBarKind> for StatusBarConfig {
             }
             SpellCasting => {
                 let mut spell_casting_bar = StatusBarConfig::new([
-                    [16,186,15],
-                    [20,157,20],
-                    [15,210,14],
-                    [92,164,92]
-                    ]);
+                    [16, 186, 15],
+                    [20, 157, 20],
+                    [15, 210, 14],
+                    [92, 164, 92],
+                ]);
                 spell_casting_bar.min_search_x = 310;
                 spell_casting_bar.min_search_y = 500;
                 // 800 -> 1038 fullscreen
@@ -110,8 +119,8 @@ impl Default for StatusBarConfig {
         Self {
             max_search_x: 310,
             max_search_y: 120,
-            min_search_x:0,
-            min_search_y:0,
+            min_search_x: 0,
+            min_search_y: 0,
             refs: [[0; 3]; 4],
         }
     }
@@ -360,10 +369,9 @@ impl ImageAnalyzer {
                     return;
                 }
 
-
                 // Loop over columns
                 'outer: for (x, _, px) in row {
-                    if px.0[3] != 255 || x >= status_bar_config.max_search_x{
+                    if px.0[3] != 255 || x >= status_bar_config.max_search_x {
                         return;
                     } else if x < status_bar_config.min_search_x {
                         continue;

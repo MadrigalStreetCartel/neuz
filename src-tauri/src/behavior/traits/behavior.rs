@@ -33,6 +33,6 @@ pub trait Behavior<'a> {
         mp: StatInfo,
         fp: StatInfo,
         enemy_hp: StatInfo,
-        spell_cast:StatInfo,
+        spell_cast: StatInfo,
     );
 }

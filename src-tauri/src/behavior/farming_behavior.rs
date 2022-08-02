@@ -18,7 +18,6 @@ use super::Behavior;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-
     Idle,
     NoEnemyFound,
     SearchingForEnemy,
@@ -61,10 +60,10 @@ pub struct FarmingBehavior<'a> {
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
-    last_enemy_hp:StatInfo,
+    last_enemy_hp: StatInfo,
     enemy_clicked: bool,
-    enemy_last_clicked:Instant,
-    spell_cast:StatInfo,
+    enemy_last_clicked: Instant,
+    spell_cast: StatInfo,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -102,9 +101,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             rotation_movement_tries: 0,
             kill_count: 0,
             last_enemy_hp: StatInfo::default(),
-            enemy_clicked:false,
-            enemy_last_clicked:Instant::now(),
-            spell_cast:StatInfo::default(),
+            enemy_clicked: false,
+            enemy_last_clicked: Instant::now(),
+            spell_cast: StatInfo::default(),
         }
     }
 
@@ -120,7 +119,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         mp: StatInfo,
         fp: StatInfo,
         enemy_hp: StatInfo,
-        spell_cast:StatInfo,
+        spell_cast: StatInfo,
     ) {
         let config = config.farming_config();
 
@@ -260,7 +259,7 @@ impl<'a> FarmingBehavior<'_> {
             let enemy_result = {
                 if !enemy_found {
                     "No enemy targeted".to_string()
-                }else{
+                } else {
                     self.last_enemy_hp.value.to_string()
                 }
             };
@@ -276,7 +275,13 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     #[cfg(debug_assertions)]
-    fn debug_threshold_reached(&self,  config:&FarmingConfig , bar_name:&str , value: u32,slot_index:usize) {
+    fn debug_threshold_reached(
+        &self,
+        config: &FarmingConfig,
+        bar_name: &str,
+        value: u32,
+        slot_index: usize,
+    ) {
         slog::debug!(self.logger,  "Stats ",   ;
         "Threshold reached for " => bar_name,
         "value" => value,
@@ -291,7 +296,7 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Mp => "MP",
             StatusBarKind::Xp => "EXP",
             StatusBarKind::EnemyHp => "Enemy HP",
-            StatusBarKind::SpellCasting => "Spell casting"
+            StatusBarKind::SpellCasting => "Spell casting",
         };
         return str.to_string();
     }
@@ -353,8 +358,8 @@ impl<'a> FarmingBehavior<'_> {
                     //slog::info!(self.logger, "No slot is mapped to FP!");
                 }
             }
-            StatusBarKind::Xp => {/* Well nothing to do */},
-            StatusBarKind::EnemyHp => {/* Well nothing to do */}
+            StatusBarKind::Xp => { /* Well nothing to do */ }
+            StatusBarKind::EnemyHp => { /* Well nothing to do */ }
             StatusBarKind::SpellCasting => {}
         }
     }
@@ -482,7 +487,12 @@ impl<'a> FarmingBehavior<'_> {
         // Never trigger something if we're dead
         if should_use_food && last_x.value > 0 {
             #[cfg(debug_assertions)]
-            self.debug_threshold_reached(config,self.stat_name(bar).as_str(),x_value.value,slot_index);
+            self.debug_threshold_reached(
+                config,
+                self.stat_name(bar).as_str(),
+                x_value.value,
+                slot_index,
+            );
 
             // Send keystroke for first slot mapped
             send_keystroke(slot_index.into(), KeyMode::Press);
@@ -708,18 +718,20 @@ impl<'a> FarmingBehavior<'_> {
             self.enemy_clicked = true;
             self.enemy_last_clicked = Instant::now();
             self.state
-        }else{
+        } else {
             if self.last_enemy_hp.value == 0 {
-                if self.enemy_last_clicked.elapsed().as_millis() > 3000{
+                if self.enemy_last_clicked.elapsed().as_millis() > 3000 {
                     self.enemy_clicked = false;
                     return State::SearchingForEnemy;
                 }
                 return self.state;
             }
             self.enemy_clicked = false;
-            if self.last_enemy_hp.value == 100 || false && self.last_enemy_hp.value > 0 /*If player is same party*/{
+            if self.last_enemy_hp.value == 100 || false && self.last_enemy_hp.value > 0
+            /*If player is same party*/
+            {
                 State::Attacking(mob)
-            }else {
+            } else {
                 use crate::movement::prelude::*;
                 play!(self.movement => [
                     Wait(dur::Random(300..500)),
@@ -739,7 +751,7 @@ impl<'a> FarmingBehavior<'_> {
             self.last_initial_attack_time = Instant::now();
             self.last_hp_time = Instant::now();
         }
-        if  self.last_enemy_hp.value > 0{
+        if self.last_enemy_hp.value > 0 {
             // If mob not loose any hp try to jump -> problem it stops char running on ennemy
             /*if self.last_initial_attack_time.elapsed().as_millis() > 100 && self.last_enemy_hp.value == 100 {
                 use crate::movement::prelude::*;
@@ -766,7 +778,6 @@ impl<'a> FarmingBehavior<'_> {
                     &mut self.rng,
                     self.last_slots_usage,
                 ) {
-
                     send_keystroke(slot_index.into(), KeyMode::Press);
                     std::thread::sleep(Duration::from_millis(1000));
                     self.last_slots_usage[slot_index] = Some(Instant::now());
