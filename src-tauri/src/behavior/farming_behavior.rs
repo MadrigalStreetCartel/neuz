@@ -56,7 +56,6 @@ pub struct FarmingBehavior<'a> {
 
     // Attack
     last_initial_attack_time: Instant,
-    last_attack_skill_usage_time: Instant,
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
     rotation_movement_tries: u32,
@@ -95,7 +94,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
-            last_attack_skill_usage_time: Instant::now(),
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -675,6 +673,11 @@ impl<'a> FarmingBehavior<'_> {
         );
 
         // Wait a few ms before transitioning state
+        use crate::movement::prelude::*;
+        // Lost target without attacking?
+        play!(self.movement => [
+            Wait(dur::Random(1000..2000)),
+        ]);
         State::Attacking(mob)
     }
 
@@ -701,7 +704,6 @@ impl<'a> FarmingBehavior<'_> {
                     &mut self.rng,
                     self.last_slots_usage,
                 ) {
-                    self.last_attack_skill_usage_time = Instant::now();
 
                     send_keystroke(slot_index.into(), KeyMode::Press);
 
