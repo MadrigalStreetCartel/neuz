@@ -66,6 +66,8 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         _hp: StatInfo,
         _mp: StatInfo,
         _fp: StatInfo,
+        _enemy_hp:StatInfo,
+        _spell_cast:StatInfo,
     ) {
         let config = config.shout_config();
         self.shout(config);

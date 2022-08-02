@@ -33,6 +33,8 @@ struct AppState {
     hp: StatInfo,
     mp: StatInfo,
     fp: StatInfo,
+    enemy_hp:StatInfo,
+    spell_cast:StatInfo,
     is_alive: bool,
     bars_not_detected_warn_count: i32,
 }
@@ -76,6 +78,8 @@ struct AppState {
             hp: StatInfo::default(),
             mp: StatInfo::default(),
             fp: StatInfo::default(),
+            enemy_hp: StatInfo::default(),
+            spell_cast: StatInfo::default(),
             is_alive: true,
             bars_not_detected_warn_count: 0,
         })
@@ -113,6 +117,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let mut hp = state.hp.clone();
     let mut mp = state.mp.clone();
     let mut fp = state.fp.clone();
+    let mut enemy_hp = state.enemy_hp.clone();
+    let mut spel_cast = state.spell_cast.clone();
 
     let mut is_alive = state.is_alive.clone();
     let mut bars_not_detected_warn_count = state.bars_not_detected_warn_count.clone();
@@ -240,6 +246,12 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 fp = image_analyzer
                     .detect_status_bar(fp, image_analyzer::StatusBarKind::Fp)
                     .unwrap_or_default();
+                enemy_hp = image_analyzer
+                    .detect_status_bar(enemy_hp, image_analyzer::StatusBarKind::EnemyHp)
+                    .unwrap_or_default();
+                spel_cast = StatInfo::default()/*image_analyzer
+                    .detect_status_bar(spel_cast, image_analyzer::StatusBarKind::SpellCasting)
+                    .unwrap_or_default()*/;
 
                 // Check whether bars are displayed
                 if hp.value == 0 && mp.value == 0 && fp.value == 0 {
@@ -268,10 +280,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, hp, mp, fp);
+                            farming_behavior.run_iteration(config, &image_analyzer, hp, mp, fp,enemy_hp,spel_cast);
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, hp, mp, fp);
+                            shout_behavior.run_iteration(config, &image_analyzer, hp, mp, fp,enemy_hp,spel_cast);
                         }
                         _ => (),
                     }

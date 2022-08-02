@@ -61,6 +61,10 @@ pub struct FarmingBehavior<'a> {
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
+    last_enemy_hp:StatInfo,
+    enemy_clicked: bool,
+    enemy_last_clicked:Instant,
+    spell_cast:StatInfo,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -97,6 +101,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
+            last_enemy_hp: StatInfo::default(),
+            enemy_clicked:false,
+            enemy_last_clicked:Instant::now(),
+            spell_cast:StatInfo::default(),
         }
     }
 
@@ -111,6 +119,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         hp: StatInfo,
         mp: StatInfo,
         fp: StatInfo,
+        enemy_hp: StatInfo,
+        spell_cast:StatInfo,
     ) {
         let config = config.farming_config();
 
@@ -122,6 +132,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         self.last_fp = fp;
         self.last_food_fp = fp;
+
+        self.last_enemy_hp = enemy_hp;
 
         // Update slot timers
         let mut count = 0;
@@ -243,8 +255,18 @@ impl<'a> FarmingBehavior<'_> {
     #[cfg(debug_assertions)]
     fn debug_stats_bars(&self) {
         // Print stats
-        if false {
+        if true {
+            let enemy_found = self.last_enemy_hp.value > 0;
+            let enemy_result = {
+                if !enemy_found {
+                    "No enemy targeted".to_string()
+                }else{
+                    self.last_enemy_hp.value.to_string()
+                }
+            };
+
             slog::debug!(self.logger,  "Trying to detect stats ",   ;
+                "ENEMY HP PERCENT " => enemy_result,
                 "FP PERCENT " =>  self.last_fp.value,
                 "MP PERCENT " => self.last_mp.value,
                 "HP PERCENT " => self.last_hp.value,
@@ -268,6 +290,8 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Fp => "FP",
             StatusBarKind::Mp => "MP",
             StatusBarKind::Xp => "EXP",
+            StatusBarKind::EnemyHp => "Enemy HP",
+            StatusBarKind::SpellCasting => "Spell casting"
         };
         return str.to_string();
     }
@@ -329,9 +353,9 @@ impl<'a> FarmingBehavior<'_> {
                     //slog::info!(self.logger, "No slot is mapped to FP!");
                 }
             }
-            StatusBarKind::Xp => {
-                // Well nothing to do
-            }
+            StatusBarKind::Xp => {/* Well nothing to do */},
+            StatusBarKind::EnemyHp => {/* Well nothing to do */}
+            StatusBarKind::SpellCasting => {}
         }
     }
 
@@ -409,6 +433,14 @@ impl<'a> FarmingBehavior<'_> {
                 current_value = self.last_xp;
                 current_value_time = Some(current_time);
             }
+            StatusBarKind::EnemyHp => {
+                current_value = self.last_enemy_hp;
+                current_value_time = Some(current_time);
+            }
+            StatusBarKind::SpellCasting => {
+                current_value = self.spell_cast;
+                current_value_time = Some(current_time);
+            }
         };
 
         (current_value, current_value_time)
@@ -418,7 +450,7 @@ impl<'a> FarmingBehavior<'_> {
     fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
         let threshold = config.get_slot_threshold(slot_index).unwrap_or(60);
 
-        let x_value = self
+        let mut x_value = self
             .stats_values(bar, StatValue::LastX, false, StatInfo::default())
             .0;
         let last_x = self
@@ -459,8 +491,10 @@ impl<'a> FarmingBehavior<'_> {
             self.last_slots_usage[slot_index] = Some(Instant::now());
 
             // wait a few ms for the pill to be consumed
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(500));
+            //x_value = StatInfo { max_w: x_value.max_w, value:100};
         }
+
         self.update_stats(bar, x_value, false);
     }
 
@@ -663,22 +697,36 @@ impl<'a> FarmingBehavior<'_> {
             x: point.x as i32,
             y: point.y as i32,
         });
-
-        // Set cursor position and simulate a click
-        drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        drop(
-            self.platform
-                .mouse
-                .click(&mouse_rs::types::keys::Keys::LEFT),
-        );
-
-        // Wait a few ms before transitioning state
-        use crate::movement::prelude::*;
-        // Lost target without attacking?
-        play!(self.movement => [
-            Wait(dur::Random(1000..2000)),
-        ]);
-        State::Attacking(mob)
+        if !self.enemy_clicked {
+            // Set cursor position and simulate a click
+            drop(self.platform.window.set_cursor_position(target_cursor_pos));
+            drop(
+                self.platform
+                    .mouse
+                    .click(&mouse_rs::types::keys::Keys::LEFT),
+            );
+            self.enemy_clicked = true;
+            self.enemy_last_clicked = Instant::now();
+            self.state
+        }else{
+            if self.last_enemy_hp.value == 0 {
+                if self.enemy_last_clicked.elapsed().as_millis() > 3000{
+                    self.enemy_clicked = false;
+                    return State::SearchingForEnemy;
+                }
+                return self.state;
+            }
+            self.enemy_clicked = false;
+            if self.last_enemy_hp.value == 100 || false && self.last_enemy_hp.value > 0 /*If player is same party*/{
+                State::Attacking(mob)
+            }else {
+                use crate::movement::prelude::*;
+                play!(self.movement => [
+                    Wait(dur::Random(300..500)),
+                ]);
+                State::SearchingForEnemy
+            }
+        }
     }
 
     fn on_attacking(
@@ -691,14 +739,28 @@ impl<'a> FarmingBehavior<'_> {
             self.last_initial_attack_time = Instant::now();
             self.last_hp_time = Instant::now();
         }
-        if let Some(marker) = image.identify_target_marker() {
+        if  self.last_enemy_hp.value > 0{
+            // If mob not loose any hp try to jump -> problem it stops char running on ennemy
+            /*if self.last_initial_attack_time.elapsed().as_millis() > 100 && self.last_enemy_hp.value == 100 {
+                use crate::movement::prelude::*;
+                play!(self.movement => [
+                    PressKey(Key::Space),
+                    Wait(dur::Random(100..300)),
+                    PressKey(Key::Space),
+                ]);
+            }*/
+
             // Target marker found
             self.is_attacking = true;
-            self.last_killed_mob_bounds = marker.bounds;
+            let marker = image.identify_target_marker();
+            if marker.is_some() {
+                let marker = marker.unwrap();
+                self.last_killed_mob_bounds = marker.bounds;
+            }
 
             // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
-                // Try to use attack skill
+                // Try to use attack skill'à
                 if let Some(slot_index) = config.get_random_slot_index(
                     SlotType::AttackSkill,
                     &mut self.rng,
@@ -706,7 +768,7 @@ impl<'a> FarmingBehavior<'_> {
                 ) {
 
                     send_keystroke(slot_index.into(), KeyMode::Press);
-
+                    std::thread::sleep(Duration::from_millis(1000));
                     self.last_slots_usage[slot_index] = Some(Instant::now());
                 }
             }
@@ -715,7 +777,7 @@ impl<'a> FarmingBehavior<'_> {
             self.state
         } else {
             // Target marker not found
-            if self.is_attacking {
+            if self.is_attacking && self.last_enemy_hp.value == 0 {
                 // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
@@ -723,7 +785,7 @@ impl<'a> FarmingBehavior<'_> {
                 use crate::movement::prelude::*;
                 // Lost target without attacking?
                 play!(self.movement => [
-                    Wait(dur::Random(1000..2000)),
+                    Wait(dur::Random(300..500)),
                 ]);
                 State::SearchingForEnemy
             }
