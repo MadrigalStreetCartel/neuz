@@ -274,10 +274,10 @@ impl<'a> FarmingBehavior<'_> {
                     .get_slot_index(SlotType::Pill, self.last_slots_usage)
                     .is_some();
                 let slot_available_food = config
-                .get_slot_index(SlotType::Food, self.last_slots_usage)
-                .is_some();
+                    .get_slot_index(SlotType::Food, self.last_slots_usage)
+                    .is_some();
 
-                let should_use = slot_available_pill || slot_available_food ;
+                let should_use = slot_available_pill || slot_available_food;
 
                 if should_use {
                     let slot_index;
@@ -286,7 +286,7 @@ impl<'a> FarmingBehavior<'_> {
                             return;
                         });
                         slot_index = slot_indexx;
-                    }else if slot_available_food {
+                    } else if slot_available_food {
                         guard!(let Some(slot_indexx) = config.get_slot_index(SlotType::Food,self.last_slots_usage) else {
                             return;
                         });
@@ -339,18 +339,17 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn update_stats(&mut self, ctype: StatusBarKind, value: StatInfo, update_time: bool) {
-        self.stats_values(ctype, StatValue::LastX, true, value);
-        self.stats_values(ctype, StatValue::LastUseX, true, value);
+        self.stats_values(ctype, true, value);
+        self.stats_values(ctype, true, value);
 
         if update_time {
-            self.stats_values(ctype, StatValue::LastXTime, true, value);
+            self.stats_values(ctype, true, value);
         }
     }
 
     fn stats_values(
         &mut self,
         ctype: StatusBarKind,
-        stat_value: StatValue,
         set_val: bool,
         value: StatInfo,
     ) -> (StatInfo, Option<Instant>) {
@@ -363,30 +362,24 @@ impl<'a> FarmingBehavior<'_> {
             StatusBarKind::Hp => {
                 if set_val {
                     self.stats_detection.hp = value;
-
                 } else {
                     current_value = self.stats_detection.hp
-
                 }
                 self.current_status_bar = StatusBarKind::Hp
             }
             StatusBarKind::Mp => {
                 if set_val {
                     self.stats_detection.mp = value;
-
                 } else {
                     current_value = self.stats_detection.mp
-
                 }
                 self.current_status_bar = StatusBarKind::Mp
             }
             StatusBarKind::Fp => {
                 if set_val {
                     self.stats_detection.fp = value;
-
                 } else {
                     current_value = self.stats_detection.fp
-
                 }
                 self.current_status_bar = StatusBarKind::Fp
             }
@@ -411,13 +404,9 @@ impl<'a> FarmingBehavior<'_> {
     fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
         let threshold = config.get_slot_threshold(slot_index).unwrap_or(60);
 
-        let x_value = self
-            .stats_values(bar, StatValue::LastX, false, StatInfo::default())
-            .0;
-        let last_x = self
-            .stats_values(bar, StatValue::LastUseX, false, StatInfo::default())
-            .0;
-        let last_x_time = self.stats_values(bar, StatValue::LastXTime, false, StatInfo::default());
+        let x_value = self.stats_values(bar, false, StatInfo::default()).0;
+        let last_x = self.stats_values(bar, false, StatInfo::default()).0;
+        let last_x_time = self.stats_values(bar, false, StatInfo::default());
 
         // HP threshold. We probably shouldn't use food at > 75% HP.
         // If HP is < 15% we need to use food ASAP.
@@ -649,7 +638,6 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-        slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
         // let inner_size = window.inner_size().unwrap();
         // let (x_diff, y_diff) = (
         //     image.width() - inner_size.width,
@@ -671,28 +659,23 @@ impl<'a> FarmingBehavior<'_> {
                     .mouse
                     .click(&mouse_rs::types::keys::Keys::LEFT),
             );
+            slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
             self.enemy_clicked = true;
             self.enemy_last_clicked = Instant::now();
             self.state
         } else {
-            if self.stats_detection.enemy_hp.value == 0 {
-                if self.enemy_last_clicked.elapsed().as_millis() > 1000 {
-                    self.enemy_clicked = false;
-                    return State::SearchingForEnemy;
-                }
-                return self.state;
-            }
-            self.enemy_clicked = false;
-            if self.stats_detection.enemy_hp.value == 100 || false && self.stats_detection.enemy_hp.value > 0
-            /*If player is same party*/
+            if self.stats_detection.enemy_hp.value == 100
+                || false && self.stats_detection.enemy_hp.value > 0
             {
+                self.enemy_clicked = false;
                 State::Attacking(mob)
             } else {
+                self.enemy_clicked = false;
                 use crate::movement::prelude::*;
                 play!(self.movement => [
-                    Wait(dur::Random(300..500)),
+                    PressKey(Key::W),
                 ]);
-                State::SearchingForEnemy
+                return State::SearchingForEnemy;
             }
         }
     }

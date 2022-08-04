@@ -1,7 +1,7 @@
 use std::{fmt, time::Instant};
 
 use crate::{
-    image_analyzer::ImageAnalyzer,
+    image_analyzer::{ImageAnalyzer, self},
     platform::{send_keystroke, Key, KeyMode},
 };
 
@@ -51,6 +51,16 @@ impl StatsDetection {
 
             stat_try_not_detected_count: 0,
         }
+    }
+
+    // update all bars values at once
+    pub fn update(&mut self, image: &ImageAnalyzer){
+        self.hp.update_value(image);
+        self.mp.update_value(image);
+        self.fp.update_value(image);
+        self.xp.update_value(image);
+        self.enemy_hp.update_value(image);
+        self.spell_cast.update_value(image);
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
@@ -109,7 +119,7 @@ impl StatInfo {
             value,
             stat_kind,
             last_update_time: Some(Instant::now()),
-            last_value:0,
+            last_value: 0,
         };
         if image.is_some() {
             res.update_value(image.unwrap());
@@ -128,7 +138,6 @@ impl StatInfo {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
-
     }
 }
 

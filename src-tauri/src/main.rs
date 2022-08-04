@@ -225,13 +225,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
-                // Check HP/MP/FP values and store them
-                character.hp.update_value(&image_analyzer);
-                character.mp.update_value(&image_analyzer);
-                character.fp.update_value(&image_analyzer);
-                character.xp.update_value(&image_analyzer);
-                character.enemy_hp.update_value(&image_analyzer);
-                character.spell_cast.update_value(&image_analyzer);
+                // Update HP/MP/FP/XP/EnemyHP/SpellCast bars
+                character.update(&image_analyzer);
 
                 // Check whether char is alive or dead
                 is_alive = character.is_alive();
