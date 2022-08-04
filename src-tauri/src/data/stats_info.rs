@@ -52,6 +52,8 @@ impl StatsDetection {
             stat_try_not_detected_count: 0,
         }
     }
+
+    // Detect whether we can read or not stat_tray and open it if needed
     pub fn detect_stat_tray(&mut self) {
         if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
             self.stat_try_not_detected_count += 1;
@@ -61,6 +63,8 @@ impl StatsDetection {
             }
         }
     }
+
+    // bot died
     pub fn is_alive(&mut self) -> bool {
         self.detect_stat_tray();
         // If bars are found, check if bot is alive by using hp value
@@ -78,7 +82,7 @@ pub struct StatInfo {
     pub value: u32,
     pub stat_kind: StatusBarKind,
     pub last_value: u32,
-    pub last_update: Option<Instant>,
+    pub last_update_time: Option<Instant>,
 }
 
 impl PartialEq for StatInfo {
@@ -104,7 +108,7 @@ impl StatInfo {
             max_w,
             value,
             stat_kind,
-            last_update: Some(Instant::now()),
+            last_update_time: Some(Instant::now()),
             last_value:0,
         };
         if image.is_some() {
@@ -112,6 +116,7 @@ impl StatInfo {
         }
         res
     }
+
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let (updated_max_w, updated_value) = image.detect_status_bar(*self).unwrap_or_default();
         let (old_max_w, old_value) = (self.max_w, self.value);
@@ -120,9 +125,8 @@ impl StatInfo {
             self.max_w = updated_max_w;
         }
         if updated_value != old_value {
-            self.last_value = old_value;
             self.value = updated_value;
-            self.last_update = Some(Instant::now());
+            self.last_update_time = Some(Instant::now());
         }
 
     }

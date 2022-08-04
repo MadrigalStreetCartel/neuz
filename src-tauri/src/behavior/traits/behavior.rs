@@ -30,6 +30,6 @@ pub trait Behavior<'a> {
         &mut self,
         config: &BotConfig,
         analyzer: &ImageAnalyzer,
-        stats_detection: StatsDetection,
+        stats_detection: &mut StatsDetection,
     );
 }

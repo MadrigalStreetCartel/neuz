@@ -64,7 +64,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         &mut self,
         config: &BotConfig,
         _analyzer: &ImageAnalyzer,
-        _character: StatsDetection,
+        _character: &mut StatsDetection,
     ) {
         let config = config.shout_config();
         self.shout(config);

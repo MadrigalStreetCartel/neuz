@@ -239,10 +239,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, character);
+                            farming_behavior.run_iteration(config, &image_analyzer, &mut character);
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, character);
+                            shout_behavior.run_iteration(config, &image_analyzer, &mut character);
                         }
                         _ => (),
                     }
