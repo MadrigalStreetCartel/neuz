@@ -5,7 +5,8 @@ use guard::guard;
 use slog::Logger;
 
 use crate::{
-    image_analyzer::{ImageAnalyzer, StatInfo},
+    data::{StatInfo, StatusBarKind},
+    image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
     platform::{Key, PlatformAccessor},

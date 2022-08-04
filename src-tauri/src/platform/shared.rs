@@ -6,6 +6,7 @@ mod platform_accessor;
 
 pub use key::{Key, KeyMode};
 pub use platform_accessor::PlatformAccessor;
+use winapi::shared::windef::HWND__;
 
 /// Get the native window id.
 pub fn get_window_id(window: &Window) -> Option<u64> {
@@ -25,6 +26,17 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
             unreachable!()
         }
         _ => Some(0_u64),
+    }
+}
+
+// Get the native window handle
+pub fn get_window_hwnd(window: &Window) -> Option<*mut HWND__> {
+    #[allow(unused_variables)]
+    match window.raw_window_handle() {
+        RawWindowHandle::Xlib(handle) => todo!(),
+        RawWindowHandle::Win32(handle) => Some(handle.hwnd as *mut HWND__),
+        RawWindowHandle::AppKit(handle) => todo!(),
+        _ => None,
     }
 }
 

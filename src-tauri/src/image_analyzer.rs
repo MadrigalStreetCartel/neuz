@@ -4,133 +4,13 @@ use libscreenshot::ImageBuffer;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
 use crate::{
-    data::{point_selector, Bounds, MobType, Point, PointCloud, Target, TargetType},
+    data::{
+        point_selector, Bounds, MobType, Point, PointCloud, StatInfo, StatusBarConfig,
+        StatusBarKind, Target, TargetType,
+    },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug, Default, Clone, Copy)]
-pub enum StatusBarKind {
-    #[default]
-    Hp,
-    Mp,
-    Fp,
-    Xp,
-    EnemyHp,
-    SpellCasting,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct StatInfo {
-    pub max_w: u32,
-    pub value: u32,
-}
-
-impl PartialEq for StatInfo {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl PartialOrd for StatInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.value.cmp(&other.value))
-    }
-}
-#[derive(Debug, Clone, Copy)]
-pub struct StatusBarConfig {
-    pub max_search_x: u32,
-    pub max_search_y: u32,
-    pub min_search_x: u32,
-    pub min_search_y: u32,
-    pub refs: [[u8; 3]; 4],
-}
-
-impl StatusBarConfig {
-    pub fn new(colors: [[u8; 3]; 4]) -> Self {
-        Self {
-            refs: colors,
-            ..Default::default()
-        }
-    }
-}
-
-impl From<StatusBarKind> for StatusBarConfig {
-    fn from(kind: StatusBarKind) -> Self {
-        use StatusBarKind::*;
-
-        match kind {
-            Hp => {
-                StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]])
-            }
-
-            Mp => StatusBarConfig::new([
-                [20, 84, 196],
-                [36, 132, 220],
-                [44, 164, 228],
-                [56, 188, 232],
-            ]),
-            Fp => {
-                StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
-            }
-
-            Xp => StatusBarConfig::new([
-                [48, 185, 244],
-                [128, 212, 245],
-                [52, 196, 252],
-                [92, 236, 252],
-            ]),
-            EnemyHp => {
-                let mut enemy_hp_bar = StatusBarConfig::new([
-                    [174, 18, 55],
-                    [188, 24, 62],
-                    [204, 30, 70],
-                    [220, 36, 78],
-                ]);
-                enemy_hp_bar.min_search_x = 310;
-                enemy_hp_bar.min_search_y = 30;
-
-                enemy_hp_bar.max_search_x = 1000;
-                enemy_hp_bar.max_search_y = 60;
-
-                enemy_hp_bar
-            }
-            SpellCasting => {
-                let mut spell_casting_bar = StatusBarConfig::new([
-                    [16, 186, 15],
-                    [20, 157, 20],
-                    [15, 210, 14],
-                    [92, 164, 92],
-                ]);
-                spell_casting_bar.min_search_x = 310;
-                spell_casting_bar.min_search_y = 500;
-                // 800 -> 1038 fullscreen
-                //
-                spell_casting_bar.max_search_x = 1000;
-                spell_casting_bar.max_search_y = 1080;
-
-                spell_casting_bar
-            }
-        }
-    }
-}
-
-impl Default for StatusBarConfig {
-    fn default() -> Self {
-        Self {
-            max_search_x: 310,
-            max_search_y: 120,
-            min_search_x: 0,
-            min_search_y: 0,
-            refs: [[0; 3]; 4],
-        }
-    }
-}
-
-impl PartialEq for StatusBarConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.refs == other.refs && self.max_search_x == other.max_search_x
-    }
-}
 
 pub struct ImageAnalyzer {
     image: ImageBuffer,
@@ -348,12 +228,8 @@ impl ImageAnalyzer {
         }
     }
 
-    pub fn detect_status_bar(
-        &self,
-        last_stats: StatInfo,
-        status_bar: StatusBarKind,
-    ) -> Option<StatInfo> {
-        let status_bar_config: StatusBarConfig = status_bar.into();
+    pub fn detect_status_bar(&self, last_stats: StatInfo) -> Option<(u32, u32)> {
+        let status_bar_config: StatusBarConfig = last_stats.stat_kind.into();
         let (snd, recv) = sync_channel::<Point>(4096);
         self.image
             .enumerate_rows()
@@ -406,11 +282,7 @@ impl ImageAnalyzer {
         let max_w = bounds.w.max(last_stats.max_w);
         let value_frac = bounds.w as f32 / max_w as f32;
         let value_scaled = ((value_frac * 100_f32) as u32).max(0).min(100);
-        let value = StatInfo {
-            max_w,
-            value: value_scaled,
-        };
 
-        Some(value)
+        Some((max_w, value_scaled))
     }
 }

@@ -21,7 +21,8 @@ use tauri::{Manager, Window};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior},
-    image_analyzer::{ImageAnalyzer, StatInfo},
+    data::{StatInfo, StatusBarKind},
+    image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -75,11 +76,11 @@ fn main() {
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState {
             logger,
-            hp: StatInfo::default(),
-            mp: StatInfo::default(),
-            fp: StatInfo::default(),
-            enemy_hp: StatInfo::default(),
-            spell_cast: StatInfo::default(),
+            hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
+            mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
+            fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
+            enemy_hp: StatInfo::new(0, 0, StatusBarKind::EnemyHp, None),
+            spell_cast: StatInfo::new(0, 0, StatusBarKind::SpellCasting, None),
             is_alive: true,
             bars_not_detected_warn_count: 0,
         })
@@ -106,6 +107,10 @@ fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
     } else {
         None
     }
+}
+
+fn make_larams(x: u32, y: u32) -> isize {
+    return ((y << 16) | (x & 0xFFFF)).try_into().unwrap();
 }
 
 #[tauri::command]
@@ -237,21 +242,11 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 guard!(let Some(mode) = config.mode() else { continue; });
 
                 // Check HP/MP/FP values and store them
-                hp = image_analyzer
-                    .detect_status_bar(hp, image_analyzer::StatusBarKind::Hp)
-                    .unwrap_or_default();
-                mp = image_analyzer
-                    .detect_status_bar(mp, image_analyzer::StatusBarKind::Mp)
-                    .unwrap_or_default();
-                fp = image_analyzer
-                    .detect_status_bar(fp, image_analyzer::StatusBarKind::Fp)
-                    .unwrap_or_default();
-                enemy_hp = image_analyzer
-                    .detect_status_bar(enemy_hp, image_analyzer::StatusBarKind::EnemyHp)
-                    .unwrap_or_default();
-                spel_cast = StatInfo::default()/*image_analyzer
-                    .detect_status_bar(spel_cast, image_analyzer::StatusBarKind::SpellCasting)
-                    .unwrap_or_default()*/;
+                hp.update_value(&image_analyzer);
+                mp.update_value(&image_analyzer);
+                fp.update_value(&image_analyzer);
+                enemy_hp.update_value(&image_analyzer);
+                spel_cast.update_value(&image_analyzer);
 
                 // Check whether bars are displayed
                 if hp.value == 0 && mp.value == 0 && fp.value == 0 {

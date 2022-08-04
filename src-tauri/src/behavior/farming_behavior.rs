@@ -6,8 +6,8 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
+    data::{Bounds, MobType, StatInfo, StatusBarKind, Target, TargetType},
+    image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -254,7 +254,7 @@ impl<'a> FarmingBehavior<'_> {
     #[cfg(debug_assertions)]
     fn debug_stats_bars(&self) {
         // Print stats
-        if true {
+        if false {
             let enemy_found = self.last_enemy_hp.value > 0;
             let enemy_result = {
                 if !enemy_found {
@@ -264,7 +264,7 @@ impl<'a> FarmingBehavior<'_> {
                 }
             };
 
-            slog::debug!(self.logger,  "Trying to detect stats ",   ;
+            slog::debug!(self.logger,  "Stats",   ;
                 "ENEMY HP PERCENT " => enemy_result,
                 "FP PERCENT " =>  self.last_fp.value,
                 "MP PERCENT " => self.last_mp.value,
@@ -720,7 +720,7 @@ impl<'a> FarmingBehavior<'_> {
             self.state
         } else {
             if self.last_enemy_hp.value == 0 {
-                if self.enemy_last_clicked.elapsed().as_millis() > 3000 {
+                if self.enemy_last_clicked.elapsed().as_millis() > 1000 {
                     self.enemy_clicked = false;
                     return State::SearchingForEnemy;
                 }

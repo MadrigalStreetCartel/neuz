@@ -1,9 +1,7 @@
 use slog::Logger;
 
 use crate::{
-    image_analyzer::{ImageAnalyzer, StatInfo},
-    ipc::BotConfig,
-    movement::MovementAccessor,
+    data::StatInfo, image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
     platform::PlatformAccessor,
 };
 

@@ -86,6 +86,7 @@ dependencies = [
  "tauri-build",
  "tfc",
  "winapi",
+ "windows-win",
  "winput",
 ]
 
@@ -4639,6 +4640,15 @@ name = "windows-tokens"
 version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3263d25f1170419995b78ff10c06b949e8a986c35c208dc24333c64753a87169"
+
+[[package]]
+name = "windows-win"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d4243ec23afe4e9b4e668b3c0a0e973f1b8265f6a46223cfcbc16fd267480c0"
+dependencies = [
+ "winapi",
+]
 
 [[package]]
 name = "windows_aarch64_msvc"
