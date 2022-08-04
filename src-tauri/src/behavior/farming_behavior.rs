@@ -651,33 +651,18 @@ impl<'a> FarmingBehavior<'_> {
             x: point.x as i32,
             y: point.y as i32,
         });
-        if !self.enemy_clicked {
-            // Set cursor position and simulate a click
-            drop(self.platform.window.set_cursor_position(target_cursor_pos));
-            drop(
-                self.platform
-                    .mouse
-                    .click(&mouse_rs::types::keys::Keys::LEFT),
-            );
-            slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
-            self.enemy_clicked = true;
-            self.enemy_last_clicked = Instant::now();
-            self.state
-        } else {
-            if self.stats_detection.enemy_hp.value == 100
-                || false && self.stats_detection.enemy_hp.value > 0
-            {
-                self.enemy_clicked = false;
-                State::Attacking(mob)
-            } else {
-                self.enemy_clicked = false;
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    PressKey(Key::W),
-                ]);
-                return State::SearchingForEnemy;
-            }
-        }
+        slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
+
+        // Set cursor position and simulate a click
+        drop(self.platform.window.set_cursor_position(target_cursor_pos));
+        drop(
+            self.platform
+                .mouse
+                .click(&mouse_rs::types::keys::Keys::LEFT),
+        );
+
+        self.enemy_last_clicked = Instant::now();
+        State::Attacking(mob)
     }
 
     fn on_attacking(
@@ -689,7 +674,9 @@ impl<'a> FarmingBehavior<'_> {
         if !self.is_attacking {
             self.last_initial_attack_time = Instant::now();
         }
-        if self.stats_detection.enemy_hp.value > 0 {
+        let marker = image.identify_target_marker();
+        if marker.is_some() && self.stats_detection.enemy_hp.value == 100
+        || false && self.stats_detection.enemy_hp.value > 0 {
             // If mob not loose any hp try to jump -> problem it stops char running on ennemy
             /*if self.last_initial_attack_time.elapsed().as_millis() > 100 && self.last_enemy_hp.value == 100 {
                 use crate::movement::prelude::*;
@@ -702,11 +689,9 @@ impl<'a> FarmingBehavior<'_> {
 
             // Target marker found
             self.is_attacking = true;
-            let marker = image.identify_target_marker();
-            if marker.is_some() {
-                let marker = marker.unwrap();
-                self.last_killed_mob_bounds = marker.bounds;
-            }
+
+            let marker = marker.unwrap();
+            self.last_killed_mob_bounds = marker.bounds;
 
             // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
