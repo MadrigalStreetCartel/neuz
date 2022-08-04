@@ -1,6 +1,9 @@
 use std::{fmt, time::Instant};
 
-use crate::image_analyzer::ImageAnalyzer;
+use crate::{
+    image_analyzer::ImageAnalyzer,
+    platform::{send_keystroke, Key, KeyMode},
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
@@ -26,10 +29,55 @@ impl fmt::Display for StatusBarKind {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
+pub struct StatsDetection {
+    pub hp: StatInfo,
+    pub mp: StatInfo,
+    pub fp: StatInfo,
+    pub xp: StatInfo,
+    pub enemy_hp: StatInfo,
+    pub spell_cast: StatInfo,
+
+    pub stat_try_not_detected_count: i32,
+}
+impl StatsDetection {
+    pub fn init() -> Self {
+        Self {
+            hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
+            mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
+            fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
+            xp: StatInfo::new(0, 0, StatusBarKind::Xp, None),
+            enemy_hp: StatInfo::new(0, 0, StatusBarKind::EnemyHp, None),
+            spell_cast: StatInfo::new(0, 0, StatusBarKind::SpellCasting, None),
+
+            stat_try_not_detected_count: 0,
+        }
+    }
+    pub fn detect_stat_tray(&mut self) {
+        if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
+            self.stat_try_not_detected_count += 1;
+            if self.stat_try_not_detected_count == 3 {
+                self.stat_try_not_detected_count = 0;
+                send_keystroke(Key::T, KeyMode::Press);
+            }
+        }
+    }
+    pub fn is_alive(&mut self) -> bool {
+        self.detect_stat_tray();
+        // If bars are found, check if bot is alive by using hp value
+        if self.hp.value == 0 {
+            false
+        } else {
+            true
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
 pub struct StatInfo {
     pub max_w: u32,
     pub value: u32,
     pub stat_kind: StatusBarKind,
+    pub last_value: u32,
     pub last_update: Option<Instant>,
 }
 
@@ -57,6 +105,7 @@ impl StatInfo {
             value,
             stat_kind,
             last_update: Some(Instant::now()),
+            last_value:0,
         };
         if image.is_some() {
             res.update_value(image.unwrap());
@@ -66,19 +115,16 @@ impl StatInfo {
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let (updated_max_w, updated_value) = image.detect_status_bar(*self).unwrap_or_default();
         let (old_max_w, old_value) = (self.max_w, self.value);
-        let mut changed = false;
+
         if updated_max_w != old_max_w {
             self.max_w = updated_max_w;
-            changed = true;
         }
         if updated_value != old_value {
+            self.last_value = old_value;
             self.value = updated_value;
-            changed = true;
-        }
-        if changed {
-            //println!("Update {} old value {} new {} last change was {}s", self.stat_kind.to_string(), old_value, self.value, self.last_update.unwrap().elapsed().as_secs());
             self.last_update = Some(Instant::now());
         }
+
     }
 }
 

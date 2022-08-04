@@ -29,17 +29,6 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
     }
 }
 
-// Get the native window handle
-pub fn get_window_hwnd(window: &Window) -> Option<*mut HWND__> {
-    #[allow(unused_variables)]
-    match window.raw_window_handle() {
-        RawWindowHandle::Xlib(handle) => todo!(),
-        RawWindowHandle::Win32(handle) => Some(handle.hwnd as *mut HWND__),
-        RawWindowHandle::AppKit(handle) => todo!(),
-        _ => None,
-    }
-}
-
 /// Determine whether the window is currently focused.
 pub fn get_window_focused(window: &Window) -> bool {
     #[cfg(target_os = "windows")]

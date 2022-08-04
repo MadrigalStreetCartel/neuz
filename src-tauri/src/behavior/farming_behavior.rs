@@ -6,7 +6,7 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{Bounds, MobType, StatInfo, StatusBarKind, Target, TargetType},
+    data::{Bounds, MobType, StatInfo, StatsDetection, StatusBarKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
@@ -115,24 +115,20 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         &mut self,
         config: &BotConfig,
         image: &ImageAnalyzer,
-        hp: StatInfo,
-        mp: StatInfo,
-        fp: StatInfo,
-        enemy_hp: StatInfo,
-        spell_cast: StatInfo,
+        stats_detection: StatsDetection,
     ) {
         let config = config.farming_config();
 
-        self.last_hp = hp;
-        self.last_food_hp = hp;
+        self.last_hp = stats_detection.hp;
+        self.last_food_hp = stats_detection.hp;
 
-        self.last_mp = mp;
-        self.last_food_mp = mp;
+        self.last_mp = stats_detection.mp;
+        self.last_food_mp = stats_detection.mp;
 
-        self.last_fp = fp;
-        self.last_food_fp = fp;
+        self.last_fp = stats_detection.fp;
+        self.last_food_fp = stats_detection.fp;
 
-        self.last_enemy_hp = enemy_hp;
+        self.last_enemy_hp = stats_detection.enemy_hp;
 
         // Update slot timers
         let mut count = 0;

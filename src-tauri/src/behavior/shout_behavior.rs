@@ -5,7 +5,7 @@ use guard::guard;
 use slog::Logger;
 
 use crate::{
-    data::{StatInfo, StatusBarKind},
+    data::{StatInfo, StatsDetection, StatusBarKind},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
@@ -64,11 +64,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         &mut self,
         config: &BotConfig,
         _analyzer: &ImageAnalyzer,
-        _hp: StatInfo,
-        _mp: StatInfo,
-        _fp: StatInfo,
-        _enemy_hp: StatInfo,
-        _spell_cast: StatInfo,
+        _character: StatsDetection,
     ) {
         let config = config.shout_config();
         self.shout(config);

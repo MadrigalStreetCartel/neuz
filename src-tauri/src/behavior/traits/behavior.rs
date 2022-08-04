@@ -1,7 +1,10 @@
 use slog::Logger;
 
 use crate::{
-    data::StatInfo, image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
+    data::{StatInfo, StatsDetection},
+    image_analyzer::ImageAnalyzer,
+    ipc::BotConfig,
+    movement::MovementAccessor,
     platform::PlatformAccessor,
 };
 
@@ -27,10 +30,6 @@ pub trait Behavior<'a> {
         &mut self,
         config: &BotConfig,
         analyzer: &ImageAnalyzer,
-        hp: StatInfo,
-        mp: StatInfo,
-        fp: StatInfo,
-        enemy_hp: StatInfo,
-        spell_cast: StatInfo,
+        stats_detection: StatsDetection,
     );
 }

@@ -21,7 +21,7 @@ use tauri::{Manager, Window};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior},
-    data::{StatInfo, StatusBarKind},
+    data::{StatInfo, StatsDetection, StatusBarKind},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
@@ -31,11 +31,7 @@ use crate::{
 
 struct AppState {
     logger: Logger,
-    hp: StatInfo,
-    mp: StatInfo,
-    fp: StatInfo,
-    enemy_hp: StatInfo,
-    spell_cast: StatInfo,
+    stats_detection: StatsDetection,
     is_alive: bool,
     bars_not_detected_warn_count: i32,
 }
@@ -76,11 +72,7 @@ fn main() {
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState {
             logger,
-            hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
-            mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
-            fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
-            enemy_hp: StatInfo::new(0, 0, StatusBarKind::EnemyHp, None),
-            spell_cast: StatInfo::new(0, 0, StatusBarKind::SpellCasting, None),
+            stats_detection: StatsDetection::init(),
             is_alive: true,
             bars_not_detected_warn_count: 0,
         })
@@ -109,21 +101,13 @@ fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
     }
 }
 
-fn make_larams(x: u32, y: u32) -> isize {
-    return ((y << 16) | (x & 0xFFFF)).try_into().unwrap();
-}
-
 #[tauri::command]
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
 
     // Stats
-    let mut hp = state.hp.clone();
-    let mut mp = state.mp.clone();
-    let mut fp = state.fp.clone();
-    let mut enemy_hp = state.enemy_hp.clone();
-    let mut spel_cast = state.spell_cast.clone();
+    let mut character = state.stats_detection.clone();
 
     let mut is_alive = state.is_alive.clone();
     let mut bars_not_detected_warn_count = state.bars_not_detected_warn_count.clone();
@@ -242,59 +226,23 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 guard!(let Some(mode) = config.mode() else { continue; });
 
                 // Check HP/MP/FP values and store them
-                hp.update_value(&image_analyzer);
-                mp.update_value(&image_analyzer);
-                fp.update_value(&image_analyzer);
-                enemy_hp.update_value(&image_analyzer);
-                spel_cast.update_value(&image_analyzer);
+                character.hp.update_value(&image_analyzer);
+                character.mp.update_value(&image_analyzer);
+                character.fp.update_value(&image_analyzer);
+                character.xp.update_value(&image_analyzer);
+                character.enemy_hp.update_value(&image_analyzer);
+                character.spell_cast.update_value(&image_analyzer);
 
-                // Check whether bars are displayed
-                if hp.value == 0 && mp.value == 0 && fp.value == 0 {
-                    slog::warn!(logger, "Stat tray not detected";"bars_not_detected_warn_count" => bars_not_detected_warn_count);
-                    bars_not_detected_warn_count += 1;
-                    if bars_not_detected_warn_count == 3 {
-                        bars_not_detected_warn_count = 0;
-                        slog::warn!(logger, "Trying to open stat tray");
-                        send_keystroke(Key::T, KeyMode::Press);
-                    }
-                } else {
-                    // If bars are found, check if bot is alive by using hp value
-                    if hp.value == 0 {
-                        if is_alive {
-                            slog::info!(logger, "Bot died");
-                        }
-                        is_alive = false;
-                    } else {
-                        if !is_alive {
-                            slog::info!(logger, "Bot respawned");
-                        }
-                        is_alive = true;
-                    }
-                }
+                // Check whether char is alive or dead
+                is_alive = character.is_alive();
 
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(
-                                config,
-                                &image_analyzer,
-                                hp,
-                                mp,
-                                fp,
-                                enemy_hp,
-                                spel_cast,
-                            );
+                            farming_behavior.run_iteration(config, &image_analyzer, character);
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(
-                                config,
-                                &image_analyzer,
-                                hp,
-                                mp,
-                                fp,
-                                enemy_hp,
-                                spel_cast,
-                            );
+                            shout_behavior.run_iteration(config, &image_analyzer, character);
                         }
                         _ => (),
                     }
