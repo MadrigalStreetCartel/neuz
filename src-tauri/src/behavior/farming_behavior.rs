@@ -25,12 +25,6 @@ enum State {
     Attacking(Target),
     AfterEnemyKill(Target),
 }
-#[derive(Debug, Clone, Copy)]
-pub enum StatValue {
-    LastX,
-    LastXTime,
-    LastUseX,
-}
 
 pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
@@ -51,9 +45,7 @@ pub struct FarmingBehavior<'a> {
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
-    enemy_clicked: bool,
     enemy_last_clicked: Instant,
-    spell_cast: StatInfo,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -81,9 +73,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
-            enemy_clicked: false,
             enemy_last_clicked: Instant::now(),
-            spell_cast: StatInfo::default(),
         }
     }
 
@@ -114,34 +104,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             count += 1;
         }
 
-        // Check whether something should be consumed
-        if config
-            .get_slot_index(SlotType::Refresher, self.last_slots_usage)
-            .is_some()
-        {
-            self.check_bar(config, StatusBarKind::Mp);
-        }
-
-        if config
-            .get_slot_index(SlotType::Pill, self.last_slots_usage)
-            .is_some()
-            || config
-                .get_slot_index(SlotType::Food, self.last_slots_usage)
-                .is_some()
-        {
-            self.check_bar(config, StatusBarKind::Hp);
-        }
-
-        if config
-            .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
-            .is_some()
-        {
-            self.check_bar(config, StatusBarKind::Fp);
-        }
-
         //DEBUG PURPOSE
         #[cfg(debug_assertions)]
-        self.debug_stats_bars();
+        self.debug_stats();
 
         // Check state machine
         self.state = match self.state {
@@ -184,12 +149,12 @@ impl<'a> FarmingBehavior<'_> {
             (false, _, Some(index)) => {
                 let rnd = self.rng.gen_range(7..10);
                 play!(self.movement => [
-                    Wait(dur::Random(200..300)),
+                    Wait(dur::Random(400..500)),
                     Repeat(rnd, vec![
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(100..200)),
+                        Wait(dur::Random(300..400)),
                     ]),
                 ]);
             }
@@ -199,25 +164,8 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    // Debug values
     #[cfg(debug_assertions)]
-    fn debug_stats_bar(
-        &self,
-        last_value: StatInfo,
-        bar: StatusBarKind,
-        last_food_x: StatInfo,
-        last_x_time: Instant,
-    ) {
-        slog::debug!(self.logger, "Stats";"Currently detecting" => self.stat_name(bar),
-            "last_value.value" => last_value.value,
-            "last_value.max_w" => last_value.max_w,
-            "last_food_x.value" => last_food_x.value,
-            "last_food_x.max_w" => last_food_x.max_w,
-            "last_x_time" => last_x_time.elapsed().as_secs());
-    }
-
-    #[cfg(debug_assertions)]
-    fn debug_stats_bars(&self) {
+    fn debug_stats(&self) {
         // Print stats
         if false {
             let enemy_found = self.stats_detection.enemy_hp.value > 0;
@@ -230,40 +178,15 @@ impl<'a> FarmingBehavior<'_> {
             };
 
             slog::debug!(self.logger,  "Stats",   ;
+                "Cast spelling " => self.stats_detection.spell_cast.value, // Maybe we can use this ?
                 "ENEMY HP PERCENT " => enemy_result,
+                "EXP PERCENT " => self.stats_detection.xp.value,
                 "FP PERCENT " =>  self.stats_detection.hp.value,
                 "MP PERCENT " => self.stats_detection.mp.value,
                 "HP PERCENT " => self.stats_detection.hp.value,
-                "EXP PERCENT " => self.stats_detection.xp.value
+
             );
         }
-    }
-
-    #[cfg(debug_assertions)]
-    fn debug_threshold_reached(
-        &self,
-        config: &FarmingConfig,
-        bar_name: &str,
-        value: u32,
-        slot_index: usize,
-    ) {
-        slog::debug!(self.logger,  "Stats ",   ;
-        "Threshold reached for " => bar_name,
-        "value" => value,
-        "Triggered slot " => slot_index,
-        "Slot threshold " => config.get_slot_threshold(slot_index));
-    }
-
-    fn stat_name(&self, bar: StatusBarKind) -> String {
-        let str = match bar {
-            StatusBarKind::Hp => "HP",
-            StatusBarKind::Fp => "FP",
-            StatusBarKind::Mp => "MP",
-            StatusBarKind::Xp => "EXP",
-            StatusBarKind::EnemyHp => "Enemy HP",
-            StatusBarKind::SpellCasting => "Spell casting",
-        };
-        return str.to_string();
     }
 
     fn check_bar(&mut self, config: &FarmingConfig, bar: StatusBarKind) {
@@ -338,119 +261,60 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn update_stats(&mut self, ctype: StatusBarKind, value: StatInfo, update_time: bool) {
-        self.stats_values(ctype, true, value);
-        self.stats_values(ctype, true, value);
-
-        if update_time {
-            self.stats_values(ctype, true, value);
-        }
-    }
-
-    fn stats_values(
-        &mut self,
-        ctype: StatusBarKind,
-        set_val: bool,
-        value: StatInfo,
-    ) -> (StatInfo, Option<Instant>) {
-        let current_time = Instant::now();
-
-        let mut current_value: StatInfo = StatInfo::default();
-        let mut current_value_time: Option<Instant> = None;
-
+    fn stats_values(&mut self, ctype: StatusBarKind) -> &mut StatInfo {
         match ctype {
             StatusBarKind::Hp => {
-                if set_val {
-                    self.stats_detection.hp = value;
-                } else {
-                    current_value = self.stats_detection.hp
-                }
-                self.current_status_bar = StatusBarKind::Hp
+                self.current_status_bar = StatusBarKind::Hp;
+                return &mut self.stats_detection.hp;
             }
             StatusBarKind::Mp => {
-                if set_val {
-                    self.stats_detection.mp = value;
-                } else {
-                    current_value = self.stats_detection.mp
-                }
-                self.current_status_bar = StatusBarKind::Mp
+                self.current_status_bar = StatusBarKind::Mp;
+                return &mut self.stats_detection.mp;
             }
             StatusBarKind::Fp => {
-                if set_val {
-                    self.stats_detection.fp = value;
-                } else {
-                    current_value = self.stats_detection.fp
-                }
-                self.current_status_bar = StatusBarKind::Fp
+                self.current_status_bar = StatusBarKind::Fp;
+                return &mut self.stats_detection.fp;
             }
             StatusBarKind::Xp => {
-                current_value = self.stats_detection.xp;
-                current_value_time = Some(current_time);
+                return &mut self.stats_detection.xp;
             }
             StatusBarKind::EnemyHp => {
-                current_value = self.stats_detection.enemy_hp;
-                current_value_time = Some(current_time);
+                return &mut self.stats_detection.enemy_hp;
             }
             StatusBarKind::SpellCasting => {
-                current_value = self.stats_detection.spell_cast;
-                current_value_time = Some(current_time);
+                return &mut self.stats_detection.spell_cast;
             }
         };
-
-        (current_value, current_value_time)
     }
 
     /// Consume based on value.
     fn check_mp_fp_hp(&mut self, config: &FarmingConfig, bar: StatusBarKind, slot_index: usize) {
         let threshold = config.get_slot_threshold(slot_index).unwrap_or(60);
 
-        let x_value = self.stats_values(bar, false, StatInfo::default()).0;
-        let last_x = self.stats_values(bar, false, StatInfo::default()).0;
-        let last_x_time = self.stats_values(bar, false, StatInfo::default());
-
-        // HP threshold. We probably shouldn't use food at > 75% HP.
-        // If HP is < 15% we need to use food ASAP.
-        let hp_threshold_reached = x_value.value <= threshold;
-        let critical_threshold = (100.0 - (threshold as f32 * 0.75)) as u32;
-        let hp_critical_threshold_reached = x_value.value <= critical_threshold;
-
-        // Wait a minimum of 333ms after last usage anyway to avoid detection.
-        // Spamming 3 times per second when low on HP seems legit for a real player.
-        let should_use_food_reason_hp_critical = hp_critical_threshold_reached;
-
-        // Use food if nominal usage conditions are met
-        let should_use_food_reason_nominal = hp_threshold_reached;
+        let mut last_x = self.stats_values(bar);
 
         // Check whether we should use food for any reason
-        let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
-
-        if false {
-            #[cfg(debug_assertions)]
-            self.debug_stats_bar(last_x, bar, last_x_time.0, last_x_time.1.unwrap());
-        }
+        let should_use_food = last_x.value <= threshold;
 
         // Never trigger something if we're dead
-        if should_use_food && last_x.value > 0 {
-            #[cfg(debug_assertions)]
-            self.debug_threshold_reached(
-                config,
-                self.stat_name(bar).as_str(),
-                x_value.value,
-                slot_index,
-            );
+        if should_use_food && last_x.value > 0 && last_x.last_item_used_time.is_none() {
+            /*#[cfg(debug_assertions)]
+            // Debug broken don't want to know why
+            if false {
+                slog::debug!(self.logger,  "Stats ",   ;
+                "Threshold reached for " => bar.to_string(),
+                "value" => last_x.value,
+                "Triggered slot " => slot_index,
+                "Slot threshold " => config.get_slot_threshold(slot_index));
+            }*/
 
             // Send keystroke for first slot mapped
             send_keystroke(slot_index.into(), KeyMode::Press);
+            last_x.last_item_used_time = Some(Instant::now());
 
             // Update slot last time
             self.last_slots_usage[slot_index] = Some(Instant::now());
-
-            // wait a few ms for the pill to be consumed
-            std::thread::sleep(Duration::from_millis(500));
-            //x_value = StatInfo { max_w: x_value.max_w, value:100};
         }
-
-        self.update_stats(bar, x_value, false);
     }
 
     fn on_idle(&mut self, _config: &FarmingConfig) -> State {
@@ -568,7 +432,6 @@ impl<'a> FarmingBehavior<'_> {
         if config.is_stop_fighting() {
             return State::Attacking(Target::default());
         }
-
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
@@ -606,7 +469,7 @@ impl<'a> FarmingBehavior<'_> {
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
                     if Instant::now().duration_since(self.last_kill_time)
-                        < Duration::from_millis(2500)
+                        < Duration::from_millis(3000)
                     {
                         slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
@@ -662,6 +525,7 @@ impl<'a> FarmingBehavior<'_> {
         );
 
         self.enemy_last_clicked = Instant::now();
+        std::thread::sleep(Duration::from_millis(500));
         State::Attacking(mob)
     }
 
@@ -671,12 +535,37 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &ImageAnalyzer,
     ) -> State {
+        use crate::movement::prelude::*;
+
         if !self.is_attacking {
             self.last_initial_attack_time = Instant::now();
         }
-        let marker = image.identify_target_marker();
-        if marker.is_some() && self.stats_detection.enemy_hp.value == 100
-        || false && self.stats_detection.enemy_hp.value > 0 {
+        if self.stats_detection.enemy_hp.value > 0 {
+            // Check whether something should be consumed
+            if config
+                .get_slot_index(SlotType::Refresher, self.last_slots_usage)
+                .is_some()
+            {
+                self.check_bar(config, StatusBarKind::Mp);
+            }
+
+            if config
+                .get_slot_index(SlotType::Pill, self.last_slots_usage)
+                .is_some()
+                || config
+                    .get_slot_index(SlotType::Food, self.last_slots_usage)
+                    .is_some()
+            {
+                self.check_bar(config, StatusBarKind::Hp);
+            }
+
+            if config
+                .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
+                .is_some()
+            {
+                self.check_bar(config, StatusBarKind::Fp);
+            }
+
             // If mob not loose any hp try to jump -> problem it stops char running on ennemy
             /*if self.last_initial_attack_time.elapsed().as_millis() > 100 && self.last_enemy_hp.value == 100 {
                 use crate::movement::prelude::*;
@@ -686,12 +575,29 @@ impl<'a> FarmingBehavior<'_> {
                     PressKey(Key::Space),
                 ]);
             }*/
-
-            // Target marker found
             self.is_attacking = true;
 
-            let marker = marker.unwrap();
-            self.last_killed_mob_bounds = marker.bounds;
+            // Target marker
+            let marker = image.identify_target_marker();
+            if marker.is_some() {
+                let marker = marker.unwrap();
+                self.last_killed_mob_bounds = marker.bounds;
+            }
+
+            // WIP : Will need to add attack motion with a very low cooldown in order to work, or do another way
+            if self
+                .stats_detection
+                .enemy_hp
+                .last_update_time
+                .unwrap()
+                .elapsed()
+                .as_millis()
+                > 4000
+            {
+                play!(self.movement => [
+                    HoldKeyFor(Key::Space,dur::Random(100..250)),
+                ]);
+            }
 
             // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
@@ -702,7 +608,6 @@ impl<'a> FarmingBehavior<'_> {
                     self.last_slots_usage,
                 ) {
                     send_keystroke(slot_index.into(), KeyMode::Press);
-                    std::thread::sleep(Duration::from_millis(1000));
                     self.last_slots_usage[slot_index] = Some(Instant::now());
                 }
             }
@@ -714,13 +619,16 @@ impl<'a> FarmingBehavior<'_> {
             if self.is_attacking && self.stats_detection.enemy_hp.value == 0 {
                 // Enemy was probably killed
                 self.is_attacking = false;
+                self.last_kill_time = Instant::now();
                 State::AfterEnemyKill(mob)
-            } else {
-                use crate::movement::prelude::*;
-                // Lost target without attacking?
+            } else if !self.is_attacking && !config.is_stop_fighting() {
+                self.is_attacking = false;
                 play!(self.movement => [
-                    Wait(dur::Random(300..500)),
+                    HoldKeyFor(Key::W,dur::Random(100..250)),
                 ]);
+                std::thread::sleep(Duration::from_millis(100));
+                State::SearchingForEnemy
+            } else {
                 State::SearchingForEnemy
             }
         }
@@ -738,7 +646,7 @@ impl<'a> FarmingBehavior<'_> {
             // Sleep until the killed mob has fully disappeared
             let sleep_time = match config.should_use_on_demand_pet() {
                 true => Duration::from_millis(3000),
-                false => Duration::from_millis(5000),
+                false => Duration::from_millis(4000),
             };
             std::thread::sleep(sleep_time);
         }

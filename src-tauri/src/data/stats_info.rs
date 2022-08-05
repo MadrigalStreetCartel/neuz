@@ -1,7 +1,7 @@
 use std::{fmt, time::Instant};
 
 use crate::{
-    image_analyzer::{ImageAnalyzer, self},
+    image_analyzer::{self, ImageAnalyzer},
     platform::{send_keystroke, Key, KeyMode},
 };
 
@@ -54,7 +54,7 @@ impl StatsDetection {
     }
 
     // update all bars values at once
-    pub fn update(&mut self, image: &ImageAnalyzer){
+    pub fn update(&mut self, image: &ImageAnalyzer) {
         self.hp.update_value(image);
         self.mp.update_value(image);
         self.fp.update_value(image);
@@ -93,6 +93,7 @@ pub struct StatInfo {
     pub stat_kind: StatusBarKind,
     pub last_value: u32,
     pub last_update_time: Option<Instant>,
+    pub last_item_used_time: Option<Instant>,
 }
 
 impl PartialEq for StatInfo {
@@ -120,6 +121,7 @@ impl StatInfo {
             stat_kind,
             last_update_time: Some(Instant::now()),
             last_value: 0,
+            last_item_used_time: None,
         };
         if image.is_some() {
             res.update_value(image.unwrap());
@@ -134,7 +136,17 @@ impl StatInfo {
         if updated_max_w != old_max_w {
             self.max_w = updated_max_w;
         }
+
         if updated_value != old_value {
+            // Check whever item was used soon if we don't script doesnt updated values and think we're low Hp
+            if updated_value > old_value
+                || self.last_item_used_time.is_some()
+                    && self.last_item_used_time.unwrap().elapsed().as_millis() > 500
+            {
+                self.last_item_used_time = None;
+            }
+
+            // Update values
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
