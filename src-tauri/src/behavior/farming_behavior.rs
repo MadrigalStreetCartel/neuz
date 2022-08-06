@@ -589,15 +589,6 @@ impl<'a> FarmingBehavior<'_> {
                 self.check_bar(config, StatusBarKind::Fp);
             }
 
-            // If mob not loose any hp try to jump -> problem it stops char running on ennemy
-            /*if self.last_initial_attack_time.elapsed().as_millis() > 100 && self.last_enemy_hp.value == 100 {
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    PressKey(Key::Space),
-                    Wait(dur::Random(100..300)),
-                    PressKey(Key::Space),
-                ]);
-            }*/
             self.is_attacking = true;
 
             // Target marker
@@ -608,7 +599,7 @@ impl<'a> FarmingBehavior<'_> {
             }
 
             // WIP : Will need to add attack motion with a very low cooldown in order to work, or do another way
-            if self
+           /* if self
                 .stats_detection
                 .enemy_hp
                 .last_update_time
@@ -620,7 +611,7 @@ impl<'a> FarmingBehavior<'_> {
                 play!(self.movement => [
                     HoldKeyFor(Key::Space,dur::Random(100..250)),
                 ]);
-            }
+            }*/
 
             // Only use attack skill if enabled and once a second at most
             if config.should_use_attack_skills() {
