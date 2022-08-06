@@ -25,3 +25,4 @@ todo-notes
 
 # keep .gitkeep files
 !/**/.gitkeep
+.botconfig
