@@ -32,5 +32,6 @@ pub trait Behavior<'a> {
         analyzer: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
         cursor_attack: &mut PixelDetectionInfo,
+        window_id: Option<u64>,
     );
 }

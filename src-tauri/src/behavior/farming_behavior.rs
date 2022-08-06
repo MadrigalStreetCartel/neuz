@@ -4,6 +4,7 @@ use guard::guard;
 use rand::{prelude::SliceRandom, Rng};
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
+use libscreenshot::WindowCaptureProvider;
 
 use crate::{
     data::{Bounds, MobType, StatInfo, StatsDetection, StatusBarKind, Target, TargetType, PixelDetectionKind, PixelDetectionInfo},
@@ -11,7 +12,7 @@ use crate::{
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
-    play,
+    play, utils::Timer,
 };
 
 use super::Behavior;
@@ -39,6 +40,8 @@ pub struct FarmingBehavior<'a> {
     last_slots_usage: [Option<Instant>; 10],
     is_cursor_attack: PixelDetectionInfo,
     mouse_moved:bool,
+    window_id:Option<u64>,
+
 
     // Attack
     last_initial_attack_time: Instant,
@@ -69,6 +72,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_slots_usage: [None; 10],
             is_cursor_attack: PixelDetectionInfo::default(),
             mouse_moved:false,
+            window_id:None,
 
             // Attack
             last_initial_attack_time: Instant::now(),
@@ -91,10 +95,13 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         image: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
         is_cursor_attack: &mut PixelDetectionInfo,
+        window_id: Option<u64>,
     ) {
         let config = config.farming_config();
         self.stats_detection = stats_detection.clone();
         self.is_cursor_attack = is_cursor_attack.clone();
+        self.window_id = window_id;
+
 
         // Update slot timers
         let mut count = 0;
@@ -128,6 +135,26 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl<'a> FarmingBehavior<'_> {
+
+    /// Capture the current window contents.
+    fn capture_window(&mut self, window_id: Option<u64>) -> Option<ImageAnalyzer> {
+        let _timer = Timer::start_new("capture_window");
+        if let Some(provider) = libscreenshot::get_window_capture_provider() {
+            if let Some(window_id) = window_id {
+                if let Ok(image) = provider.capture_window(window_id) {
+                    Some(ImageAnalyzer::new(image))
+                } else {
+                    slog::warn!(self.logger, "Failed to capture window"; "window_id" => window_id);
+                    None
+                }
+            } else {
+                slog::warn!(self.logger, "Failed to obtain window id");
+                None
+            }
+        } else {
+            None
+        }
+    }
     /// Pickup items on the ground.
     fn pickup_items(&mut self, config: &FarmingConfig) {
         use crate::movement::prelude::*;
@@ -517,17 +544,20 @@ impl<'a> FarmingBehavior<'_> {
         //     (x.saturating_sub(x_diff / 2)) as i32,
         //     (y.saturating_sub(y_diff)) as i32,
         // );
-        if self.mouse_moved == false{
-            let target_cursor_pos = Position::Physical(PhysicalPosition {
-                x: point.x as i32,
-                y: point.y as i32,
-            });
 
-            // Set cursor position and simulate a click
-            drop(self.platform.window.set_cursor_position(target_cursor_pos));
-            self.mouse_moved = true;
-            self.state
-        }else {
+        let target_cursor_pos = Position::Physical(PhysicalPosition {
+            x: point.x as i32,
+            y: point.y as i32,
+        });
+
+        // Set cursor position and simulate a click
+        drop(self.platform.window.set_cursor_position(target_cursor_pos));
+        self.mouse_moved = true;
+
+        let image = self.capture_window(self.window_id);
+
+        if image.is_some() {
+            self.is_cursor_attack.update_value(&image.unwrap());
             self.mouse_moved = false;
             if self.is_cursor_attack.value {
                 drop(
@@ -544,11 +574,9 @@ impl<'a> FarmingBehavior<'_> {
             } else {
                 State::SearchingForEnemy
             }
-
+        } else {
+            State::SearchingForEnemy
         }
-
-
-
 
     }
 

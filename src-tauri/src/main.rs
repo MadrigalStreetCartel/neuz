@@ -85,10 +85,10 @@ fn main() {
 }
 
 /// Capture the current window contents.
-fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
+fn capture_window(logger: &Logger, window_id: Option<u64>) -> Option<ImageAnalyzer> {
     let _timer = Timer::start_new("capture_window");
     if let Some(provider) = libscreenshot::get_window_capture_provider() {
-        if let Some(window_id) = platform::get_window_id(window) {
+        if let Some(window_id) = window_id {
             if let Ok(image) = provider.capture_window(window_id) {
                 Some(ImageAnalyzer::new(image))
             } else {
@@ -108,9 +108,10 @@ fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
+    let window_id = platform::get_window_id(&window);
 
     // Inject JS to the client and get the cursor style by displaying a red or green box
-    window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},33)");
+    window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},1)");
 
     // Stats
     let mut character = state.stats_detection.clone();
@@ -227,7 +228,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             }
 
             // Try capturing the window contents
-            if let Some(image_analyzer) = capture_window(&logger, &window) {
+            if let Some(image_analyzer) = capture_window(&logger, window_id) {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
@@ -243,10 +244,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
+                            farming_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack,window_id );
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
+                            shout_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack,window_id);
                         }
                         _ => (),
                     }

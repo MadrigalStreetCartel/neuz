@@ -66,7 +66,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         _analyzer: &ImageAnalyzer,
         _character: &mut StatsDetection,
         _is_cursor_attack: &mut PixelDetectionInfo,
-
+        window_id: Option<u64>,
     ) {
         let config = config.shout_config();
         self.shout(config);
