@@ -45,8 +45,8 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type.min_search_x = 0;
                 cursor_type.min_search_y = 0;
 
-                cursor_type.max_search_x = 10;
-                cursor_type.max_search_y = 10;
+                cursor_type.max_search_x = 3;
+                cursor_type.max_search_y = 3;
 
                 cursor_type
             }
