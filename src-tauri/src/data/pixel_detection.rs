@@ -45,8 +45,8 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type.min_search_x = 0;
                 cursor_type.min_search_y = 0;
 
-                cursor_type.max_search_x = 10;
-                cursor_type.max_search_y = 10;
+                cursor_type.max_search_x = 1;
+                cursor_type.max_search_y = 1;
 
                 cursor_type
             }
@@ -57,8 +57,8 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
 impl Default for PixelDetectionConfig {
     fn default() -> Self {
         Self {
-            max_search_x: 310,
-            max_search_y: 120,
+            max_search_x: 0,
+            max_search_y: 0,
             min_search_x: 0,
             min_search_y: 0,
             refs: [0; 3],
