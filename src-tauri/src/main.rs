@@ -111,6 +111,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
     // Inject JS to the client and get the cursor style by displaying a red or green box
     window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},33)");
+
     // Stats
     let mut character = state.stats_detection.clone();
 
@@ -242,10 +243,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack, &window);
+                            farming_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack, &window);
+                            shout_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
                         }
                         _ => (),
                     }

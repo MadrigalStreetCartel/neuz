@@ -12,7 +12,6 @@ use crate::{
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
-    Window,
 };
 
 use super::Behavior;
@@ -40,7 +39,6 @@ pub struct FarmingBehavior<'a> {
     last_slots_usage: [Option<Instant>; 10],
     is_cursor_attack: PixelDetectionInfo,
     mouse_moved:bool,
-    window:Option<Window>,
 
     // Attack
     last_initial_attack_time: Instant,
@@ -71,7 +69,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_slots_usage: [None; 10],
             is_cursor_attack: PixelDetectionInfo::default(),
             mouse_moved:false,
-            window: None,
 
             // Attack
             last_initial_attack_time: Instant::now(),
@@ -94,12 +91,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         image: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
         is_cursor_attack: &mut PixelDetectionInfo,
-        window: &Window,
     ) {
         let config = config.farming_config();
         self.stats_detection = stats_detection.clone();
         self.is_cursor_attack = is_cursor_attack.clone();
-        self.window = Some(window.clone());
 
         // Update slot timers
         let mut count = 0;
@@ -522,7 +517,7 @@ impl<'a> FarmingBehavior<'_> {
         //     (x.saturating_sub(x_diff / 2)) as i32,
         //     (y.saturating_sub(y_diff)) as i32,
         // );
-        if self.mouse_moved == false{w
+        if self.mouse_moved == false{
             let target_cursor_pos = Position::Physical(PhysicalPosition {
                 x: point.x as i32,
                 y: point.y as i32,

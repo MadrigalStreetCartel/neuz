@@ -3,7 +3,6 @@ use std::time::Instant;
 use guard::guard;
 
 use slog::Logger;
-use tauri::Window;
 
 use crate::{
     data::{StatInfo, StatsDetection, StatusBarKind, PixelDetectionInfo},
@@ -67,7 +66,6 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         _analyzer: &ImageAnalyzer,
         _character: &mut StatsDetection,
         _is_cursor_attack: &mut PixelDetectionInfo,
-        window: &Window,
 
     ) {
         let config = config.shout_config();
