@@ -6,6 +6,7 @@ use crate::{
     ipc::BotConfig,
     movement::MovementAccessor,
     platform::PlatformAccessor,
+    Window,
 };
 
 pub trait Behavior<'a> {
@@ -32,5 +33,6 @@ pub trait Behavior<'a> {
         analyzer: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
         cursor_attack: &mut PixelDetectionInfo,
+        window: &Window,
     );
 }
