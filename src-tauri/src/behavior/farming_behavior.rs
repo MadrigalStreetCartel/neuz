@@ -6,7 +6,7 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{Bounds, MobType, StatInfo, StatsDetection, StatusBarKind, Target, TargetType},
+    data::{Bounds, MobType, StatInfo, StatsDetection, StatusBarKind, Target, TargetType, PixelDetectionKind, PixelDetectionInfo},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
@@ -37,6 +37,8 @@ pub struct FarmingBehavior<'a> {
     current_status_bar: StatusBarKind,
     stats_detection: StatsDetection,
     last_slots_usage: [Option<Instant>; 10],
+    is_cursor_attack: PixelDetectionInfo,
+    mouse_moved:bool,
 
     // Attack
     last_initial_attack_time: Instant,
@@ -65,6 +67,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             current_status_bar: StatusBarKind::default(),
             stats_detection: StatsDetection::default(),
             last_slots_usage: [None; 10],
+            is_cursor_attack: PixelDetectionInfo::default(),
+            mouse_moved:false,
 
             // Attack
             last_initial_attack_time: Instant::now(),
@@ -86,9 +90,12 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         config: &BotConfig,
         image: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
+        is_cursor_attack: &mut PixelDetectionInfo,
     ) {
         let config = config.farming_config();
         self.stats_detection = stats_detection.clone();
+        self.is_cursor_attack = is_cursor_attack.clone();
+
         // Update slot timers
         let mut count = 0;
         for last_time in self.last_slots_usage {
@@ -510,23 +517,39 @@ impl<'a> FarmingBehavior<'_> {
         //     (x.saturating_sub(x_diff / 2)) as i32,
         //     (y.saturating_sub(y_diff)) as i32,
         // );
-        let target_cursor_pos = Position::Physical(PhysicalPosition {
-            x: point.x as i32,
-            y: point.y as i32,
-        });
-        slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
+        if self.mouse_moved == false{
+            let target_cursor_pos = Position::Physical(PhysicalPosition {
+                x: point.x as i32,
+                y: point.y as i32,
+            });
 
-        // Set cursor position and simulate a click
-        drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        drop(
-            self.platform
-                .mouse
-                .click(&mouse_rs::types::keys::Keys::LEFT),
-        );
+            // Set cursor position and simulate a click
+            drop(self.platform.window.set_cursor_position(target_cursor_pos));
+            self.mouse_moved = true;
+            self.state
+        }else {
+            self.mouse_moved = false;
+            if self.is_cursor_attack.value {
+                drop(
+                    self.platform
+                        .mouse
+                        .click(&mouse_rs::types::keys::Keys::LEFT),
+                );
 
-        self.enemy_last_clicked = Instant::now();
-        std::thread::sleep(Duration::from_millis(500));
-        State::Attacking(mob)
+                slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
+
+                self.enemy_last_clicked = Instant::now();
+                std::thread::sleep(Duration::from_millis(500));
+                State::Attacking(mob)
+            } else {
+                State::SearchingForEnemy
+            }
+
+        }
+
+
+
+
     }
 
     fn on_attacking(

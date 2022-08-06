@@ -6,7 +6,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use crate::{
     data::{
         point_selector, Bounds, MobType, Point, PointCloud, StatInfo, StatusBarConfig,
-        StatusBarKind, Target, TargetType,
+        StatusBarKind, Target, TargetType, PixelDetectionInfo, PixelDetectionConfig,
     },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
@@ -284,5 +284,54 @@ impl ImageAnalyzer {
         let value_scaled = ((value_frac * 100_f32) as u32).max(0).min(100);
 
         Some((max_w, value_scaled))
+    }
+
+    pub fn detect_pixel(&self, last_stats: PixelDetectionInfo) -> bool {
+        let status_bar_config: PixelDetectionConfig = last_stats.pixel_kind.into();
+        let (snd, recv) = sync_channel::<Point>(4096);
+        self.image
+            .enumerate_rows()
+            .par_bridge()
+            .for_each(move |(y, row)| {
+                // Skip this row if it's in an ignored area
+                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
+                if y <= IGNORE_AREA_TOP
+                    || y > self.image.height() - IGNORE_AREA_BOTTOM
+                    || y > IGNORE_AREA_TOP + status_bar_config.max_search_y
+                    || y > status_bar_config.max_search_y
+                {
+                    return;
+                }
+
+                // Loop over columns
+                'outer: for (x, _, px) in row {
+                    if px.0[3] != 255 || x >= status_bar_config.max_search_x {
+                        return;
+                    } else if x < status_bar_config.min_search_x {
+                        continue;
+                    }
+
+                    // Check if the pixel matches any of the reference colors
+                    if Self::pixel_matches(&px.0, &status_bar_config.refs, 5) {
+                        #[allow(clippy::drop_copy)]
+                        drop(snd.send(Point::new(x, y)));
+
+                        // Continue to next column
+                        continue 'outer;
+                    }
+                }
+            });
+
+        // Receive points from channel
+        let cloud = {
+            let mut cloud = PointCloud::default();
+            while let Ok(point) = recv.recv() {
+                cloud.push(point);
+            }
+            cloud
+        };
+        !cloud.is_empty()
+
+
     }
 }

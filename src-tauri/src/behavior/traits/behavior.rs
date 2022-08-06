@@ -1,7 +1,7 @@
 use slog::Logger;
 
 use crate::{
-    data::{StatInfo, StatsDetection},
+    data::{StatInfo, StatsDetection, PixelDetectionInfo},
     image_analyzer::ImageAnalyzer,
     ipc::BotConfig,
     movement::MovementAccessor,
@@ -31,5 +31,6 @@ pub trait Behavior<'a> {
         config: &BotConfig,
         analyzer: &ImageAnalyzer,
         stats_detection: &mut StatsDetection,
+        cursor_attack: &mut PixelDetectionInfo,
     );
 }

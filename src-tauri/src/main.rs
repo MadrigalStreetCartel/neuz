@@ -13,6 +13,7 @@ mod utils;
 
 use std::{sync::Arc, time::Duration};
 
+use data::PixelDetectionInfo;
 use guard::guard;
 use libscreenshot::WindowCaptureProvider;
 use parking_lot::RwLock;
@@ -32,6 +33,7 @@ use crate::{
 struct AppState {
     logger: Logger,
     stats_detection: StatsDetection,
+    is_cursor_attack:PixelDetectionInfo,
     is_alive: bool,
     bars_not_detected_warn_count: i32,
 }
@@ -75,6 +77,7 @@ fn main() {
             stats_detection: StatsDetection::init(),
             is_alive: true,
             bars_not_detected_warn_count: 0,
+            is_cursor_attack:PixelDetectionInfo::default(),
         })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
@@ -106,11 +109,14 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
 
+    // Inject JS to the client and get the cursor style by displaying a red or green box
+    window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='10px',overlayElem.style.width='10px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},33)");
+
     // Stats
     let mut character = state.stats_detection.clone();
 
     let mut is_alive = state.is_alive.clone();
-    let mut bars_not_detected_warn_count = state.bars_not_detected_warn_count.clone();
+    let mut is_cursor_attack = state.is_cursor_attack.clone();
 
     std::thread::spawn(move || {
         let logger = logger.clone();
@@ -228,16 +234,19 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Update HP/MP/FP/XP/EnemyHP/SpellCast bars
                 character.update(&image_analyzer);
 
+                // Check cursor state
+                is_cursor_attack.update_value(&image_analyzer);
+
                 // Check whether char is alive or dead
                 is_alive = character.is_alive();
 
                 if is_alive {
                     match mode {
                         BotMode::Farming => {
-                            farming_behavior.run_iteration(config, &image_analyzer, &mut character);
+                            farming_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
                         }
                         BotMode::AutoShout => {
-                            shout_behavior.run_iteration(config, &image_analyzer, &mut character);
+                            shout_behavior.run_iteration(config, &image_analyzer, &mut character,&mut is_cursor_attack);
                         }
                         _ => (),
                     }
