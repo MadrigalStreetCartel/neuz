@@ -130,7 +130,35 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             State::EnemyFound(mob) => self.on_enemy_found(config, mob),
             State::Attacking(mob) => self.on_attacking(config, mob, image),
             State::AfterEnemyKill(_) => self.after_enemy_kill(config),
+        };
+
+        // Check whether something should be consumed
+        if config
+            .get_slot_index(SlotType::Refresher, self.last_slots_usage)
+            .is_some()
+        {
+            self.check_bar(config, StatusBarKind::Mp);
         }
+
+        if config
+            .get_slot_index(SlotType::Pill, self.last_slots_usage)
+            .is_some()
+            || config
+                .get_slot_index(SlotType::Food, self.last_slots_usage)
+                .is_some()
+        {
+            self.check_bar(config, StatusBarKind::Hp);
+        }
+
+        if config
+            .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
+            .is_some()
+        {
+            self.check_bar(config, StatusBarKind::Fp);
+        }
+
+
+
     }
 }
 
@@ -183,12 +211,12 @@ impl<'a> FarmingBehavior<'_> {
             (false, _, Some(index)) => {
                 let rnd = self.rng.gen_range(7..10);
                 play!(self.movement => [
-                    Wait(dur::Random(400..500)),
+                    Wait(dur::Random(300..400)),
                     Repeat(rnd, vec![
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(300..400)),
+                        Wait(dur::Random(200..300)),
                     ]),
                 ]);
             }
@@ -328,10 +356,10 @@ impl<'a> FarmingBehavior<'_> {
         let mut last_x = self.stats_values(bar);
 
         // Check whether we should use food for any reason
-        let should_use_food = last_x.value <= threshold;
+        let should_use_food = last_x.value <= threshold  && last_x.value < 100;
 
         // Never trigger something if we're dead
-        if should_use_food && last_x.value > 0 && last_x.last_item_used_time.is_none() {
+        if should_use_food && last_x.value > 0 && last_x.last_item_used_time.is_none()  {
             /*#[cfg(debug_assertions)]
             // Debug broken don't want to know why
             if false {
@@ -552,13 +580,10 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        self.mouse_moved = true;
 
-        let image = self.capture_window(self.window_id);
+        if let Some(image) = self.capture_window(self.window_id) {
+            self.is_cursor_attack.update_value(&image);
 
-        if image.is_some() {
-            self.is_cursor_attack.update_value(&image.unwrap());
-            self.mouse_moved = false;
             if self.is_cursor_attack.value {
                 drop(
                     self.platform
@@ -569,7 +594,7 @@ impl<'a> FarmingBehavior<'_> {
                 slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
 
                 self.enemy_last_clicked = Instant::now();
-                std::thread::sleep(Duration::from_millis(500));
+
                 State::Attacking(mob)
             } else {
                 State::SearchingForEnemy
@@ -586,63 +611,36 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &ImageAnalyzer,
     ) -> State {
-        use crate::movement::prelude::*;
-
         if !self.is_attacking {
             self.last_initial_attack_time = Instant::now();
         }
-        if self.stats_detection.enemy_hp.value > 0 {
-            // Check whether something should be consumed
-            if config
-                .get_slot_index(SlotType::Refresher, self.last_slots_usage)
-                .is_some()
-            {
-                self.check_bar(config, StatusBarKind::Mp);
-            }
-
-            if config
-                .get_slot_index(SlotType::Pill, self.last_slots_usage)
-                .is_some()
-                || config
-                    .get_slot_index(SlotType::Food, self.last_slots_usage)
-                    .is_some()
-            {
-                self.check_bar(config, StatusBarKind::Hp);
-            }
-
-            if config
-                .get_slot_index(SlotType::VitalDrink, self.last_slots_usage)
-                .is_some()
-            {
-                self.check_bar(config, StatusBarKind::Fp);
-            }
+        let image = self.capture_window(self.window_id).unwrap();
+        if let Some(marker) = image.identify_target_marker()  {
 
             self.is_attacking = true;
 
             // Target marker
-            let marker = image.identify_target_marker();
-            if marker.is_some() {
-                let marker = marker.unwrap();
-                self.last_killed_mob_bounds = marker.bounds;
-            }
+            self.last_killed_mob_bounds = marker.bounds;
 
             // WIP : Will need to add attack motion with a very low cooldown in order to work, or do another way
-           /* if self
-                .stats_detection
-                .enemy_hp
-                .last_update_time
-                .unwrap()
-                .elapsed()
-                .as_millis()
-                > 4000
-            {
-                play!(self.movement => [
-                    HoldKeyFor(Key::Space,dur::Random(100..250)),
-                ]);
-            }*/
+            /*if self
+                    .stats_detection
+                    .enemy_hp
+                    .last_update_time
+                    .unwrap()
+                    .elapsed()
+                    .as_millis()
+                    > 4000
+                {
+                    use crate::movement::prelude::*;
+
+                    play!(self.movement => [
+                        HoldKeyFor(Key::Space,dur::Random(100..250)),
+                    ]);
+                }*/
 
             // Only use attack skill if enabled and once a second at most
-            if config.should_use_attack_skills() {
+            if config.should_use_attack_skills() && self.stats_detection.enemy_hp.value < 100 {
                 // Try to use attack skill'à
                 if let Some(slot_index) = config.get_random_slot_index(
                     SlotType::AttackSkill,
@@ -658,18 +656,11 @@ impl<'a> FarmingBehavior<'_> {
             self.state
         } else {
             // Target marker not found
-            if self.is_attacking && self.stats_detection.enemy_hp.value == 0 {
+            if self.is_attacking {
                 // Enemy was probably killed
                 self.is_attacking = false;
                 self.last_kill_time = Instant::now();
                 State::AfterEnemyKill(mob)
-            } else if !self.is_attacking && !config.is_stop_fighting() {
-                self.is_attacking = false;
-                play!(self.movement => [
-                    HoldKeyFor(Key::W,dur::Random(100..250)),
-                ]);
-                std::thread::sleep(Duration::from_millis(100));
-                State::SearchingForEnemy
             } else {
                 State::SearchingForEnemy
             }
@@ -688,7 +679,7 @@ impl<'a> FarmingBehavior<'_> {
             // Sleep until the killed mob has fully disappeared
             let sleep_time = match config.should_use_on_demand_pet() {
                 true => Duration::from_millis(3000),
-                false => Duration::from_millis(4000),
+                false => Duration::from_millis(5000),
             };
             std::thread::sleep(sleep_time);
         }

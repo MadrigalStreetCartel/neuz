@@ -141,7 +141,7 @@ impl StatInfo {
             // Check whever item was used soon if we don't script doesnt updated values and think we're low Hp
             if updated_value > old_value
                 || self.last_item_used_time.is_some()
-                    && self.last_item_used_time.unwrap().elapsed().as_millis() > 500
+                    && self.last_item_used_time.unwrap().elapsed().as_millis() > 5000 // Need to implement that for healing spells
             {
                 self.last_item_used_time = None;
             }
