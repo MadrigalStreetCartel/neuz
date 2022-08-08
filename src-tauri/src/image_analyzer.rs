@@ -1,24 +1,26 @@
 use std::sync::mpsc::{sync_channel, Receiver};
 
-
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 
 use crate::{
-    data::{point_selector, Bounds, MobType, Point, PointCloud, Target, TargetType, PixelDetection, ClientStats},
+    data::{
+        point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
+        TargetType,
+    },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Color {
-    pub refs: [u8;3]
+    pub refs: [u8; 3],
 }
 
 impl Color {
-    pub fn new(r:u8, g:u8, b:u8) -> Self {
-        Self {refs: [r,g,b]}
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { refs: [r, g, b] }
     }
 }
 
@@ -31,14 +33,18 @@ pub struct ImageAnalyzer {
 
 impl ImageAnalyzer {
     pub fn new() -> Self {
-       Self { window_id: 0,image: None, pixel_detections: vec![] }
+        Self {
+            window_id: 0,
+            image: None,
+            pixel_detections: vec![],
+        }
     }
 
     pub fn image_is_some(&self) -> bool {
         self.image.is_some()
     }
 
-    pub fn capture_window(&mut self, logger:&Logger) {
+    pub fn capture_window(&mut self, logger: &Logger) {
         if self.window_id == 0 {
             return;
         }
@@ -52,8 +58,14 @@ impl ImageAnalyzer {
         }
     }
 
-
-    pub fn pixel_detection(&self, colors: Vec<Color> , min_x: u32, min_y: u32, mut max_x: u32, mut max_y: u32) -> Receiver<Point> {
+    pub fn pixel_detection(
+        &self,
+        colors: Vec<Color>,
+        min_x: u32,
+        min_y: u32,
+        mut max_x: u32,
+        mut max_y: u32,
+    ) -> Receiver<Point> {
         let (snd, recv) = sync_channel::<Point>(4096);
         let image = self.image.as_ref().unwrap();
 
@@ -100,8 +112,7 @@ impl ImageAnalyzer {
                     }
                 }
             });
-            recv
-
+        recv
     }
 
     fn merge_cloud_into_mobs(

@@ -5,11 +5,12 @@ use rand::Rng;
 use slog::Logger;
 
 use crate::{
+    data::ClientStats,
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
     platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
-    play, data::ClientStats,
+    play,
 };
 
 use super::Behavior;
@@ -59,7 +60,12 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         self.message_iter = None;
     }
 
-    fn run_iteration(&mut self, config: &BotConfig, _analyzer: &mut ImageAnalyzer, client_stats: ClientStats) {
+    fn run_iteration(
+        &mut self,
+        config: &BotConfig,
+        _analyzer: &mut ImageAnalyzer,
+        client_stats: ClientStats,
+    ) {
         let config = config.shout_config();
         self.shout(config);
     }

@@ -72,7 +72,7 @@ fn main() {
             logger,
             image_analyzer: ImageAnalyzer::new(),
             client_stats: ClientStats::init(),
-         })
+        })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
         .expect("error while running tauri application");
@@ -85,11 +85,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
     let _res = window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},5)");
 
-    let mut image_analyzer:ImageAnalyzer = state.image_analyzer.clone();
+    let mut image_analyzer: ImageAnalyzer = state.image_analyzer.clone();
     let mut client_stats: ClientStats = state.client_stats.clone();
 
     image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
-
 
     std::thread::spawn(move || {
         let logger = logger.clone();
@@ -203,7 +202,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             client_stats.update(&image_analyzer);
 
             //client_stats.debug_print();
-
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() && client_stats.is_alive() {
