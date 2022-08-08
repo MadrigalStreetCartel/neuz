@@ -6,8 +6,8 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{Bounds, MobType, Target, TargetType},
-    image_analyzer::{ImageAnalyzer, StatInfo, StatusBarKind},
+    data::{Bounds, MobType, Target, TargetType, StatInfo, ClientStats, PixelDetection, PixelDetectionKind},
+    image_analyzer::{ImageAnalyzer},
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -32,10 +32,7 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
-    last_hp: StatInfo,
-    last_fp: StatInfo,
-    last_mp: StatInfo,
-    last_xp: StatInfo,
+    client_stats: ClientStats,
     last_food_hp: StatInfo,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
@@ -43,7 +40,6 @@ pub struct FarmingBehavior<'a> {
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
     rotation_movement_tries: u32,
-    hp_bar_not_detected_warn_count: u32,
     is_attacking: bool,
     kill_count: u32,
 }
@@ -60,20 +56,17 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            last_hp: StatInfo::default(),
-            last_fp: StatInfo::default(),
-            last_mp: StatInfo::default(),
-            last_xp: StatInfo::default(),
+            client_stats: ClientStats::default(),
             last_food_hp: StatInfo::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
             last_attack_skill_usage_time: Instant::now(),
-            hp_bar_not_detected_warn_count: 0,
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
+
         }
     }
 
@@ -81,22 +74,22 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, image: &ImageAnalyzer) {
+    fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer, client_stats: ClientStats) {
         let config = config.farming_config();
-
+        self.client_stats = client_stats;
         // Print debug values for stats
-        #[cfg(debug_assertions)]
-        self.debug_stats_bar(config, image);
+        //#[cfg(debug_assertions)]
+        //self.debug_stats_bar(config, image);
 
         // Check whether food should be consumed
-        self.check_food(config, image);
+        self.check_food(config);
 
         // Check state machine
         self.state = match self.state {
             State::Idle => self.on_idle(config),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
-            State::EnemyFound(mob) => self.on_enemy_found(config, mob),
+            State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
             State::Attacking(mob) => self.on_attacking(config, mob, image),
             State::AfterEnemyKill(_) => self.after_enemy_kill(config),
         }
@@ -145,7 +138,7 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     /// Print debug info for stat detection
-    #[cfg(debug_assertions)]
+    /*#[cfg(debug_assertions)]
     fn debug_stats_bar(&mut self, _config: &FarmingConfig, image: &ImageAnalyzer) {
         if let Some(hp) = image.detect_status_bar(self.last_hp, StatusBarKind::Hp) {
             slog::debug!(self.logger, "Detecting stat value"; "kind" => "hp", "value" => hp.value);
@@ -159,111 +152,79 @@ impl<'a> FarmingBehavior<'_> {
         if let Some(xp) = image.detect_status_bar(self.last_xp, StatusBarKind::Xp) {
             slog::debug!(self.logger, "Detecting stat value"; "kind" => "xp", "value" => xp.value);
         }
-    }
+    }*/
 
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
-    fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
+    fn check_food(&mut self, config: &FarmingConfig) {
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
-        match image.detect_status_bar(self.last_hp, StatusBarKind::Hp) {
-            // HP bar detected, use HP-based potting logic
-            Some(hp) => {
-                // HP threshold. We probably shouldn't use food at > 75% HP.
-                // If HP is < 15% we need to use food ASAP.
-                let hp_threshold_reached = hp.value <= 75;
-                let hp_critical_threshold_reached = hp.value <= 15;
 
-                // Calculate ms since last food usage
-                let ms_since_last_food = Instant::now()
-                    .duration_since(self.last_pot_time)
-                    .as_millis();
+        let hp = self.client_stats.hp;
 
-                // Check whether we can use food again.
-                // This is based on a very generous limit of 1s between food uses.
-                let can_use_food =
-                    current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
+        // HP threshold. We probably shouldn't use food at > 75% HP.
+        // If HP is < 15% we need to use food ASAP.
+        let hp_threshold_reached = hp.value <= 75;
+        let hp_critical_threshold_reached = hp.value <= 15;
 
-                // Use food ASAP if HP is critical.
-                // Wait a minimum of 333ms after last usage anyway to avoid detection.
-                // Spamming 3 times per second when low on HP seems legit for a real player.
-                let should_use_food_reason_hp_critical =
-                    ms_since_last_food > 333 && hp_critical_threshold_reached;
+        // Calculate ms since last food usage
+        let ms_since_last_food = Instant::now()
+            .duration_since(self.last_pot_time)
+            .as_millis();
 
-                // Use food if nominal usage conditions are met
-                let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
+        // Check whether we can use food again.
+        // This is based on a very generous limit of 1s between food uses.
+        let can_use_food =
+            current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
 
-                // Check whether we should use food for any reason
-                let should_use_food =
-                    should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+        // Use food ASAP if HP is critical.
+        // Wait a minimum of 333ms after last usage anyway to avoid detection.
+        // Spamming 3 times per second when low on HP seems legit for a real player.
+        let should_use_food_reason_hp_critical =
+            ms_since_last_food > 333 && hp_critical_threshold_reached;
 
-                // Check whether we should use pills
-                let pill_available = config.get_slot_index(SlotType::Pill).is_some();
-                let should_use_pill = pill_available && should_use_food_reason_hp_critical;
+        // Use food if nominal usage conditions are met
+        let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
 
-                if should_use_food {
-                    // Use pill
-                    if should_use_pill {
-                        guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
-                            self.last_hp = hp;
-                            return;
-                        });
+        // Check whether we should use food for any reason
+        let should_use_food =
+            should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
-                        // Send keystroke for first slot mapped to pill
-                        send_keystroke(pill_index.into(), KeyMode::Press);
+        // Check whether we should use pills
+        let pill_available = config.get_slot_index(SlotType::Pill).is_some();
+        let should_use_pill = pill_available && should_use_food_reason_hp_critical;
 
-                        // Update state
-                        self.last_pot_time = current_time;
-                        self.last_food_hp = hp;
+        if should_use_food {
+            // Use pill
+            if should_use_pill {
+                guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
+                    return;
+                });
 
-                        // wait a few ms for the pill to be consumed
-                        std::thread::sleep(Duration::from_millis(100));
-                    }
-                    // Use regular food
-                    else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
-                        // Send keystroke for first slot mapped to food
-                        send_keystroke(food_index.into(), KeyMode::Press);
+                // Send keystroke for first slot mapped to pill
+                send_keystroke(pill_index.into(), KeyMode::Press);
 
-                        // Update state
-                        self.last_pot_time = current_time;
-                        self.last_food_hp = hp;
+                // Update state
+                self.last_pot_time = current_time;
+                self.last_food_hp = hp;
 
-                        // wait a few ms for the food to be consumed
-                        std::thread::sleep(Duration::from_millis(100));
-                    } else {
-                        slog::info!(self.logger, "No slot is mapped to food!");
-                    }
-                }
-
-                self.last_hp = hp;
+                // wait a few ms for the pill to be consumed
+                std::thread::sleep(Duration::from_millis(100));
             }
+            // Use regular food
+            else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+                // Send keystroke for first slot mapped to food
+                send_keystroke(food_index.into(), KeyMode::Press);
 
-            // HP bar not found, use legacy potting logic
-            // => Pot every 5 seconds and only while in a fight
-            None => {
-                // Log warning to sentry, but prevent flooding the logs
-                if self.hp_bar_not_detected_warn_count <= 1000
-                    && self.hp_bar_not_detected_warn_count % 100 == 0
-                {
-                    slog::warn!(
-                        self.logger, "No HP bar detected, using fallback logic";
-                        "occurrence_count" => self.hp_bar_not_detected_warn_count + 1,
-                        "hp_bar_detected_before" => self.last_hp.value != 0
-                    );
-                    self.hp_bar_not_detected_warn_count += 1;
-                }
+                // Update state
+                self.last_pot_time = current_time;
+                self.last_food_hp = hp;
 
-                if self.is_attacking
-                    && current_time.duration_since(self.last_initial_attack_time)
-                        > min_pot_time_diff
-                    && current_time.duration_since(self.last_pot_time) > min_pot_time_diff
-                {
-                    if let Some(food_index) = config.get_slot_index(SlotType::Food) {
-                        send_keystroke(food_index.into(), KeyMode::Press);
-                        self.last_pot_time = current_time;
-                    }
-                }
+                // wait a few ms for the food to be consumed
+                std::thread::sleep(Duration::from_millis(100));
+            } else {
+                slog::info!(self.logger, "No slot is mapped to food!");
             }
         }
     }
@@ -444,7 +405,7 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn on_enemy_found(&mut self, _config: &FarmingConfig, mob: Target) -> State {
+    fn on_enemy_found(&mut self, _config: &FarmingConfig, mob: Target, image: &mut ImageAnalyzer) -> State {
         self.rotation_movement_tries = 0;
 
         // Transform attack coords into local window coords
@@ -466,14 +427,22 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        drop(
-            self.platform
-                .mouse
-                .click(&mouse_rs::types::keys::Keys::LEFT),
-        );
+        image.capture_window(self.logger);
+        let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
+        if cursor_style.value {
+            drop(
+                self.platform
+                    .mouse
+                    .click(&mouse_rs::types::keys::Keys::LEFT),
+            );
 
-        // Wait a few ms before transitioning state
-        State::Attacking(mob)
+            // Wait a few ms before transitioning state
+            std::thread::sleep(Duration::from_millis(500));
+            State::Attacking(mob)
+        }else {
+            State::SearchingForEnemy
+        }
+
     }
 
     fn on_attacking(
@@ -482,14 +451,33 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &ImageAnalyzer,
     ) -> State {
+        //self.client_stats.debug_print();
         if !self.is_attacking {
+            // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else
+            // true not in party
+            // false in party
+            let prevent_already_attacked = true;
+            if prevent_already_attacked && self.client_stats.enemy_hp.value < 90 {
+                let marker = image.identify_target_marker();
+                if marker.is_some() {
+                    let marker = marker.unwrap();
+                    self.last_killed_mob_bounds = marker.bounds;
+                }
+                return State::SearchingForEnemy;
+            }
+
             self.last_initial_attack_time = Instant::now();
             self.last_pot_time = Instant::now();
         }
-        if let Some(marker) = image.identify_target_marker() {
-            // Target marker found
+        if self.client_stats.enemy_hp.value > 0 {
             self.is_attacking = true;
-            self.last_killed_mob_bounds = marker.bounds;
+
+            // Target marker found
+            let marker = image.identify_target_marker();
+            if marker.is_some() {
+                let marker = marker.unwrap();
+                self.last_killed_mob_bounds = marker.bounds;
+            }
 
             // Try to use attack skill
             if let Some(index) = config.get_random_slot_index(SlotType::AttackSkill, &mut self.rng)
@@ -512,11 +500,6 @@ impl<'a> FarmingBehavior<'_> {
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {
-                use crate::movement::prelude::*;
-                // Lost target without attacking?
-                play!(self.movement => [
-                    Wait(dur::Random(1000..2000)),
-                ]);
                 State::SearchingForEnemy
             }
         }

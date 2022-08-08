@@ -26,6 +26,7 @@ impl From<Key> for enigo::Key {
             Space => enigo::Key::Space,
             Esc => enigo::Key::Escape,
             Enter => enigo::Key::Return,
+            T => enigo::Key::Layout('T'),
         }
     }
 }
