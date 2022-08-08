@@ -1,6 +1,6 @@
-use std::{time::Instant, fmt};
+use std::{fmt, time::Instant};
 
-use crate::image_analyzer::{ImageAnalyzer, Color};
+use crate::image_analyzer::{Color, ImageAnalyzer};
 
 use super::PointCloud;
 
@@ -8,7 +8,6 @@ use super::PointCloud;
 pub enum PixelDetectionKind {
     #[default]
     CursorType,
-
 }
 impl fmt::Display for PixelDetectionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -17,7 +16,6 @@ impl fmt::Display for PixelDetectionKind {
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct PixelDetectionConfig {
@@ -71,7 +69,8 @@ impl Default for PixelDetectionConfig {
 
 impl PartialEq for PixelDetectionConfig {
     fn eq(&self, other: &Self) -> bool {
-        /* self.refs == other.refs &&*/ self.max_x == other.max_x && self.min_x == other.min_x && self.min_y == other.min_y
+        /* self.refs == other.refs &&*/
+        self.max_x == other.max_x && self.min_x == other.min_x && self.min_y == other.min_y
     }
 }
 
@@ -96,10 +95,7 @@ impl PartialOrd for PixelDetection {
 }
 
 impl PixelDetection {
-    pub fn new(
-        pixel_kind: PixelDetectionKind,
-        image: Option<&ImageAnalyzer>,
-    ) -> Self {
+    pub fn new(pixel_kind: PixelDetectionKind, image: Option<&ImageAnalyzer>) -> Self {
         let mut res = Self {
             value: false,
             pixel_kind,
@@ -114,7 +110,13 @@ impl PixelDetection {
 
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let config: PixelDetectionConfig = self.pixel_kind.into();
-        let recv = image.pixel_detection(config.refs, config.min_x, config.min_y, config.max_x, config.max_y);
+        let recv = image.pixel_detection(
+            config.refs,
+            config.min_x,
+            config.min_y,
+            config.max_x,
+            config.max_y,
+        );
 
         // Receive points from channel
         let cloud = {
@@ -129,11 +131,9 @@ impl PixelDetection {
         let old_value = self.value;
 
         if updated_value != old_value {
-
             // Update values
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
     }
 }
-

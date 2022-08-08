@@ -1,7 +1,7 @@
 use std::{fmt, time::Instant};
 
 use crate::{
-    image_analyzer::{ImageAnalyzer, Color},
+    image_analyzer::{Color, ImageAnalyzer},
     platform::{send_keystroke, Key, KeyMode},
 };
 
@@ -56,7 +56,7 @@ impl ClientStats {
     }
 
     // update all bars values at once
-    pub fn update(&mut self, image: &ImageAnalyzer){
+    pub fn update(&mut self, image: &ImageAnalyzer) {
         self.hp.update_value(image);
         self.mp.update_value(image);
         self.fp.update_value(image);
@@ -87,8 +87,11 @@ impl ClientStats {
         }
     }
 
-    pub fn debug_print(&self){
-        println!("hp : {}, mp : {}, fp : {}, enemy hp : {}",self.hp.value, self.mp.value, self.fp.value, self.enemy_hp.value);
+    pub fn debug_print(&self) {
+        println!(
+            "hp : {}, mp : {}, fp : {}, enemy hp : {}",
+            self.hp.value, self.mp.value, self.fp.value, self.enemy_hp.value
+        );
     }
 }
 
@@ -135,7 +138,13 @@ impl StatInfo {
 
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let status_bar_config: StatusBarConfig = self.stat_kind.into();
-        let recv = image.pixel_detection(status_bar_config.refs, status_bar_config.min_x, status_bar_config.min_y, status_bar_config.max_x, status_bar_config.max_y);
+        let recv = image.pixel_detection(
+            status_bar_config.refs,
+            status_bar_config.min_x,
+            status_bar_config.min_y,
+            status_bar_config.max_x,
+            status_bar_config.max_y,
+        );
 
         // Receive points from channel
         let cloud = {
@@ -262,6 +271,7 @@ impl Default for StatusBarConfig {
 
 impl PartialEq for StatusBarConfig {
     fn eq(&self, other: &Self) -> bool {
-        /*self.refs == other.refs &&*/ self.max_x == other.max_x
+        /*self.refs == other.refs &&*/
+        self.max_x == other.max_x
     }
 }

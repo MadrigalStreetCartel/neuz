@@ -6,8 +6,11 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{Bounds, MobType, Target, TargetType, StatInfo, ClientStats, PixelDetection, PixelDetectionKind},
-    image_analyzer::{ImageAnalyzer},
+    data::{
+        Bounds, ClientStats, MobType, PixelDetection, PixelDetectionKind, StatInfo, Target,
+        TargetType,
+    },
+    image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
@@ -66,7 +69,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
-
         }
     }
 
@@ -74,7 +76,12 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer, client_stats: ClientStats) {
+    fn run_iteration(
+        &mut self,
+        config: &BotConfig,
+        image: &mut ImageAnalyzer,
+        client_stats: ClientStats,
+    ) {
         let config = config.farming_config();
         self.client_stats = client_stats;
         // Print debug values for stats
@@ -175,8 +182,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Check whether we can use food again.
         // This is based on a very generous limit of 1s between food uses.
-        let can_use_food =
-            current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
+        let can_use_food = current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
 
         // Use food ASAP if HP is critical.
         // Wait a minimum of 333ms after last usage anyway to avoid detection.
@@ -188,8 +194,7 @@ impl<'a> FarmingBehavior<'_> {
         let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
 
         // Check whether we should use food for any reason
-        let should_use_food =
-            should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+        let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
         // Check whether we should use pills
         let pill_available = config.get_slot_index(SlotType::Pill).is_some();
@@ -405,7 +410,12 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn on_enemy_found(&mut self, _config: &FarmingConfig, mob: Target, image: &mut ImageAnalyzer) -> State {
+    fn on_enemy_found(
+        &mut self,
+        _config: &FarmingConfig,
+        mob: Target,
+        image: &mut ImageAnalyzer,
+    ) -> State {
         self.rotation_movement_tries = 0;
 
         // Transform attack coords into local window coords
@@ -439,10 +449,9 @@ impl<'a> FarmingBehavior<'_> {
             // Wait a few ms before transitioning state
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
-        }else {
+        } else {
             State::SearchingForEnemy
         }
-
     }
 
     fn on_attacking(
