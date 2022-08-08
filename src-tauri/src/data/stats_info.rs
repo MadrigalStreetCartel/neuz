@@ -89,8 +89,8 @@ impl ClientStats {
 
     pub fn debug_print(&self) {
         println!(
-            "hp : {}, mp : {}, fp : {}, enemy hp : {}",
-            self.hp.value, self.mp.value, self.fp.value, self.enemy_hp.value
+            "hp : {}, mp : {}, fp : {}, enemy hp : {}, spell casting : {}",
+            self.hp.value, self.mp.value, self.fp.value, self.enemy_hp.value, self.spell_cast.value
         );
     }
 }
@@ -186,12 +186,10 @@ pub struct StatusBarConfig {
 
 impl StatusBarConfig {
     pub fn new(colors: [[u8; 3]; 4]) -> Self {
-        let mut refs: Vec<Color> = vec![];
-        colors.iter().for_each(|v| {
-            refs.push(Color::new(v[0], v[1], v[2]));
-        });
         Self {
-            refs: refs,
+            refs: colors.iter().map(|v| {
+                Color::new(v[0], v[1], v[2])
+            }).collect(),
             ..Default::default()
         }
     }
