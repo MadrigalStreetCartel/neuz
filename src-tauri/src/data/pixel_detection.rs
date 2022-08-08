@@ -28,9 +28,8 @@ pub struct PixelDetectionConfig {
 
 impl PixelDetectionConfig {
     pub fn new(color: [u8; 3]) -> Self {
-        let color = Color::new(color[0], color[1], color[2]);
         Self {
-            refs: vec![color],
+            refs: vec![Color::new(color[0], color[1], color[2])],
             ..Default::default()
         }
     }

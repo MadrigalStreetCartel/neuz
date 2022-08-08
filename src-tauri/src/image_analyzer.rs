@@ -6,7 +6,7 @@ use slog::Logger;
 
 use crate::{
     data::{
-        point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
+        point_selector, Bounds, MobType, PixelDetection, Point, PointCloud, Target,
         TargetType,
     },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
@@ -45,10 +45,8 @@ impl ImageAnalyzer {
     }
 
     pub fn capture_window(&mut self, logger: &Logger) {
-        if self.window_id == 0 {
-            return;
-        }
         let _timer = Timer::start_new("capture_window");
+        if self.window_id == 0 {  return; }
         if let Some(provider) = libscreenshot::get_window_capture_provider() {
             if let Ok(image) = provider.capture_window(self.window_id) {
                 self.image = Some(image);
@@ -180,7 +178,7 @@ impl ImageAnalyzer {
 
         // Reference colors
         let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
-        let ref_color_agg: [u8; 3] = [0xd3, 0x0f, 0x0d]; // Aggro mobs
+        let ref_color_agg: [u8; 3] = [0xf5, 0x03, 0x03]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
@@ -200,7 +198,7 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 8) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 5) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }

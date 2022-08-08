@@ -421,15 +421,7 @@ impl<'a> FarmingBehavior<'_> {
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
         slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
-        // let inner_size = window.inner_size().unwrap();
-        // let (x_diff, y_diff) = (
-        //     image.width() - inner_size.width,
-        //     image.height() - inner_size.height,
-        // );
-        // let (window_x, window_y) = (
-        //     (x.saturating_sub(x_diff / 2)) as i32,
-        //     (y.saturating_sub(y_diff)) as i32,
-        // );
+
         let target_cursor_pos = Position::Physical(PhysicalPosition {
             x: point.x as i32,
             y: point.y as i32,
@@ -465,15 +457,15 @@ impl<'a> FarmingBehavior<'_> {
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else
             // true not in party
             // false in party
-            let prevent_already_attacked = true;
-            if prevent_already_attacked && self.client_stats.enemy_hp.value < 90 {
+            /*let prevent_already_attacked = true;
+            if prevent_already_attacked && self.client_stats.enemy_hp.value < 100 {
                 let marker = image.identify_target_marker();
                 if marker.is_some() {
                     let marker = marker.unwrap();
                     self.last_killed_mob_bounds = marker.bounds;
                 }
                 return State::SearchingForEnemy;
-            }
+            }*/
 
             self.last_initial_attack_time = Instant::now();
             self.last_pot_time = Instant::now();
@@ -503,8 +495,10 @@ impl<'a> FarmingBehavior<'_> {
             //  Keep attacking until the target marker is gone
             self.state
         } else {
-            // Target marker not found
+
+            // Target HP = 0
             if self.is_attacking {
+
                 // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
