@@ -3,7 +3,7 @@ use winput::Vk;
 use super::{Key, KeyMode};
 
 pub const IGNORE_AREA_TOP: u32 = 0;
-pub const IGNORE_AREA_BOTTOM: u32 = 0;
+pub const IGNORE_AREA_BOTTOM: u32 = 80;
 
 #[allow(clippy::just_underscores_and_digits)]
 impl From<Key> for Vk {
@@ -27,6 +27,7 @@ impl From<Key> for Vk {
             Space => Vk::Space,
             Escape => Vk::Escape,
             Enter => Vk::Enter,
+            T => Vk::T,
         }
     }
 }

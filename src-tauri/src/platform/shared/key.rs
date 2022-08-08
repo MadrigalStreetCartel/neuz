@@ -28,6 +28,7 @@ pub enum Key {
     Space,
     Escape,
     Enter,
+    T,
 }
 
 impl From<usize> for Key {

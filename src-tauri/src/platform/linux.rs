@@ -27,6 +27,7 @@ impl From<Key> for char {
             Space => ' ',
             Esc => todo!(),
             Enter => todo!(),
+            T => todo!(),
         }
     }
 }

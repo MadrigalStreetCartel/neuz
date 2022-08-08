@@ -13,11 +13,11 @@ mod utils;
 
 use std::{sync::Arc, time::Duration};
 
+use data::ClientStats;
 use guard::guard;
-use libscreenshot::WindowCaptureProvider;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
-use tauri::{Manager, Window};
+use tauri::Manager;
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior},
@@ -30,6 +30,8 @@ use crate::{
 
 struct AppState {
     logger: Logger,
+    image_analyzer: ImageAnalyzer,
+    client_stats: ClientStats,
 }
 
 fn main() {
@@ -66,36 +68,28 @@ fn main() {
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
-        .manage(AppState { logger })
+        .manage(AppState {
+            logger,
+            image_analyzer: ImageAnalyzer::new(),
+            client_stats: ClientStats::init(),
+         })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
         .expect("error while running tauri application");
-}
-
-/// Capture the current window contents.
-fn capture_window(logger: &Logger, window: &Window) -> Option<ImageAnalyzer> {
-    let _timer = Timer::start_new("capture_window");
-    if let Some(provider) = libscreenshot::get_window_capture_provider() {
-        if let Some(window_id) = platform::get_window_id(window) {
-            if let Ok(image) = provider.capture_window(window_id) {
-                Some(ImageAnalyzer::new(image))
-            } else {
-                slog::warn!(logger, "Failed to capture window"; "window_id" => window_id);
-                None
-            }
-        } else {
-            slog::warn!(logger, "Failed to obtain window id");
-            None
-        }
-    } else {
-        None
-    }
 }
 
 #[tauri::command]
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
+
+    let _res = window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},5)");
+
+    let mut image_analyzer:ImageAnalyzer = state.image_analyzer.clone();
+    let mut client_stats: ClientStats = state.client_stats.clone();
+
+    image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
+
 
     std::thread::spawn(move || {
         let logger = logger.clone();
@@ -205,17 +199,23 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 }
             }
 
+            image_analyzer.capture_window(&logger);
+            client_stats.update(&image_analyzer);
+
+            //client_stats.debug_print();
+
+
             // Try capturing the window contents
-            if let Some(image_analyzer) = capture_window(&logger, &window) {
+            if image_analyzer.image_is_some() && client_stats.is_alive() {
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
                 match mode {
                     BotMode::Farming => {
-                        farming_behavior.run_iteration(config, &image_analyzer);
+                        farming_behavior.run_iteration(config, &mut image_analyzer, client_stats);
                     }
                     BotMode::AutoShout => {
-                        shout_behavior.run_iteration(config, &image_analyzer);
+                        shout_behavior.run_iteration(config, &mut image_analyzer, client_stats);
                     }
                     _ => (),
                 }
