@@ -35,7 +35,6 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor<'a>,
     state: State,
-    client_stats: ClientStats,
     last_food_hp: StatInfo,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
@@ -59,7 +58,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            client_stats: ClientStats::default(),
             last_food_hp: StatInfo::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
@@ -80,16 +78,15 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         &mut self,
         config: &BotConfig,
         image: &mut ImageAnalyzer,
-        client_stats: ClientStats,
     ) {
         let config = config.farming_config();
-        self.client_stats = client_stats;
+        //self.client_stats = client_stats;
         // Print debug values for stats
         //#[cfg(debug_assertions)]
         //self.debug_stats_bar(config, image);
 
         // Check whether food should be consumed
-        self.check_food(config);
+        self.check_food(config, image);
 
         // Check state machine
         self.state = match self.state {
@@ -162,13 +159,13 @@ impl<'a> FarmingBehavior<'_> {
     }*/
 
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
-    fn check_food(&mut self, config: &FarmingConfig) {
+    fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {
         let current_time = Instant::now();
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
 
-        let hp = self.client_stats.hp;
+        let hp = image.client_stats.hp;
 
         // HP threshold. We probably shouldn't use food at > 75% HP.
         // If HP is < 15% we need to use food ASAP.
@@ -470,7 +467,7 @@ impl<'a> FarmingBehavior<'_> {
             self.last_initial_attack_time = Instant::now();
             self.last_pot_time = Instant::now();
         }
-        if self.client_stats.enemy_hp.value > 0 {
+        if image.client_stats.enemy_hp.value > 0 {
             self.is_attacking = true;
 
             // Target marker found

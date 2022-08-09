@@ -27,6 +27,5 @@ pub trait Behavior<'a> {
         &mut self,
         config: &BotConfig,
         analyzer: &mut ImageAnalyzer,
-        client_stats: ClientStats,
     );
 }
