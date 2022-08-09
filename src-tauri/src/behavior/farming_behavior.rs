@@ -171,9 +171,7 @@ impl<'a> FarmingBehavior<'_> {
         let hp = self.client_stats.hp;
 
         // Calculate ms since last food usage
-        let ms_since_last_food = current_time
-            .duration_since(self.last_pot_time)
-            .as_millis();
+        let ms_since_last_food = current_time.duration_since(self.last_pot_time).as_millis();
 
         // Check whether we can use food again.
         // This is based on a very generous limit of 1s between food uses.
@@ -182,14 +180,15 @@ impl<'a> FarmingBehavior<'_> {
         // Use food ASAP if HP is critical.
         // Wait a minimum of 333ms after last usage anyway to avoid detection.
         // Spamming 3 times per second when low on HP seems legit for a real player.
-        let should_use_food_reason_hp_critical =
-            ms_since_last_food > 333;
+        let should_use_food_reason_hp_critical = ms_since_last_food > 333;
 
         // Check whether we should use food for any reason
         let should_use_food = should_use_food_reason_hp_critical || can_use_food;
 
         // Check whether we should use pills
-        let pill_available = config.get_slot_index_by_threshold(SlotType::Pill,hp.value).is_some();
+        let pill_available = config
+            .get_slot_index_by_threshold(SlotType::Pill, hp.value)
+            .is_some();
         let should_use_pill = pill_available && should_use_food_reason_hp_critical;
 
         if should_use_food {
@@ -212,7 +211,9 @@ impl<'a> FarmingBehavior<'_> {
                 self.client_stats.hp.update_value(&image);
             }
             // Use regular food
-            else if let Some(food_index) = config.get_slot_index_by_threshold(SlotType::Food, hp.value) {
+            else if let Some(food_index) =
+                config.get_slot_index_by_threshold(SlotType::Food, hp.value)
+            {
                 // Send keystroke for first slot mapped to food
                 send_keystroke(food_index.into(), KeyMode::Press);
 
@@ -489,10 +490,8 @@ impl<'a> FarmingBehavior<'_> {
             //  Keep attacking until the target marker is gone
             self.state
         } else {
-
             // Target HP = 0
             if self.is_attacking {
-
                 // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)

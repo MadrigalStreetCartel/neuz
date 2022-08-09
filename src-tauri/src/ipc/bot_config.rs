@@ -102,11 +102,15 @@ impl FarmingConfig {
     }
 
     /// Get the first matching slot index
-    pub fn get_slot_index_by_threshold(&self, slot_type: SlotType, current_value: u32) -> Option<usize> {
+    pub fn get_slot_index_by_threshold(
+        &self,
+        slot_type: SlotType,
+        current_value: u32,
+    ) -> Option<usize> {
         self.slots
             .unwrap_or_default()
             .iter()
-            .position(|slot| slot.slot_type == slot_type && slot.slot_threshold >= current_value )
+            .position(|slot| slot.slot_type == slot_type && slot.slot_threshold >= current_value)
     }
 
     /// Get a random matching slot index

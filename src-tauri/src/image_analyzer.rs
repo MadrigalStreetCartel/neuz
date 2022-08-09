@@ -6,8 +6,7 @@ use slog::Logger;
 
 use crate::{
     data::{
-        point_selector, Bounds, MobType, PixelDetection, Point, PointCloud, Target,
-        TargetType,
+        point_selector, Bounds, MobType, PixelDetection, Point, PointCloud, Target, TargetType,
     },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
@@ -46,7 +45,9 @@ impl ImageAnalyzer {
 
     pub fn capture_window(&mut self, logger: &Logger) {
         let _timer = Timer::start_new("capture_window");
-        if self.window_id == 0 {  return; }
+        if self.window_id == 0 {
+            return;
+        }
         if let Some(provider) = libscreenshot::get_window_capture_provider() {
             if let Ok(image) = provider.capture_window(self.window_id) {
                 self.image = Some(image);
