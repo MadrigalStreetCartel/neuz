@@ -187,9 +187,10 @@ pub struct StatusBarConfig {
 impl StatusBarConfig {
     pub fn new(colors: [[u8; 3]; 4]) -> Self {
         Self {
-            refs: colors.iter().map(|v| {
-                Color::new(v[0], v[1], v[2])
-            }).collect(),
+            refs: colors
+                .iter()
+                .map(|v| Color::new(v[0], v[1], v[2]))
+                .collect(),
             ..Default::default()
         }
     }

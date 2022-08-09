@@ -74,11 +74,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(
-        &mut self,
-        config: &BotConfig,
-        image: &mut ImageAnalyzer,
-    ) {
+    fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
         //self.client_stats = client_stats;
         // Print debug values for stats
@@ -492,10 +488,8 @@ impl<'a> FarmingBehavior<'_> {
             //  Keep attacking until the target marker is gone
             self.state
         } else {
-
             // Target HP = 0
             if self.is_attacking {
-
                 // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
