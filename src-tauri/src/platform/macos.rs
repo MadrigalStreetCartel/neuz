@@ -3,7 +3,6 @@ use enigo::{Enigo, KeyboardControllable};
 use super::{Key, KeyMode};
 
 pub const IGNORE_AREA_TOP: u32 = 60;
-pub const IGNORE_AREA_BOTTOM: u32 = 150;
 
 #[allow(clippy::just_underscores_and_digits)]
 impl From<Key> for enigo::Key {

@@ -7,6 +7,8 @@ mod platform_accessor;
 pub use key::{Key, KeyMode};
 pub use platform_accessor::PlatformAccessor;
 
+pub const IGNORE_AREA_BOTTOM: u32 = 150;
+
 /// Get the native window id.
 pub fn get_window_id(window: &Window) -> Option<u64> {
     #[allow(unused_variables)]
