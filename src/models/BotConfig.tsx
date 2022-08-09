@@ -4,6 +4,8 @@ export type SlotType = "Unused" | "Food" | "PickupPet" | "PickupMotion" | "Attac
 
 export type SlotModel = {
     slot_type: SlotType,
+    slot_cooldown: number,
+    slot_threshold: number,
 }
 
 export type SlotBarModel = FixedArray<SlotModel, 10>

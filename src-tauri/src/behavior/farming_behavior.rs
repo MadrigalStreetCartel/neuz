@@ -167,13 +167,8 @@ impl<'a> FarmingBehavior<'_> {
         let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
-
         let hp = self.client_stats.hp;
 
-        // HP threshold. We probably shouldn't use food at > 75% HP.
-        // If HP is < 15% we need to use food ASAP.
-        let hp_threshold_reached = hp.value <= 75;
-        let hp_critical_threshold_reached = hp.value <= 15;
 
         // Calculate ms since last food usage
         let ms_since_last_food = Instant::now()
@@ -188,22 +183,22 @@ impl<'a> FarmingBehavior<'_> {
         // Wait a minimum of 333ms after last usage anyway to avoid detection.
         // Spamming 3 times per second when low on HP seems legit for a real player.
         let should_use_food_reason_hp_critical =
-            ms_since_last_food > 333 && hp_critical_threshold_reached;
+            ms_since_last_food > 333;
 
         // Use food if nominal usage conditions are met
-        let should_use_food_reason_nominal = hp_threshold_reached && can_use_food;
+        let should_use_food_reason_nominal = can_use_food;
 
         // Check whether we should use food for any reason
         let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
 
         // Check whether we should use pills
-        let pill_available = config.get_slot_index(SlotType::Pill).is_some();
+        let pill_available = config.get_slot_index_by_threshold(SlotType::Pill,hp.value).is_some();
         let should_use_pill = pill_available && should_use_food_reason_hp_critical;
 
         if should_use_food {
             // Use pill
             if should_use_pill {
-                guard!(let Some(pill_index) = config.get_slot_index(SlotType::Pill) else {
+                guard!(let Some(pill_index) = config.get_slot_index_by_threshold(SlotType::Pill, hp.value) else {
                     return;
                 });
 
@@ -218,18 +213,15 @@ impl<'a> FarmingBehavior<'_> {
                 std::thread::sleep(Duration::from_millis(100));
             }
             // Use regular food
-            else if let Some(food_index) = config.get_slot_index(SlotType::Food) {
+            else if let Some(food_index) = config.get_slot_index_by_threshold(SlotType::Food, hp.value) {
                 // Send keystroke for first slot mapped to food
                 send_keystroke(food_index.into(), KeyMode::Press);
 
                 // Update state
                 self.last_pot_time = current_time;
-                self.last_food_hp = hp;
 
                 // wait a few ms for the food to be consumed
                 std::thread::sleep(Duration::from_millis(100));
-            } else {
-                slog::info!(self.logger, "No slot is mapped to food!");
             }
         }
     }
