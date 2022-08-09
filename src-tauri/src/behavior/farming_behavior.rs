@@ -36,6 +36,7 @@ pub struct FarmingBehavior<'a> {
     movement: &'a MovementAccessor<'a>,
     state: State,
     client_stats: ClientStats,
+    last_food_cooldown: u32,
     last_food_hp: StatInfo,
     last_pot_time: Instant,
     last_initial_attack_time: Instant,
@@ -60,6 +61,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
             client_stats: ClientStats::default(),
+            last_food_cooldown: 0,
             last_food_hp: StatInfo::default(),
             last_pot_time: Instant::now(),
             last_initial_attack_time: Instant::now(),
@@ -89,7 +91,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         //self.debug_stats_bar(config, image);
 
         // Check whether food should be consumed
-        self.check_food(config);
+        self.check_food(config, image);
 
         // Check state machine
         self.state = match self.state {
@@ -162,22 +164,20 @@ impl<'a> FarmingBehavior<'_> {
     }*/
 
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
-    fn check_food(&mut self, config: &FarmingConfig) {
+    fn check_food(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
         let current_time = Instant::now();
-        let min_pot_time_diff = Duration::from_millis(1000);
 
         // Decide which fooding logic to use based on HP
         let hp = self.client_stats.hp;
 
-
         // Calculate ms since last food usage
-        let ms_since_last_food = Instant::now()
+        let ms_since_last_food = current_time
             .duration_since(self.last_pot_time)
             .as_millis();
 
         // Check whether we can use food again.
         // This is based on a very generous limit of 1s between food uses.
-        let can_use_food = current_time.duration_since(self.last_pot_time) > min_pot_time_diff;
+        let can_use_food = ms_since_last_food > self.last_food_cooldown.into();
 
         // Use food ASAP if HP is critical.
         // Wait a minimum of 333ms after last usage anyway to avoid detection.
@@ -185,11 +185,8 @@ impl<'a> FarmingBehavior<'_> {
         let should_use_food_reason_hp_critical =
             ms_since_last_food > 333;
 
-        // Use food if nominal usage conditions are met
-        let should_use_food_reason_nominal = can_use_food;
-
         // Check whether we should use food for any reason
-        let should_use_food = should_use_food_reason_hp_critical || should_use_food_reason_nominal;
+        let should_use_food = should_use_food_reason_hp_critical || can_use_food;
 
         // Check whether we should use pills
         let pill_available = config.get_slot_index_by_threshold(SlotType::Pill,hp.value).is_some();
@@ -207,10 +204,12 @@ impl<'a> FarmingBehavior<'_> {
 
                 // Update state
                 self.last_pot_time = current_time;
-                self.last_food_hp = hp;
+                self.last_food_cooldown = config.get_slot_cooldown(pill_index);
 
                 // wait a few ms for the pill to be consumed
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(Duration::from_millis(500));
+                image.capture_window(self.logger);
+                self.client_stats.hp.update_value(&image);
             }
             // Use regular food
             else if let Some(food_index) = config.get_slot_index_by_threshold(SlotType::Food, hp.value) {
@@ -219,9 +218,12 @@ impl<'a> FarmingBehavior<'_> {
 
                 // Update state
                 self.last_pot_time = current_time;
+                self.last_food_cooldown = config.get_slot_cooldown(food_index);
 
                 // wait a few ms for the food to be consumed
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(Duration::from_millis(500));
+                image.capture_window(self.logger);
+                self.client_stats.hp.update_value(&image);
             }
         }
     }

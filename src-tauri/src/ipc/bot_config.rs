@@ -89,6 +89,10 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> u32 {
+        self.slots.unwrap()[slot_index].slot_cooldown
+    }
+
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
         self.slots
