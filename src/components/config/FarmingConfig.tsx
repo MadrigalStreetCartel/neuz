@@ -27,9 +27,16 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
         onChange(newConfig)
     }
 
+    const handleSlotUpdateParams = (index:number, slot:SlotModel) => {
+        if (!onChange) return
+        const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
+        newConfig.slots[index] = slot
+        onChange(newConfig)
+    }
+
     return (
         <>
-            <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
+            <SlotBar slots={config.slots ?? createSlotBar()} updateSlot={handleSlotUpdateParams} onChange={handleSlotChange} />
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -56,4 +63,5 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 }
 
 export default styled(FarmingConfig)`
+
 `

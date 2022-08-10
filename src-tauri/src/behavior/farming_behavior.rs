@@ -371,7 +371,6 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-        slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
 
         let target_cursor_pos = Position::Physical(PhysicalPosition {
             x: point.x as i32,
@@ -388,6 +387,7 @@ impl<'a> FarmingBehavior<'_> {
                     .mouse
                     .click(&mouse_rs::types::keys::Keys::LEFT),
             );
+            slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
 
             // Wait a few ms before transitioning state
             std::thread::sleep(Duration::from_millis(500));
@@ -448,7 +448,6 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             // Target HP = 0
             if self.is_attacking {
-                // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {

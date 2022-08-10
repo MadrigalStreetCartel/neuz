@@ -26,6 +26,7 @@ export default styled(NumericInput)`
     position: relative;
     border: 2px solid hsla(0,0%,0%,.75);
     padding: .1rem .25rem;
+    color: white;
 
     & input {
         all: unset;

@@ -1,7 +1,8 @@
 import styled from 'styled-components'
 
-import { SlotType } from '../models/BotConfig'
+import { SlotModel, SlotType } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
+import { BsFillGearFill } from 'react-icons/bs'
 
 const SLOT_SIZE_PX = 40;
 
@@ -10,6 +11,7 @@ type Props = {
     type: SlotType,
     index: number,
     onChange?: (type: SlotType) => void,
+    toggleSlotModal: () => void,
 }
 
 const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
@@ -40,25 +42,27 @@ const translateDesc = (type: SlotType) => {
     }
 }
 
-const Slot = ({ className, type = 'Unused', index, onChange }: Props) => {
+const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: Props) => {
     const handleChange = () => {
         const nextType: SlotType = types[(types.indexOf(type) + 1) % types.length];
         onChange?.(nextType)
     }
-
     const symbolOrIcon = translateType(type)
     const useIcon = symbolOrIcon.startsWith('data:');
 
     return (
-        <div className={className} onClick={handleChange}>
-            <div className="index">{index}</div>
-            {useIcon && (
-                <img className="type" src={symbolOrIcon} alt="Slot icon" />
-            )}
-            {!useIcon && (
-                <div className="type">{translateType(type)}</div>
-            )}
-            <div className="desc">{translateDesc(type)}</div>
+
+        <div className={className} >
+            <div className="index" onClick={toggleSlotModal}>{index} <BsFillGearFill/></div>
+            <div className='slot' onClick={handleChange}>
+                {useIcon && (
+                    <img className="type" src={symbolOrIcon} alt="Slot icon" />
+                )}
+                {!useIcon && (
+                    <div className="type">{translateType(type)}</div>
+                )}
+                <div className="desc">{translateDesc(type)}</div>
+            </div>
         </div>
     )
 }
@@ -83,6 +87,12 @@ export default styled(Slot)`
     &:hover {
         background-color: hsla(0,0%,100%,.1);
         border: 1px solid hsl(48,65%,50%);
+    }
+
+    & .slot {
+        height:100%;
+        width: 100%;
+        text-align: center;
     }
 
     & .index {
