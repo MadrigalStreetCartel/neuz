@@ -25,8 +25,8 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: 
 
     return (
 
-        <div className={className} >
-            <div className="index" onClick={toggleSlotModal}>{index} <BsFillGearFill/></div>
+        <div className={className} onClick={toggleSlotModal} >
+            <div className="index" onClick={()=>null/*toggleSlotModal*/}>{index}{/*<BsFillGearFill/>*/}</div>
             <div className='slot' onClick={handleChange}>
                 {useIcon && (
                     <img className="type" src={symbolOrIcon} alt="Slot icon" />

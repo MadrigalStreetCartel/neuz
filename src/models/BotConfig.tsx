@@ -2,7 +2,11 @@ import IconMotionPickup from '../assets/icon_motion_pickup.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export type SlotType = "Unused" | "Food" | "PickupPet" | "PickupMotion" | "AttackSkill" | "BuffSkill" | "Flying" | "Pill"
+export const slotTypes = ["Unused", "Food", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying", "Pill"] as const;
+export const thresholdSlotTypes = ["Food", "Pill"];
+export const cooldownSlotTypes = ["Food", "AttackSkill", "BuffSkill", "Pill"];
+export type SlotType = typeof slotTypes[number];
+
 
 export const SLOT_SIZE_PX = 40;
 

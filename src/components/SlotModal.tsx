@@ -1,7 +1,7 @@
 import React, { MouseEventHandler, useState } from 'react'
 import styled from 'styled-components'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
-import { SlotModel, SlotType, SLOT_SIZE_PX, translateType } from '../models/BotConfig'
+import { cooldownSlotTypes, SlotModel, SlotType, SLOT_SIZE_PX, thresholdSlotTypes, translateType } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
@@ -38,7 +38,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
                     <div className="modal-wrapper" onMouseDown={event => { if (event.target === event.currentTarget)  hide()}}>
                     <div className="modal">
                         <div className="modal-header">
-                        <h4>Slot n°{index} - {slot.slot_type}</h4>
+                        <h4>Slot {index} - {slot.slot_type}</h4>
                         <button
                             type="button"
                             className="modal-close-button"
@@ -56,17 +56,20 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
                                     item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
                             />
 
-                            {slot.slot_type != "Unused" && <>
+                            {cooldownSlotTypes.includes(slot.slot_type) &&
                                 <ConfigTableRow
                                     layout="v"
                                     label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
                                     item={<NumericInput unit="ms" value={slot.slot_cooldown ?? 1500} onChange={value => {slot.slot_cooldown = value;onChange(index, slot)}} />}
                                 />
+                            }
+
+                            {thresholdSlotTypes.includes(slot.slot_type) &&
                                 <ConfigTableRow
                                     layout="v"
                                     label={<ConfigLabel name="Threshold" helpText="Limit trigger value." />}
                                     item={<NumericInput value={slot.slot_threshold ?? 50} onChange={value => {slot.slot_threshold = value;onChange(index, slot)}} />}
-                                /></>
+                                />
                             }
 
                         </div>
