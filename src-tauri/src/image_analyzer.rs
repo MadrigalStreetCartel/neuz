@@ -202,7 +202,7 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 3) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 5) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
