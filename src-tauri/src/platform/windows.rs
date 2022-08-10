@@ -26,6 +26,7 @@ impl From<Key> for Vk {
             Space => Vk::Space,
             Escape => Vk::Escape,
             Enter => Vk::Enter,
+            T => Vk::T,
         }
     }
 }
