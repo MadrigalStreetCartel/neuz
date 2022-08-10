@@ -60,12 +60,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         self.message_iter = None;
     }
 
-    fn run_iteration(
-        &mut self,
-        config: &BotConfig,
-        _analyzer: &mut ImageAnalyzer,
-        client_stats: ClientStats,
-    ) {
+    fn run_iteration(&mut self, config: &BotConfig, _analyzer: &mut ImageAnalyzer) {
         let config = config.shout_config();
         self.shout(config);
     }

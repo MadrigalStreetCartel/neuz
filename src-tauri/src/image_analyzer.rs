@@ -6,7 +6,8 @@ use slog::Logger;
 
 use crate::{
     data::{
-        point_selector, Bounds, MobType, PixelDetection, Point, PointCloud, Target, TargetType,
+        point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
+        TargetType,
     },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
@@ -28,6 +29,7 @@ pub struct ImageAnalyzer {
     image: Option<ImageBuffer>,
     pub window_id: u64,
     pub pixel_detections: Vec<PixelDetection>,
+    pub client_stats: ClientStats,
 }
 
 impl ImageAnalyzer {
@@ -36,6 +38,7 @@ impl ImageAnalyzer {
             window_id: 0,
             image: None,
             pixel_detections: vec![],
+            client_stats: ClientStats::new(),
         }
     }
 

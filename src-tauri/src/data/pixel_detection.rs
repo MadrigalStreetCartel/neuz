@@ -42,6 +42,7 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
         match kind {
             CursorType => {
                 let mut cursor_type = PixelDetectionConfig::new([0, 128, 0]);
+
                 cursor_type.min_x = 0;
                 cursor_type.min_y = 0;
 
@@ -101,14 +102,17 @@ impl PixelDetection {
             last_update_time: Some(Instant::now()),
             last_value: false,
         };
+
         if image.is_some() {
             res.update_value(image.unwrap());
         }
+
         res
     }
 
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let config: PixelDetectionConfig = self.pixel_kind.into();
+
         let recv = image.pixel_detection(
             config.refs,
             config.min_x,
@@ -127,10 +131,9 @@ impl PixelDetection {
         };
 
         let updated_value = !cloud.is_empty();
-        let old_value = self.value;
 
-        if updated_value != old_value {
-            // Update values
+        // Update values if needed
+        if updated_value != self.value {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }

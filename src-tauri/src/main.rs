@@ -31,7 +31,6 @@ use crate::{
 struct AppState {
     logger: Logger,
     image_analyzer: ImageAnalyzer,
-    client_stats: ClientStats,
 }
 
 fn main() {
@@ -71,7 +70,6 @@ fn main() {
         .manage(AppState {
             logger,
             image_analyzer: ImageAnalyzer::new(),
-            client_stats: ClientStats::init(),
         })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
@@ -86,7 +84,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let _res = window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},5)");
 
     let mut image_analyzer: ImageAnalyzer = state.image_analyzer.clone();
-    let mut client_stats: ClientStats = state.client_stats.clone();
 
     image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
@@ -198,22 +195,30 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 }
             }
 
+            // Capture client window
             image_analyzer.capture_window(&logger);
-            client_stats.update(&image_analyzer);
-
-            //client_stats.debug_print();
 
             // Try capturing the window contents
-            if image_analyzer.image_is_some() && client_stats.is_alive() {
+            if image_analyzer.image_is_some() {
+                // Update stats
+                image_analyzer.client_stats.update(&image_analyzer.clone());
+
+                image_analyzer.client_stats.debug_print();
+
+                // Stop bot in case of death
+                if !image_analyzer.client_stats.is_alive() {
+                    continue;
+                }
+
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
                 match mode {
                     BotMode::Farming => {
-                        farming_behavior.run_iteration(config, &mut image_analyzer, client_stats);
+                        farming_behavior.run_iteration(config, &mut image_analyzer);
                     }
                     BotMode::AutoShout => {
-                        shout_behavior.run_iteration(config, &mut image_analyzer, client_stats);
+                        shout_behavior.run_iteration(config, &mut image_analyzer);
                     }
                     _ => (),
                 }
