@@ -76,10 +76,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
-        //self.client_stats = client_stats;
-        // Print debug values for stats
-        //#[cfg(debug_assertions)]
-        //self.debug_stats_bar(config, image);
 
         // Check whether food should be consumed
         self.check_food(config, image);
@@ -136,23 +132,6 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
     }
-
-    /// Print debug info for stat detection
-    /*#[cfg(debug_assertions)]
-    fn debug_stats_bar(&mut self, _config: &FarmingConfig, image: &ImageAnalyzer) {
-        if let Some(hp) = image.detect_status_bar(self.last_hp, StatusBarKind::Hp) {
-            slog::debug!(self.logger, "Detecting stat value"; "kind" => "hp", "value" => hp.value);
-        }
-        if let Some(fp) = image.detect_status_bar(self.last_fp, StatusBarKind::Fp) {
-            slog::debug!(self.logger, "Detecting stat value"; "kind" => "fp", "value" => fp.value);
-        }
-        if let Some(mp) = image.detect_status_bar(self.last_mp, StatusBarKind::Mp) {
-            slog::debug!(self.logger, "Detecting stat value"; "kind" => "mp", "value" => mp.value);
-        }
-        if let Some(xp) = image.detect_status_bar(self.last_xp, StatusBarKind::Xp) {
-            slog::debug!(self.logger, "Detecting stat value"; "kind" => "xp", "value" => xp.value);
-        }
-    }*/
 
     /// Consume food based on HP. Fallback for when HP is unable to be detected.
     fn check_food(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) {

@@ -195,13 +195,21 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 }
             }
 
+            // Capture client window
             image_analyzer.capture_window(&logger);
-            image_analyzer.client_stats.update(&image_analyzer.clone());
-
-            //client_stats.debug_print();
 
             // Try capturing the window contents
-            if image_analyzer.image_is_some() && image_analyzer.client_stats.is_alive() {
+            if image_analyzer.image_is_some() {
+                // Update stats
+                image_analyzer.client_stats.update(&image_analyzer.clone());
+
+                image_analyzer.client_stats.debug_print();
+
+                // Stop bot in case of death
+                if !image_analyzer.client_stats.is_alive() {
+                    continue;
+                }
+
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 

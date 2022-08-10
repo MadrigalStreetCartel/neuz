@@ -42,7 +42,7 @@ pub struct ClientStats {
     pub stat_try_not_detected_count: i32,
 }
 impl ClientStats {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         Self {
             hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
@@ -67,10 +67,13 @@ impl ClientStats {
 
     // Detect whether we can read or not stat_tray and open it if needed
     pub fn detect_stat_tray(&mut self) {
+        // Since HP/MP/FP are 0 we know bar should be hidden
         if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
             self.stat_try_not_detected_count += 1;
             if self.stat_try_not_detected_count == 3 {
                 self.stat_try_not_detected_count = 0;
+
+                // Try to open char stat tray
                 send_keystroke(Key::T, KeyMode::Press);
             }
         }
@@ -78,8 +81,10 @@ impl ClientStats {
 
     // bot died
     pub fn is_alive(&mut self) -> bool {
+        // We need to be sure that char tray is open before
         self.detect_stat_tray();
-        // If bars are found, check if bot is alive by using hp value
+
+        // Obfviously
         if self.hp.value == 0 {
             false
         } else {
@@ -87,10 +92,23 @@ impl ClientStats {
         }
     }
 
-    pub fn debug_print(&self) {
+    pub fn debug_print(&mut self) {
+        // Stringify is_alive
+        let alive_str = {
+            if self.is_alive() {
+                "alive"
+            } else {
+                "dead"
+            }
+        };
         println!(
-            "hp : {}, mp : {}, fp : {}, enemy hp : {}, spell casting : {}",
-            self.hp.value, self.mp.value, self.fp.value, self.enemy_hp.value, self.spell_cast.value
+            "hp : {}, mp : {}, fp : {}, enemy hp : {}, spell casting : {}, character is {}",
+            self.hp.value,
+            self.mp.value,
+            self.fp.value,
+            self.enemy_hp.value,
+            self.spell_cast.value,
+            alive_str
         );
     }
 }
@@ -245,8 +263,7 @@ impl From<StatusBarKind> for StatusBarConfig {
                 ]);
                 spell_casting_bar.min_x = 310;
                 spell_casting_bar.min_y = 500;
-                // 800 -> 1038 fullscreen
-                //
+
                 spell_casting_bar.max_x = 1000;
                 spell_casting_bar.max_y = 1080;
 

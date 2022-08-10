@@ -38,7 +38,7 @@ impl ImageAnalyzer {
             window_id: 0,
             image: None,
             pixel_detections: vec![],
-            client_stats: ClientStats::init(),
+            client_stats: ClientStats::new(),
         }
     }
 
