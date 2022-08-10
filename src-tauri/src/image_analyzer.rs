@@ -182,7 +182,7 @@ impl ImageAnalyzer {
 
         // Reference colors
         let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
-        let ref_color_agg: [u8; 3] = [0xf5, 0x03, 0x03]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
+        let ref_color_agg: [u8; 3] = [0xf0, 0x05, 0x05]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
@@ -202,7 +202,7 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 2) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 3) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
