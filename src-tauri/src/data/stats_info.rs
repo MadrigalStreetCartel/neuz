@@ -70,7 +70,7 @@ impl ClientStats {
         // Since HP/MP/FP are 0 we know bar should be hidden
         if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
             self.stat_try_not_detected_count += 1;
-            if self.stat_try_not_detected_count == 3 {
+            if self.stat_try_not_detected_count == 5 {
                 self.stat_try_not_detected_count = 0;
 
                 // Try to open char stat tray
