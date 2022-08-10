@@ -20,14 +20,7 @@ const createSlotBar = () => (
 )
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
-    const handleSlotChange = (type: SlotType, index: number) => {
-        if (!onChange) return
-        const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
-        newConfig.slots[index] = { slot_type: type, slot_cooldown: 1500, slot_threshold: 30 }
-        onChange(newConfig)
-    }
-
-    const handleSlotUpdateParams = (index:number, slot:SlotModel) => {
+    const handleSlotChange = (index:number, slot:SlotModel) => {
         if (!onChange) return
         const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
         newConfig.slots[index] = slot
@@ -36,7 +29,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 
     return (
         <>
-            <SlotBar slots={config.slots ?? createSlotBar()} updateSlot={handleSlotUpdateParams} onChange={handleSlotChange} />
+            <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow

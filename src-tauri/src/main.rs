@@ -13,7 +13,6 @@ mod utils;
 
 use std::{sync::Arc, time::Duration};
 
-use data::ClientStats;
 use guard::guard;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};

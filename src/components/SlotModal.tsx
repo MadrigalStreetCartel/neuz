@@ -15,8 +15,8 @@ type Props = {
     hide: () => void,
     index: number,
     slot?: SlotModel,
-    onChange?: (type: SlotType, index: number) => void,
-    updateSlot: (index:number, slot:SlotModel) => void,
+    onChange: (index:number, slot:SlotModel) => void,
+
 }
 
 const SLOT_SIZE_PX = 40;
@@ -48,7 +48,7 @@ const translateDesc = (type: SlotType) => {
 }
 
 
-const SlotModal = ({className, isShowing, hide, index, slot, onChange, updateSlot }: Props) => {
+const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) => {
     const options = [
         { value: 'Unused', label: 'None' },
         { value: 'Food', label: '🍔 - Food' },
@@ -84,19 +84,19 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, updateSlo
                             <ConfigTableRow
                                     layout="v"
                                     label={<ConfigLabel name="Type" helpText="Select action binded to current slot." />}
-                                    item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';updateSlot(index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
+                                    item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
                             />
 
                             {slot.slot_type != "Unused" && <>
                                 <ConfigTableRow
                                     layout="v"
                                     label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
-                                    item={<NumericInput unit="ms" value={slot.slot_cooldown ?? 1500} onChange={value => {slot.slot_cooldown = value;updateSlot(index, slot)}} />}
+                                    item={<NumericInput unit="ms" value={slot.slot_cooldown ?? 1500} onChange={value => {slot.slot_cooldown = value;onChange(index, slot)}} />}
                                 />
                                 <ConfigTableRow
                                     layout="v"
                                     label={<ConfigLabel name="Threshold" helpText="Limit trigger value." />}
-                                    item={<NumericInput value={slot.slot_threshold ?? 50} onChange={value => {slot.slot_threshold = value;updateSlot(index, slot)}} />}
+                                    item={<NumericInput value={slot.slot_threshold ?? 50} onChange={value => {slot.slot_threshold = value;onChange(index, slot)}} />}
                                 /></>
                             }
 

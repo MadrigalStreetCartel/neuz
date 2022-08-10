@@ -10,11 +10,10 @@ import { useState } from 'react'
 type Props = {
     className?: string,
     slots: SlotBarModel,
-    onChange?: (type: SlotType, index: number) => void,
-    updateSlot: (index:number, slot:SlotModel) => void,
+    onChange: (index:number, slot:SlotModel) => void,
 }
 
-const SlotBar = ({ className, slots, onChange, updateSlot }: Props) => {
+const SlotBar = ({ className, slots, onChange }: Props) => {
     const { isShowing, toggle } = useModal();
 
     const [currentSlotId, setCurrentSlotId] = useState(-1)
@@ -26,7 +25,7 @@ const SlotBar = ({ className, slots, onChange, updateSlot }: Props) => {
 
     return (
         <>
-            <SlotModal isShowing={isShowing} hide={toggle} index={currentSlotId} slot={slots[currentSlotId]} updateSlot={updateSlot}/>
+            <SlotModal isShowing={isShowing} hide={toggle} index={currentSlotId} slot={slots[currentSlotId]} onChange={onChange}/>
             <div className={className}>
                 {slots.map((slot, index) => (
                     <Slot key={index} type={slot.slot_type} index={index} onChange={type => null/*type => onChange?.(type, index)*/} toggleSlotModal={() => toogleSlot(index)} />

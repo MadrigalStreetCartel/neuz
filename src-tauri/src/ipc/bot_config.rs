@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -101,16 +101,28 @@ impl FarmingConfig {
             .position(|slot| slot.slot_type == slot_type)
     }
 
-    /// Get the first matching slot index
-    pub fn get_slot_index_by_threshold(
+    /// Get a random matching slot index
+    pub fn get_usable_slot_index<R>(
         &self,
         slot_type: SlotType,
-        current_value: u32,
-    ) -> Option<usize> {
+        rng: &mut R,
+        threshold: Option<u32>,
+        last_slots_usage: [Option<Instant>; 10],
+    ) -> Option<usize>
+    where
+        R: Rng,
+    {
         self.slots
             .unwrap_or_default()
             .iter()
-            .position(|slot| slot.slot_type == slot_type && slot.slot_threshold >= current_value)
+            .enumerate()
+            .filter(|(index, slot)| {
+                slot.slot_type == slot_type
+                    && slot.slot_threshold >= threshold.unwrap_or(0)
+                    && last_slots_usage[*index].is_none()
+            })
+            .choose(rng)
+            .map(|(index, _)| index)
     }
 
     /// Get a random matching slot index
