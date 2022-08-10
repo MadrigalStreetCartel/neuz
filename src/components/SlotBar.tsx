@@ -15,7 +15,6 @@ type Props = {
 
 const SlotBar = ({ className, slots, onChange }: Props) => {
     const { isShowing, toggle } = useModal();
-
     const [currentSlotId, setCurrentSlotId] = useState(-1)
 
     const toogleSlot = (id: number) => {

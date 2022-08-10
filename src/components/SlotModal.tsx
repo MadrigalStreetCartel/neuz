@@ -1,13 +1,11 @@
 import React, { MouseEventHandler, useState } from 'react'
 import styled from 'styled-components'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
-import { SlotModel, SlotType } from '../models/BotConfig'
+import { SlotModel, SlotType, SLOT_SIZE_PX, translateType } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
 import Select from 'react-select'
-import Slot from './Slot'
-
 
 type Props = {
     className?: string,
@@ -18,35 +16,6 @@ type Props = {
     onChange: (index:number, slot:SlotModel) => void,
 
 }
-
-const SLOT_SIZE_PX = 40;
-
-const translateType = (type: SlotType) => {
-    switch (type) {
-        case 'Unused': return ''
-        case 'Food': return '🍔'
-        case 'Pill': return '💊'
-        case 'PickupPet': return '🐶'
-        case 'PickupMotion': return IconMotionPickup
-        case 'AttackSkill': return '🗡️'
-        case 'BuffSkill': return '🪄'
-        case 'Flying': return '✈️'
-    }
-}
-
-const translateDesc = (type: SlotType) => {
-    switch (type) {
-        case 'Unused': return ''
-        case 'Food': return 'Food'
-        case 'Pill': return 'Pill'
-        case 'PickupPet': return 'Pet'
-        case 'PickupMotion': return 'Pickup'
-        case 'AttackSkill': return 'Attack'
-        case 'BuffSkill': return 'Buff'
-        case 'Flying': return 'Board'
-    }
-}
-
 
 const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) => {
     const options = [
@@ -66,7 +35,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
         return(
             <div className={className} >
                 <div className="modal-overlay">
-                    <div className="modal-wrapper" onClick={event => { if (event.target === event.currentTarget)  hide()}}>
+                    <div className="modal-wrapper" onMouseDown={event => { if (event.target === event.currentTarget)  hide()}}>
                     <div className="modal">
                         <div className="modal-header">
                         <h4>Slot n°{index} - {slot.slot_type}</h4>
@@ -122,7 +91,7 @@ position: absolute;
     width: 100vw;
     height: 100vh;
     z-index: 1040;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
 }
 &.select-slot {
     color: inherit;
@@ -156,7 +125,7 @@ position: absolute;
     height:auto;
     width: 80%;
     padding: 1rem;
-    background: hsla(0,0%,0%,.5);
+    background: hsla(0,0%,0%,.75);
     backdrop-filter: blur(.9rem);
 }
 

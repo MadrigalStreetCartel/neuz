@@ -1,10 +1,8 @@
 import styled from 'styled-components'
 
-import { SlotModel, SlotType } from '../models/BotConfig'
+import { SlotModel, SlotType, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import { BsFillGearFill } from 'react-icons/bs'
-
-const SLOT_SIZE_PX = 40;
 
 type Props = {
     className?: string,
@@ -16,31 +14,6 @@ type Props = {
 
 const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
 
-const translateType = (type: SlotType) => {
-    switch (type) {
-        case 'Unused': return ''
-        case 'Food': return '🍔'
-        case 'Pill': return '💊'
-        case 'PickupPet': return '🐶'
-        case 'PickupMotion': return IconMotionPickup
-        case 'AttackSkill': return '🗡️'
-        case 'BuffSkill': return '🪄'
-        case 'Flying': return '✈️'
-    }
-}
-
-const translateDesc = (type: SlotType) => {
-    switch (type) {
-        case 'Unused': return ''
-        case 'Food': return 'Food'
-        case 'Pill': return 'Pill'
-        case 'PickupPet': return 'Pet'
-        case 'PickupMotion': return 'Pickup'
-        case 'AttackSkill': return 'Attack'
-        case 'BuffSkill': return 'Buff'
-        case 'Flying': return 'Board'
-    }
-}
 
 const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: Props) => {
     const handleChange = () => {
