@@ -104,7 +104,7 @@ impl ImageAnalyzer {
 
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
-                        if Self::pixel_matches(&px.0, &ref_color.refs, 5) {
+                        if Self::pixel_matches(&px.0, &ref_color.refs, 5,false) {
                             #[allow(clippy::drop_copy)]
                             drop(snd.send(Point::new(x, y)));
 
@@ -162,11 +162,12 @@ impl ImageAnalyzer {
 
     /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
     #[inline(always)]
-    fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
+    fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8, debug: bool) -> bool {
+
         let matches_inner = |a: u8, b: u8| match (a, b) {
             (a, b) if a == b => true,
             (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-            (a, b) if a < b => b.saturating_sub(a) <= tolerance,
+            (a, b) if a < b => b.saturating_sub(a)  <= tolerance,
             _ => false,
         };
         let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
@@ -182,7 +183,7 @@ impl ImageAnalyzer {
 
         // Reference colors
         let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
-        let ref_color_agg: [u8; 3] = [0xf0, 0x05, 0x05]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
+        let ref_color_agg: [u8; 3] = [0xdc, 0x23, 0x23]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
@@ -200,9 +201,9 @@ impl ImageAnalyzer {
                     if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
                     }
-                    if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
+                    if Self::pixel_matches(&px.0, &ref_color_pas, 2,false) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 5) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 25,true) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
