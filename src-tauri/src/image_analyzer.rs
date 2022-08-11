@@ -104,7 +104,7 @@ impl ImageAnalyzer {
 
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
-                        if Self::pixel_matches(&px.0, &ref_color.refs, 5,false) {
+                        if Self::pixel_matches(&px.0, &ref_color.refs, 5) {
                             #[allow(clippy::drop_copy)]
                             drop(snd.send(Point::new(x, y)));
 
@@ -162,7 +162,7 @@ impl ImageAnalyzer {
 
     /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
     #[inline(always)]
-    fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8, debug: bool) -> bool {
+    fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
 
         let matches_inner = |a: u8, b: u8| match (a, b) {
             (a, b) if a == b => true,
@@ -201,9 +201,9 @@ impl ImageAnalyzer {
                     if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
                     }
-                    if Self::pixel_matches(&px.0, &ref_color_pas, 2,false) {
+                    if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 25,true) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 25) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
