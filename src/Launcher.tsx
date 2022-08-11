@@ -101,9 +101,10 @@ const Launcher = ({ className }: Props) => {
     const launch = () => {
         const webview = new WebviewWindow(`client`, {
             title: 'Flyff Universe',
-            url: 'https://universe.flyff.com/play'
+            url: 'https://universe.flyff.com/play',
+            center:true,
         })
-    
+
         webview.once('tauri://created', function () {
             webview.show()
             setIsLaunched(true)
@@ -220,7 +221,7 @@ export default styled(Launcher)`
         padding: 2rem;
         box-shadow: 0 0 .1rem hsla(0,0%,0%,.5), 0 0 .5rem hsla(0,0%,0%,.5);
         border-radius: 0.25rem;
-        
+
         & .logo {
             width: 100%;
             padding: 0 0 2.5rem 0;
