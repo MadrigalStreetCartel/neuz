@@ -433,10 +433,9 @@ impl<'a> FarmingBehavior<'_> {
             // Check whether targeted mob lost HP if not we try to jump and abord after 10s
             if image.client_stats.enemy_hp.value == 100 {
                 if self.last_initial_attack_time.elapsed().as_millis() > 6000 {
+                    let repeat_count: u64 = ((self.last_initial_attack_time.elapsed().as_millis() / 100) / 3).try_into().unwrap_or(2);
                     play!(self.movement => [
-                        PressKey(Key::Space),
-                        Wait(dur::Fixed(1000)),
-                        PressKey(Key::Space),
+                        Repeat(repeat_count, [Jump,Wait(dur::Random(700..1000))].to_vec()),
                     ]);
                 } else if self.last_initial_attack_time.elapsed().as_millis() > 10000 {
                     send_keystroke(Key::Escape, KeyMode::Press);
