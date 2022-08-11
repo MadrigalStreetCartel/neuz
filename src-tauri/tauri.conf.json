@@ -58,8 +58,10 @@
         "fullscreen": false,
         "resizable": true,
         "title": "Neuz | MadrigalStreetCartel",
-        "width": 800,
-        "height": 600
+        "width": 550,
+        "height": 600,
+        "x": 0,
+        "y": 0
       }
     ]
   }
