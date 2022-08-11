@@ -1,9 +1,48 @@
+import IconMotionPickup from '../assets/icon_motion_pickup.png'
+
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export type SlotType = "Unused" | "Food" | "PickupPet" | "PickupMotion" | "AttackSkill" | "BuffSkill" | "Flying" | "Pill"
+export const slotTypes = ["Unused", "Food", "Pill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
+export const thresholdSlotTypes = ["Food", "Pill", "MpRestorer", "FpRestorer"];
+export const cooldownSlotTypes = ["Food", "AttackSkill", "BuffSkill", "Pill", "MpRestorer", "FpRestorer"];
+export type SlotType = typeof slotTypes[number];
 
+
+export const SLOT_SIZE_PX = 40;
+
+export const translateType = (type: SlotType) => {
+    switch (type) {
+        case 'Unused': return ''
+        case 'Food': return '🍔'
+        case 'Pill': return '💊'
+        case 'MpRestorer': return 'MP'
+        case 'FpRestorer': return 'FP'
+        case 'PickupPet': return '🐶'
+        case 'PickupMotion': return IconMotionPickup
+        case 'AttackSkill': return '🗡️'
+        case 'BuffSkill': return '🪄'
+        case 'Flying': return '✈️'
+    }
+}
+
+export const translateDesc = (type: SlotType) => {
+    switch (type) {
+        case 'Unused': return ''
+        case 'Food': return 'Food'
+        case 'Pill': return 'Pill'
+        case 'MpRestorer': return 'MP'
+        case 'FpRestorer': return 'FP'
+        case 'PickupPet': return 'Pet'
+        case 'PickupMotion': return 'Pickup'
+        case 'AttackSkill': return 'Attack'
+        case 'BuffSkill': return 'Buff'
+        case 'Flying': return 'Board'
+    }
+}
 export type SlotModel = {
     slot_type: SlotType,
+    slot_cooldown: number,
+    slot_threshold: number,
 }
 
 export type SlotBarModel = FixedArray<SlotModel, 10>

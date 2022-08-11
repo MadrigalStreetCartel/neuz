@@ -37,6 +37,7 @@ export default styled(ConfigLabel)`
     display: flex;
     flex-direction: column;
     gap: .5rem;
+    color: white;
 
     & .inner {
         display: flex;

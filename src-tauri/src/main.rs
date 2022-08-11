@@ -13,7 +13,6 @@ mod utils;
 
 use std::{sync::Arc, time::Duration};
 
-use data::ClientStats;
 use guard::guard;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
@@ -203,7 +202,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Update stats
                 image_analyzer.client_stats.update(&image_analyzer.clone());
 
-                image_analyzer.client_stats.debug_print();
+                //image_analyzer.client_stats.debug_print();
+
 
                 // Stop bot in case of death
                 if !image_analyzer.client_stats.is_alive() {

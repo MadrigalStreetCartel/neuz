@@ -1,7 +1,6 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use guard::guard;
-use rand::Rng;
 use slog::Logger;
 
 use crate::{

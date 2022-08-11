@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -7,23 +7,29 @@ use serde::{Deserialize, Serialize};
 pub enum SlotType {
     Unused,
     Food,
+    Pill,
+    MpRestorer,
+    FpRestorer,
     PickupPet,
     PickupMotion,
     AttackSkill,
     BuffSkill,
     Flying,
-    Pill,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
+    slot_cooldown: u32,
+    slot_threshold: u32,
 }
 
 impl Default for Slot {
     fn default() -> Self {
         Self {
             slot_type: SlotType::Unused,
+            slot_cooldown: 1500,
+            slot_threshold: 30,
         }
     }
 }
@@ -85,12 +91,40 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> u32 {
+        self.slots.unwrap()[slot_index].slot_cooldown
+    }
+
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
         self.slots
             .unwrap_or_default()
             .iter()
             .position(|slot| slot.slot_type == slot_type)
+    }
+
+    /// Get a random matching slot index
+    pub fn get_usable_slot_index<R>(
+        &self,
+        slot_type: SlotType,
+        rng: &mut R,
+        threshold: Option<u32>,
+        last_slots_usage: [Option<Instant>; 10],
+    ) -> Option<usize>
+    where
+        R: Rng,
+    {
+        self.slots
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .filter(|(index, slot)| {
+                slot.slot_type == slot_type
+                    && slot.slot_threshold >= threshold.unwrap_or(0)
+                    && last_slots_usage[*index].is_none()
+            })
+            .choose(rng)
+            .map(|(index, _)| index)
     }
 
     /// Get a random matching slot index

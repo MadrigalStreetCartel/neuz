@@ -28,6 +28,7 @@ const Item = styled.td<ItemProps>`
     align-items: flex-start;
     padding: .25rem 0;
 
+
     &[disabled] {
         opacity: .5;
         filter: grayscale(100%);
@@ -50,4 +51,5 @@ const ConfigTableRow = ({ label, item, layout = "h", disabled = false }: Props) 
 }
 
 export default styled(ConfigTableRow)`
+
 `
