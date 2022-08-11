@@ -355,7 +355,7 @@ impl<'a> FarmingBehavior<'_> {
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
                     if Instant::now().duration_since(self.last_kill_time)
-                        < Duration::from_millis(2500)
+                        < Duration::from_millis(5000)
                     {
                         slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
@@ -411,7 +411,7 @@ impl<'a> FarmingBehavior<'_> {
             );
 
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(100));
             State::Attacking(mob)
         } else {
             State::SearchingForEnemy
@@ -443,6 +443,7 @@ impl<'a> FarmingBehavior<'_> {
             self.last_pot_time = Instant::now();
         }
         if image.client_stats.enemy_hp.value > 0 {
+            use crate::movement::prelude::*;
             self.is_attacking = true;
 
             // Target marker found
@@ -450,6 +451,20 @@ impl<'a> FarmingBehavior<'_> {
             if marker.is_some() {
                 let marker = marker.unwrap();
                 self.last_killed_mob_bounds = marker.bounds;
+            }
+
+            // Check whether targeted mob lost HP if not we try to jump and abord after 10s
+            if image.client_stats.enemy_hp.value == 100 {
+                if self.last_initial_attack_time.elapsed().as_millis() > 6000 {
+                    play!(self.movement => [
+                        PressKey(Key::Space),
+                        Wait(dur::Fixed(1000)),
+                        PressKey(Key::Space),
+                    ]);
+                } else if self.last_initial_attack_time.elapsed().as_millis() > 10000 {
+                    send_keystroke(Key::Escape, KeyMode::Press);
+                    return State::SearchingForEnemy;
+                }
             }
 
             // Try to use attack skill
@@ -469,7 +484,6 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             // Target HP = 0
             if self.is_attacking {
-                // Enemy was probably killed
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {
