@@ -1,104 +1,120 @@
-use std::sync::mpsc::sync_channel;
+use std::sync::mpsc::{sync_channel, Receiver};
 
-use libscreenshot::ImageBuffer;
+use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
+use slog::Logger;
 
 use crate::{
-    data::{point_selector, Bounds, MobType, Point, PointCloud, Target, TargetType},
+    data::{
+        point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
+        TargetType,
+    },
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
-#[derive(Debug)]
-pub enum StatusBarKind {
-    Hp,
-    Mp,
-    Fp,
-    Xp,
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Color {
+    pub refs: [u8; 3],
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct StatInfo {
-    pub max_w: u32,
-    pub value: u32,
-}
-
-impl PartialEq for StatInfo {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
+impl Color {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { refs: [r, g, b] }
     }
 }
 
-impl PartialOrd for StatInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.value.cmp(&other.value))
-    }
-}
-#[derive(Debug, Clone, Copy)]
-pub struct StatusBarConfig {
-    pub max_search_x: u32,
-    pub max_search_y: u32,
-    pub refs: [[u8; 3]; 4],
-}
-
-impl StatusBarConfig {
-    pub fn new(colors: [[u8; 3]; 4]) -> Self {
-        Self {
-            refs: colors,
-            ..Default::default()
-        }
-    }
-}
-
-impl From<StatusBarKind> for StatusBarConfig {
-    fn from(kind: StatusBarKind) -> Self {
-        use StatusBarKind::*;
-
-        match kind {
-            Hp => {
-                StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]])
-            }
-            Mp => StatusBarConfig::new([
-                [20, 84, 196],
-                [36, 132, 220],
-                [44, 164, 228],
-                [56, 188, 232],
-            ]),
-            Fp => {
-                StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
-            }
-            Xp => StatusBarConfig::new([
-                [48, 185, 244],
-                [128, 212, 245],
-                [52, 196, 252],
-                [92, 236, 252],
-            ]),
-        }
-    }
-}
-
-impl Default for StatusBarConfig {
-    fn default() -> Self {
-        Self {
-            max_search_x: 310,
-            max_search_y: 120,
-            refs: [[0; 3]; 4],
-        }
-    }
-}
-
-impl PartialEq for StatusBarConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.refs == other.refs && self.max_search_x == other.max_search_x
-    }
-}
-
+#[derive(Debug, Clone)]
 pub struct ImageAnalyzer {
-    image: ImageBuffer,
+    image: Option<ImageBuffer>,
+    pub window_id: u64,
+    pub pixel_detections: Vec<PixelDetection>,
+    pub client_stats: ClientStats,
 }
 
 impl ImageAnalyzer {
-    pub fn new(image: ImageBuffer) -> Self {
-        Self { image }
+    pub fn new() -> Self {
+        Self {
+            window_id: 0,
+            image: None,
+            pixel_detections: vec![],
+            client_stats: ClientStats::new(),
+        }
+    }
+
+    pub fn image_is_some(&self) -> bool {
+        self.image.is_some()
+    }
+
+    pub fn capture_window(&mut self, logger: &Logger) {
+        let _timer = Timer::start_new("capture_window");
+        if self.window_id == 0 {
+            return;
+        }
+        if let Some(provider) = libscreenshot::get_window_capture_provider() {
+            if let Ok(image) = provider.capture_window(self.window_id) {
+                self.image = Some(image);
+            } else {
+                slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
+            }
+        }
+    }
+
+    pub fn pixel_detection(
+        &self,
+        colors: Vec<Color>,
+        min_x: u32,
+        min_y: u32,
+        mut max_x: u32,
+        mut max_y: u32,
+    ) -> Receiver<Point> {
+        let (snd, recv) = sync_channel::<Point>(4096);
+        let image = self.image.as_ref().unwrap();
+
+        if max_x == 0 {
+            max_x = image.height();
+        }
+
+        if max_y == 0 {
+            max_y = image.width();
+        }
+
+        image
+            .enumerate_rows()
+            .par_bridge()
+            .for_each(move |(y, row)| {
+                // Skip this row if it's in an ignored area
+                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
+                if y <= IGNORE_AREA_TOP
+                    || y > image.height() - IGNORE_AREA_BOTTOM
+                    || y > IGNORE_AREA_TOP + max_y
+                    || y > max_y
+                    || y < min_y
+                {
+                    return;
+                }
+
+                // Loop over columns
+                'outer: for (x, _, px) in row {
+                    if px.0[3] != 255 || x >= max_x {
+                        return;
+                    } else if x < min_x {
+                        continue;
+                    }
+
+                    for ref_color in colors.iter() {
+                        // Check if the pixel matches any of the reference colors
+                        if Self::pixel_matches(&px.0, &ref_color.refs, 5) {
+                            #[allow(clippy::drop_copy)]
+                            drop(snd.send(Point::new(x, y)));
+
+                            // Continue to next column
+                            continue 'outer;
+                        }
+                    }
+                }
+            });
+        recv
     }
 
     fn merge_cloud_into_mobs(
@@ -136,7 +152,7 @@ impl ImageAnalyzer {
                     true
                 } else {
                     // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > 30
+                    mob.bounds.w > 15
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
                     && mob.bounds.size() < (220 * 6)
                 }
@@ -147,10 +163,11 @@ impl ImageAnalyzer {
     /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
     #[inline(always)]
     fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
+
         let matches_inner = |a: u8, b: u8| match (a, b) {
             (a, b) if a == b => true,
             (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-            (a, b) if a < b => b.saturating_sub(a) <= tolerance,
+            (a, b) if a < b => b.saturating_sub(a)  <= tolerance,
             _ => false,
         };
         let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
@@ -166,26 +183,27 @@ impl ImageAnalyzer {
 
         // Reference colors
         let ref_color_pas: [u8; 3] = [0xe8, 0xe8, 0x94]; // Passive mobs
-        let ref_color_agg: [u8; 3] = [0xd3, 0x0f, 0x0d]; // Aggro mobs
+        let ref_color_agg: [u8; 3] = [0xdc, 0x23, 0x23]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
         let (snd, recv) = sync_channel::<MobPixel>(4096);
-        self.image
+        let image = self.image.as_ref().unwrap();
+        image
             .enumerate_rows()
             .par_bridge()
             .for_each(move |(y, row)| {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP || y > self.image.height() - IGNORE_AREA_BOTTOM {
+                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                     return;
                 }
                 for (x, _, px) in row {
-                    if px.0[3] != 255 || y > self.image.height() - IGNORE_AREA_BOTTOM {
+                    if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, 2) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 8) {
+                    } else if Self::pixel_matches(&px.0, &ref_color_agg, 25) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
@@ -219,28 +237,10 @@ impl ImageAnalyzer {
         let mut coords = Vec::default();
 
         // Reference color
-        let ref_color: [u8; 3] = [246, 90, 106];
+        let ref_color: Color = Color::new(246, 90, 106);
 
         // Collect pixel clouds
-        let (snd, recv) = sync_channel::<Point>(4096);
-        self.image
-            .enumerate_rows()
-            .par_bridge()
-            .for_each(move |(y, row)| {
-                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP || y > self.image.height() - IGNORE_AREA_BOTTOM {
-                    return;
-                }
-                for (x, _, px) in row {
-                    if px.0[3] != 255 {
-                        return;
-                    }
-                    if Self::pixel_matches(&px.0, &ref_color, 2) {
-                        #[allow(clippy::drop_copy)] // this is fine
-                        drop(snd.send(Point::new(x, y)));
-                    }
-                }
-            });
+        let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0);
 
         // Receive points from channel
         while let Ok(point) = recv.recv() {
@@ -263,10 +263,11 @@ impl ImageAnalyzer {
         max_distance: i32,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
+        let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
-        let mid_x = (self.image.width() / 2) as i32;
-        let mid_y = (self.image.height() / 2) as i32;
+        let mid_x = (image.width() / 2) as i32;
+        let mid_y = (image.height() / 2) as i32;
 
         // Calculate 2D euclidian distances to player
         let mut distances = Vec::default();
@@ -306,67 +307,5 @@ impl ImageAnalyzer {
                 None
             }
         }
-    }
-
-    pub fn detect_status_bar(
-        &self,
-        last_stats: StatInfo,
-        status_bar: StatusBarKind,
-    ) -> Option<StatInfo> {
-        let status_bar_config: StatusBarConfig = status_bar.into();
-        let (snd, recv) = sync_channel::<Point>(4096);
-        self.image
-            .enumerate_rows()
-            .par_bridge()
-            .for_each(move |(y, row)| {
-                // Skip this row if it's in an ignored area
-                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP
-                    || y > self.image.height() - IGNORE_AREA_BOTTOM
-                    || y > IGNORE_AREA_TOP + status_bar_config.max_search_y
-                {
-                    return;
-                }
-
-                // Loop over columns
-                'outer: for (x, _, px) in row {
-                    if px.0[3] != 255 || x >= status_bar_config.max_search_x {
-                        return;
-                    }
-                    for ref_color in status_bar_config.refs.iter() {
-                        // Check if the pixel matches any of the reference colors
-                        if Self::pixel_matches(&px.0, &ref_color, 5) {
-                            #[allow(clippy::drop_copy)]
-                            drop(snd.send(Point::new(x, y)));
-
-                            // Continue to next column
-                            continue 'outer;
-                        }
-                    }
-                }
-            });
-
-        // Receive points from channel
-        let cloud = {
-            let mut cloud = PointCloud::default();
-            while let Ok(point) = recv.recv() {
-                cloud.push(point);
-            }
-            cloud
-        };
-
-        // Calculate bounds
-        let bounds = cloud.to_bounds();
-
-        // Recalculate value tracking info
-        let max_w = bounds.w.max(last_stats.max_w);
-        let value_frac = bounds.w as f32 / max_w as f32;
-        let value_scaled = ((value_frac * 100_f32) as u32).max(0).min(100);
-        let value = StatInfo {
-            max_w,
-            value: value_scaled,
-        };
-
-        Some(value)
     }
 }
