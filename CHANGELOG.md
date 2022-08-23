@@ -6,6 +6,16 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.12.1**
+> Released on 23.08.2022
+
+**INFO**:<br>
+This is the last release supported by the founders.<br>
+Project lead has been given to [@slyker].
+
+- Fixes occasional clicks outside of window area
+- Updates default window layout
+
 **0.12.0**
 > Released on 24.07.2022
 
