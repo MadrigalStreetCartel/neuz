@@ -19,6 +19,17 @@ Take a look at the [changelog][changelog]!
 
 # Community
 
+**v0.12.1 is the last maintained and published release from the initial founders. Further versions are solely community developed**
+
+Planned Features for now (as of v0.12.1):
+- Auto buff for any class every n seconds
+- Auto fp/mp detection for potion usage
+- FS mode for assist/rm with auto-buff, auto-heal, auto-follow and auto-mount
+- Giant detection and avoidance
+- Scripting support (realized through a DSL) for custom movement and other behaviors
+- Full Mac & Linux cross-platform support
+- Automatic deployment script with Docker containers for easy parallelism
+
 Join our Discord: https://discord.gg/cZr3X3mCnq
 
 # Usage
