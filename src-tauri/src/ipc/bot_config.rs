@@ -66,6 +66,11 @@ pub struct FarmingConfig {
     slots: Option<[Slot; 10]>,
     /// Disable farming
     farming_enabled: Option<bool>,
+
+    passive_mobs_colors: Option<[u8;3]>,
+    passive_tolerence: u8,
+    aggressive_mobs_colors: Option<[u8;3]>,
+    aggressive_tolerence: u8,
 }
 
 impl FarmingConfig {
@@ -92,7 +97,28 @@ impl FarmingConfig {
     }
 
     pub fn get_slot_cooldown(&self, slot_index: usize) -> u32 {
-        self.slots.unwrap()[slot_index].slot_cooldown
+        if self.slots.is_some() { // maybe check before call it ?
+            self.slots.unwrap()[slot_index].slot_cooldown
+        }else {
+            0
+        }
+
+    }
+
+    pub fn get_passive_mobs_colors(&self) -> [u8;3] {
+        self.passive_mobs_colors.unwrap_or([0xe8, 0xe8, 0x94])
+    }
+
+    pub fn get_passive_tolerence(&self) -> u8 {
+        self.passive_tolerence
+    }
+
+    pub fn get_aggressive_mobs_colors(&self) -> [u8;3] {
+        self.aggressive_mobs_colors.unwrap_or([0xe8, 0x1c, 0x1c])
+    }
+
+    pub fn get_aggressive_tolerence(&self) -> u8 {
+        self.aggressive_tolerence
     }
 
     /// Get the first matching slot index
@@ -103,7 +129,7 @@ impl FarmingConfig {
             .position(|slot| slot.slot_type == slot_type)
     }
 
-    /// Get a random matching slot index
+    /// Get a random usable matching slot index
     pub fn get_usable_slot_index<R>(
         &self,
         slot_type: SlotType,

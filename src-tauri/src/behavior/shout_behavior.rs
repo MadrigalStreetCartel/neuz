@@ -4,11 +4,10 @@ use guard::guard;
 use slog::Logger;
 
 use crate::{
-    data::ClientStats,
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, ShoutConfig},
     movement::MovementAccessor,
-    platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
+    platform::{Key, PlatformAccessor},
     play,
 };
 
@@ -19,7 +18,7 @@ pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
-    movement: &'a MovementAccessor<'a>,
+    movement: &'a MovementAccessor/*<'a>*/,
     last_shout_time: Instant,
     shown_messages: Vec<String>,
     shout_interval: u64,
@@ -30,7 +29,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
     fn new(
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement: &'a MovementAccessor<'a>,
+        movement: &'a MovementAccessor/*<'a>*/,
     ) -> Self {
         Self {
             logger,

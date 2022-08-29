@@ -35,7 +35,6 @@ const Item = styled.td<ItemProps>`
         pointer-events: none;
     }
 `
-
 const ConfigTableRow = ({ label, item, layout = "h", disabled = false }: Props) => {
     return (
         <>
@@ -51,5 +50,4 @@ const ConfigTableRow = ({ label, item, layout = "h", disabled = false }: Props) 
 }
 
 export default styled(ConfigTableRow)`
-
 `

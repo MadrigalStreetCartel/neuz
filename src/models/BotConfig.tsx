@@ -55,6 +55,10 @@ export type FarmingConfigModel = Partial<{
     stay_in_area: boolean,
     unsupervised: boolean,
     slots: SlotBarModel,
+    passive_mobs_colors: number[];
+    passive_tolerence: number;
+    aggressive_mobs_colors: number[];
+    aggressive_tolerence: number;
 }>
 
 export type SupportConfigModel = Partial<{

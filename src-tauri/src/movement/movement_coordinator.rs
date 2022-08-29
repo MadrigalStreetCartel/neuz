@@ -2,7 +2,7 @@ use std::{ops::Range, thread, time::Duration};
 
 use rand::Rng;
 
-use crate::platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor};
+use crate::platform::{send_keystroke, send_message, Key, KeyMode/* , PlatformAccessor*/};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -53,16 +53,16 @@ pub enum Movement {
     Wait(ActionDuration),
 }
 
-pub struct MovementCoordinator<'a> {
+pub struct MovementCoordinator/*<'a>*/ {
     rng: rand::rngs::ThreadRng,
-    platform: &'a PlatformAccessor<'a>,
+    //platform: &'a PlatformAccessor<'a>,
 }
 
-impl<'a> MovementCoordinator<'a> {
-    pub fn new(platform: &'a PlatformAccessor<'_>) -> Self {
+impl<'a> MovementCoordinator/*<'a>*/ {
+    pub fn new(/*platform: &'a PlatformAccessor<'_>*/) -> Self {
         let rng = rand::thread_rng();
 
-        Self { rng, platform }
+        Self { rng/*, platform */ }
     }
 
     // Wrapper functions

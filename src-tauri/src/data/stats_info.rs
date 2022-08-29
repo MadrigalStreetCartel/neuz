@@ -63,6 +63,7 @@ impl ClientStats {
         self.xp.update_value(image);
         self.enemy_hp.update_value(image);
         self.spell_cast.update_value(image);
+        self.debug_print()
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
@@ -190,6 +191,7 @@ impl StatInfo {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
+
     }
 }
 

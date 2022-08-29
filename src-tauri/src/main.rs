@@ -132,7 +132,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         };
 
         // Create movement accessor
-        let movement = MovementAccessor::new(&accessor);
+        let movement = MovementAccessor::new(/*&accessor*/);
 
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement);

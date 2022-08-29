@@ -29,12 +29,12 @@ pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
-    movement: &'a MovementAccessor<'a>,
+    movement: &'a MovementAccessor/*<'a>*/,
     state: State,
     last_slots_usage: [Option<Instant>; 10],
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
-    last_killed_mob_bounds: Bounds,
+    last_killed_mobs_bounds: Vec<(Bounds, Instant)>,
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
@@ -44,7 +44,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn new(
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement: &'a MovementAccessor<'a>,
+        movement: &'a MovementAccessor/*<'a>*/,
     ) -> Self {
         Self {
             logger,
@@ -55,7 +55,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_slots_usage: [None; 10],
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
-            last_killed_mob_bounds: Bounds::default(),
+            last_killed_mobs_bounds: vec![],
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -82,10 +82,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             count += 1;
         }
 
-        // Check whether food should be consumed
-        //self.check_food(config, image);
-
-        // Check whether something should be used
+        // Check whether HP/MP/FP should be restored
         self.check_restoration(config,image,StatusBarKind::Hp);
         self.check_restoration(config,image,StatusBarKind::Mp);
         self.check_restoration(config,image,StatusBarKind::Fp);
@@ -129,11 +126,11 @@ impl<'a> FarmingBehavior<'_> {
             // Pickup using motion
             (false, _, Some(index)) => {
                 play!(self.movement => [
-                    Repeat(5, vec![
+                    Repeat(8, vec![
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(350..750)),
+                        Wait(dur::Random(200..500)),
                     ]),
                 ]);
             }
@@ -143,7 +140,8 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn subcheck(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, stat:StatInfo, slot_type: SlotType) -> bool {
+
+    fn sub_restore(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, stat:StatInfo, slot_type: SlotType) -> bool {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
             &mut self.rng,
@@ -164,18 +162,18 @@ impl<'a> FarmingBehavior<'_> {
         match stat_kind {
             StatusBarKind::Hp => {
                 let stat = image.client_stats.hp;
-                if !self.subcheck(config,image,stat,SlotType::Pill){
-                    self.subcheck(config,image,stat,SlotType::Food);
+                if !self.sub_restore(config,image,stat,SlotType::Pill){
+                    self.sub_restore(config,image,stat,SlotType::Food);
                 }
 
             }
             StatusBarKind::Mp => {
                 let stat = image.client_stats.mp;
-                self.subcheck(config,image,stat,SlotType::MpRestorer);
+                self.sub_restore(config,image,stat,SlotType::MpRestorer);
             }
             StatusBarKind::Fp => {
                 let stat = image.client_stats.fp;
-                self.subcheck(config,image,stat,SlotType::FpRestorer);
+                self.sub_restore(config,image,stat,SlotType::FpRestorer);
             }
             StatusBarKind::Xp => {}
             StatusBarKind::EnemyHp => {}
@@ -295,7 +293,7 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
-        let mobs = image.identify_mobs();
+        let mobs = image.identify_mobs(config);
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
@@ -318,33 +316,45 @@ impl<'a> FarmingBehavior<'_> {
                 (true, _) => 325,
                 (false, false) => 1000,
             };
-
+            let mut count = 0;
+            let mut delete_bounds_vec = vec![];
+            self.last_killed_mobs_bounds.iter().for_each(|item|{
+                if item.1.elapsed().as_secs() > 10 {
+                    delete_bounds_vec.fill(count);
+                }
+                count += 1
+            });
+            delete_bounds_vec.iter().for_each(|index|{
+                self.last_killed_mobs_bounds.remove(*index);
+            });
             // Prioritize aggro mobs
             if !aggro_mobs.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => "aggressive", "mob_count" => aggro_mobs.len());
-                let closest_mob = image.find_closest_mob(aggro_mobs.as_slice(), None, max_distance);
-                if let Some(mob) = closest_mob {
+                let mut avoid_bounds = None;
+                if Instant::now().duration_since(self.last_kill_time)
+                    < Duration::from_secs(10)
+                {
+                    //slog::debug!(self.logger, "Avoiding red mob"; "mob_bounds" => self.last_killed_mobs_bounds);
+                    avoid_bounds = Some(self.last_killed_mobs_bounds.clone());
+                }
+                if let Some(mob) = image.find_closest_mob(aggro_mobs.as_slice(), avoid_bounds, max_distance) {
+                    // Transition to next state
                     State::EnemyFound(*mob)
                 } else {
                     State::NoEnemyFound
                 }
             } else if !passive_mobs.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => "passive", "mob_count" => passive_mobs.len());
-                if let Some(mob) = {
-                    // Try avoiding detection of last killed mob
-                    if Instant::now().duration_since(self.last_kill_time)
-                        < Duration::from_millis(5000)
-                    {
-                        slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
-                        image.find_closest_mob(
-                            passive_mobs.as_slice(),
-                            Some(&self.last_killed_mob_bounds),
-                            max_distance,
-                        )
-                    } else {
-                        image.find_closest_mob(passive_mobs.as_slice(), None, max_distance)
-                    }
-                } {
+
+                // Try avoiding detection of last killed mob
+                let mut avoid_bounds = None;
+                if Instant::now().duration_since(self.last_kill_time)
+                    < Duration::from_secs(10)
+                {
+                    //slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
+                    avoid_bounds = Some(self.last_killed_mobs_bounds.clone());
+                }
+                if let Some(mob) = image.find_closest_mob(passive_mobs.as_slice(), avoid_bounds, max_distance) {
                     // Transition to next state
                     State::EnemyFound(*mob)
                 } else {
@@ -377,6 +387,9 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
+
+        slog::debug!(self.logger, "Trying to detect mob"; "mob_coords" => &point);
+
         image.capture_window(self.logger);
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
@@ -391,6 +404,9 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(100));
             State::Attacking(mob)
         } else {
+            // Helps preventing click on system message
+            self.last_killed_mobs_bounds.fill((mob.bounds.grow_by(70), Instant::now()));
+
             State::SearchingForEnemy
         }
     }
@@ -401,34 +417,39 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &ImageAnalyzer,
     ) -> State {
-        //self.client_stats.debug_print();
+        use crate::movement::prelude::*;
+
+        let current_time =  Instant::now();
+        // Target marker found
+        let marker = image.identify_target_marker();
+        if marker.is_some() {
+            let marker = marker.unwrap();
+            self.last_killed_mobs_bounds.fill((marker.bounds, current_time));
+        }
         if !self.is_attacking {
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else
             // true not in party
             // false in party
-            /*let prevent_already_attacked = true;
-            if prevent_already_attacked && self.client_stats.enemy_hp.value < 100 {
+            let prevent_already_attacked = true;
+            if prevent_already_attacked && image.client_stats.enemy_hp.value < 100 {
                 let marker = image.identify_target_marker();
                 if marker.is_some() {
                     let marker = marker.unwrap();
-                    self.last_killed_mob_bounds = marker.bounds;
+                    self.last_killed_mobs_bounds.fill((marker.bounds, current_time));
                 }
+                play!(self.movement => [
+                    Repeat(3, [PressKey(Key::Escape),Wait(dur::Random(100..300))].to_vec()),
+                ]);
                 return State::SearchingForEnemy;
-            }*/
+            }
 
-            self.last_initial_attack_time = Instant::now();
+            self.last_initial_attack_time = current_time;
         }
         if image.client_stats.enemy_hp.value > 0 {
-            use crate::movement::prelude::*;
 
             self.is_attacking = true;
 
-            // Target marker found
-            let marker = image.identify_target_marker();
-            if marker.is_some() {
-                let marker = marker.unwrap();
-                self.last_killed_mob_bounds = marker.bounds;
-            }
+
 
             // Check whether targeted mob lost HP if not we try to jump and abord after 10s
             if image.client_stats.enemy_hp.value == 100 {
@@ -439,6 +460,9 @@ impl<'a> FarmingBehavior<'_> {
                     ]);
                 } else if self.last_initial_attack_time.elapsed().as_millis() > 10000 {
                     send_keystroke(Key::Escape, KeyMode::Press);
+                    play!(self.movement => [
+                        Repeat(3, [PressKey(Key::Escape),Wait(dur::Random(100..300))].to_vec()),
+                    ]);
                     return State::SearchingForEnemy;
                 }
             }
@@ -454,6 +478,7 @@ impl<'a> FarmingBehavior<'_> {
                 if config.should_use_attack_skills() {
                     send_keystroke(index.into(), KeyMode::Press);
                     self.last_slots_usage[index] = Some(Instant::now());
+                    std::thread::sleep(Duration::from_millis(100));
                 }
             }
 

@@ -1,7 +1,7 @@
 use slog::Logger;
 
 use crate::{
-    data::ClientStats, image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
+    image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
     platform::PlatformAccessor,
 };
 
@@ -10,7 +10,7 @@ pub trait Behavior<'a> {
     fn new(
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement_accessor: &'a MovementAccessor<'a>,
+        movement_accessor: &'a MovementAccessor/*<'a>*/,
     ) -> Self;
 
     /// Runs on activation
