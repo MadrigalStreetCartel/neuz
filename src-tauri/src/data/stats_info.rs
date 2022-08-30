@@ -60,9 +60,9 @@ impl ClientStats {
         self.hp.update_value(image);
         self.mp.update_value(image);
         self.fp.update_value(image);
-        self.xp.update_value(image);
+        //self.xp.update_value(image);
         self.enemy_hp.update_value(image);
-        self.spell_cast.update_value(image);
+        //self.spell_cast.update_value(image);
         self.debug_print()
     }
 
@@ -191,7 +191,6 @@ impl StatInfo {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
-
     }
 }
 

@@ -202,9 +202,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Update stats
                 image_analyzer.client_stats.update(&image_analyzer.clone());
 
-                //image_analyzer.client_stats.debug_print();
-
-
                 // Stop bot in case of death
                 if !image_analyzer.client_stats.is_alive() {
                     continue;

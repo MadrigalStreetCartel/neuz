@@ -1,4 +1,7 @@
-use std::{sync::mpsc::{sync_channel, Receiver}, time::Instant};
+use std::{
+    sync::mpsc::{sync_channel, Receiver},
+    time::Instant,
+};
 
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
@@ -9,8 +12,9 @@ use crate::{
         point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
         TargetType,
     },
+    ipc::FarmingConfig,
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
-    utils::Timer, ipc::FarmingConfig,
+    utils::Timer,
 };
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -163,11 +167,10 @@ impl ImageAnalyzer {
     /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
     #[inline(always)]
     fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
-
         let matches_inner = |a: u8, b: u8| match (a, b) {
             (a, b) if a == b => true,
             (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-            (a, b) if a < b => b.saturating_sub(a)  <= tolerance,
+            (a, b) if a < b => b.saturating_sub(a) <= tolerance,
             _ => false,
         };
         let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
@@ -182,8 +185,8 @@ impl ImageAnalyzer {
         let mut mob_coords_agg: Vec<Point> = Vec::default();
 
         // Reference colors
-        let ref_color_pas: [u8; 3] = config.get_passive_mobs_colors(); //[0xe8, 0xe8, 0x94]; // Passive mobs
-        let ref_color_agg: [u8; 3] = config.get_aggressive_mobs_colors(); //[0xe8, 0x1c, 0x1c]/*[0xd3, 0x0f, 0x0d]*/; // Aggro mobs
+        let ref_color_pas: [u8; 3] = config.get_passive_mobs_colors(); // Passive mobs
+        let ref_color_agg: [u8; 3] = config.get_aggressive_mobs_colors(); // Aggro mobs
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
@@ -203,7 +206,11 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.get_passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0, &ref_color_agg, config.get_aggressive_tolerence()) {
+                    } else if Self::pixel_matches(
+                        &px.0,
+                        &ref_color_agg,
+                        config.get_aggressive_tolerence(),
+                    ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
@@ -259,7 +266,7 @@ impl ImageAnalyzer {
     pub fn find_closest_mob<'a>(
         &self,
         mobs: &'a [Target],
-        avoid_bounds: Option<Vec<(Bounds, Instant)>>,
+        avoid_bounds: Option<&Bounds>,
         max_distance: i32,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
@@ -288,19 +295,17 @@ impl ImageAnalyzer {
             .filter(|&(_, distance)| distance <= max_distance)
             .collect();
 
-        if let Some(avoid_bounds_vec) = avoid_bounds {
-            let mut result = None;
-            avoid_bounds_vec.iter().for_each(|item|{
-                // Try finding closest mob that's not the mob to be avoided
-                if let Some((mob, _distance)) = distances.iter().find(|(_mob, distance)| {
-                    let coords = _mob.bounds.get_lowest_center_point();
-                    !item.0.grow_by(100).contains_point(&coords) && *distance > 200
-                }) {
-                    result = Some(*mob);
-                }
-            });
-            result
-
+        if let Some(_) = avoid_bounds {
+            // Try finding closest mob that's not the mob to be avoided
+            if let Some((mob, _distance)) = distances.iter().find(|(_mob, distance)| {
+                *distance > 150
+                // let coords = mob.name_bounds.get_lowest_center_point();
+                // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+            }) {
+                Some(mob)
+            } else {
+                None
+            }
         } else {
             // Return closest mob
             if let Some((mob, _distance)) = distances.first() {

@@ -9,12 +9,12 @@ type Props = {
 const NumericInput = ({ className, value,  onChange }: Props) => {
     return (
         <div className={className}>
+            <span className="unit">R </span>
             <input min={0} max={255} type="number" value={value[0].toString()} onChange={(e)=>{value[0] = parseInt(e.target.value);onChange(value)}} />
-            <span className="unit">R</span>
+            <span className="unit">G </span>
             <input min={0} max={255} type="number" value={value[1].toString()} onChange={(e)=>{value[1] = parseInt(e.target.value);onChange(value)}} />
-            <span className="unit">G</span>
+            <span className="unit">B </span>
             <input min={0} max={255} type="number" value={value[2].toString()} onChange={(e)=>{value[2] = parseInt(e.target.value);onChange(value)}} />
-            <span className="unit">B</span>
         </div>
     )
 }

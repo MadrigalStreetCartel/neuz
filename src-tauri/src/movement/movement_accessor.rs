@@ -4,11 +4,11 @@ use parking_lot::Mutex;
 
 use super::MovementCoordinator;
 
-pub struct MovementAccessor/*<'a>*/ {
-    coordinator: Mutex<MovementCoordinator/*<'a>*/>,
+pub struct MovementAccessor /*<'a>*/ {
+    coordinator: Mutex<MovementCoordinator /*<'a>*/>,
 }
 
-impl<'a> MovementAccessor/*<'a>*/ {
+impl<'a> MovementAccessor /*<'a>*/ {
     pub fn new(/*platform: &'a PlatformAccessor<'a>*/) -> Self {
         Self {
             coordinator: Mutex::new(MovementCoordinator::new(/*platform*/)),

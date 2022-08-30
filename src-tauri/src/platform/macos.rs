@@ -27,6 +27,8 @@ impl From<Key> for enigo::Key {
             Esc => enigo::Key::Escape,
             Enter => enigo::Key::Return,
             T => enigo::Key::Layout('T'),
+            Left => enigo::Key::LeftArrow,
+            Right => enigo::Key::RightArrow,
         }
     }
 }

@@ -27,6 +27,8 @@ impl From<Key> for char {
             Esc => todo!(),
             Enter => todo!(),
             T => todo!(),
+            Left => todo!(),
+            Right => todo!(),
         }
     }
 }
