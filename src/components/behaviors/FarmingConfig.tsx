@@ -88,6 +88,10 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
                     />
                     <ConfigTableRow
+                        label={<ConfigLabel name="Stop mob searching" helpText="Stop mob searching but keeps benefit of using the bot like slots usage, item pickup, etc..." />}
+                        item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
+                    />
+                    <ConfigTableRow
                         label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
                             setSelectedMobType(0);

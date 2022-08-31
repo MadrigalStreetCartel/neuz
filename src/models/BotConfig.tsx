@@ -59,6 +59,7 @@ export type FarmingConfigModel = Partial<{
     passive_tolerence: number;
     aggressive_mobs_colors: number[];
     aggressive_tolerence: number;
+    is_stop_fighting: boolean;
 }>
 
 export type SupportConfigModel = Partial<{

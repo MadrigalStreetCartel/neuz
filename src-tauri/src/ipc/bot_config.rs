@@ -67,6 +67,8 @@ pub struct FarmingConfig {
     /// Disable farming
     farming_enabled: Option<bool>,
 
+    is_stop_fighting: Option<bool>,
+
     passive_mobs_colors: Option<[u8; 3]>,
     passive_tolerence: u8,
     aggressive_mobs_colors: Option<[u8; 3]>,
@@ -165,6 +167,10 @@ impl FarmingConfig {
             .filter(|(_, slot)| slot.slot_type == slot_type)
             .choose(rng)
             .map(|(index, _)| index)
+    }
+
+    pub fn is_stop_fighting(&self) -> bool {
+        self.is_stop_fighting.unwrap_or(false)
     }
 }
 

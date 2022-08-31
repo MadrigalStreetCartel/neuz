@@ -303,6 +303,9 @@ impl<'a> FarmingBehavior<'_> {
 
     fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
         let mobs = image.identify_mobs(config);
+        if config.is_stop_fighting() {
+            return State::Attacking(Target::default());
+        }
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
