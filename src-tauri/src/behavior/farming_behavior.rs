@@ -11,7 +11,7 @@ use crate::{
     },
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
-    movement::{ActionDuration, MovementAccessor, MovementDirection},
+    movement::{MovementAccessor, MovementDirection},
     platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
     play,
 };
