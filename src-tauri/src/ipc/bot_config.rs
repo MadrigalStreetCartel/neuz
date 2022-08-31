@@ -2,6 +2,7 @@ use std::{fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
+use crate::movement::prelude::dur;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlotType {
@@ -148,7 +149,7 @@ impl FarmingConfig {
             .enumerate()
             .filter(|(index, slot)| {
                 slot.slot_type == slot_type
-                    && slot.slot_threshold >= threshold.unwrap_or(0)
+                    && (slot.slot_threshold + dur::Random(0..100)) >= threshold.unwrap_or(0)
                     && last_slots_usage[*index].is_none()
             })
             .choose(rng)

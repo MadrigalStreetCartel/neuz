@@ -133,7 +133,7 @@ impl<'a> FarmingBehavior<'_> {
             (false, _, Some(index)) => {
                 play!(self.movement => [
                     Repeat(5, vec![
-                        Move(MovementDirection::Forward, ActionDuration::Fixed(100)),
+                        Move(MovementDirection::Forward, dur::Random(80..100)),
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
