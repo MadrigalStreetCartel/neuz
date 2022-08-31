@@ -149,7 +149,7 @@ impl FarmingConfig {
             .enumerate()
             .filter(|(index, slot)| {
                 slot.slot_type == slot_type
-                    && (slot.slot_threshold + dur::Random(0..100)) >= threshold.unwrap_or(0)
+                    && slot.slot_threshold >= threshold.unwrap_or(0)
                     && last_slots_usage[*index].is_none()
             })
             .choose(rng)
