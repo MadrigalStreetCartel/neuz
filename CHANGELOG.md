@@ -5,6 +5,22 @@ Date format: `DD/MM/YYYY`
 [@genoxalmighty]: https://github.com/genoxalmighty
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
+**0.13.0**
+> Released on XX.XX.2022
+
+- Improves image detection, make it easier to maintain
+- Adds stop fighting option
+- Add detection value edition that helps when bot can't detect certains mobs because colors of the name is slightly different
+- Add HP/FP/MP restoration based on threshold and cooldown
+- Improves user interface
+  - Updated slots selection, you can now select threshold and cooldown !
+- Improves mob detection and attack, now detecting cursor
+- Adjust values of detection
+  - Changes minimum name's length detection ( Mias and others were not detected )
+  - Changes aggressive mobs detection values ( certains mobs were not detected )
+- Changes rotation values so only the camera rotate
+- Removes useless setting 'Use skill to attack'
+- Adds a way to avoid obstacles
 
 **0.12.0**
 > Released on 24.07.2022

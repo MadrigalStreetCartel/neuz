@@ -70,9 +70,9 @@ pub struct FarmingConfig {
     is_stop_fighting: Option<bool>,
 
     passive_mobs_colors: Option<[u8; 3]>,
-    passive_tolerence: u8,
+    passive_tolerence: Option<u8>,
     aggressive_mobs_colors: Option<[u8; 3]>,
-    aggressive_tolerence: u8,
+    aggressive_tolerence: Option<u8>,
 }
 
 impl FarmingConfig {
@@ -112,7 +112,7 @@ impl FarmingConfig {
     }
 
     pub fn get_passive_tolerence(&self) -> u8 {
-        self.passive_tolerence
+        self.passive_tolerence.unwrap_or(2)
     }
 
     pub fn get_aggressive_mobs_colors(&self) -> [u8; 3] {
@@ -120,7 +120,7 @@ impl FarmingConfig {
     }
 
     pub fn get_aggressive_tolerence(&self) -> u8 {
-        self.aggressive_tolerence
+        self.aggressive_tolerence.unwrap_or(35)
     }
 
     /// Get the first matching slot index

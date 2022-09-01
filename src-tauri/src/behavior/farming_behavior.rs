@@ -339,12 +339,12 @@ impl<'a> FarmingBehavior<'_> {
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
                     if Instant::now().duration_since(self.last_kill_time)
-                        < Duration::from_millis(5000)
+                        < Duration::from_millis(2500)
                     {
                         slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
                             mob_list.as_slice(),
-                            Some(&self.last_killed_mob_bounds.grow_by(10)),
+                            Some(&self.last_killed_mob_bounds),
                             max_distance,
                         )
                     } else {
@@ -427,6 +427,24 @@ impl<'a> FarmingBehavior<'_> {
             self.last_initial_attack_time = Instant::now();
         }
         if image.client_stats.enemy_hp.value > 0 {
+            if image.client_stats.enemy_hp.value == 100 && self.last_initial_attack_time.elapsed().as_millis() > 3000 {
+                self.last_initial_attack_time = Instant::now();
+                use crate::movement::prelude::*;
+                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+                let rotation_duration = self.rng.gen_range(100_u64..350_u64);
+                let movement_slices = self.rng.gen_range(1..2);
+
+                // Move into a random direction while jumping
+                play!(self.movement => [
+                    HoldKeys(vec![Key::W, Key::Space]),
+                    Repeat(movement_slices as u64, vec![
+                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                        Wait(dur::Random(200..500)),
+                    ]),
+                    HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                    ReleaseKeys(vec![Key::Space, Key::W]),
+                ]);
+            }
             self.is_attacking = true;
 
             // Target marker found
@@ -444,10 +462,9 @@ impl<'a> FarmingBehavior<'_> {
                 self.last_slots_usage,
             ) {
                 // Only use attack skill if enabled and once a second at most
-                if config.should_use_attack_skills() {
-                    send_keystroke(index.into(), KeyMode::Press);
-                    self.last_slots_usage[index] = Some(Instant::now());
-                }
+                send_keystroke(index.into(), KeyMode::Press);
+                self.last_slots_usage[index] = Some(Instant::now());
+
             }
 
             //  Keep attacking until the target marker is gone

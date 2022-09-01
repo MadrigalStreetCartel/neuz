@@ -27,7 +27,7 @@ const SlotBar = ({ className, slots, onChange }: Props) => {
             <SlotModal isShowing={isShowing} hide={toggle} index={currentSlotId} slot={slots[currentSlotId]} onChange={onChange}/>
             <div className={className}>
                 {slots.map((slot, index) => (
-                    <Slot key={index} type={slot.slot_type} index={index} onChange={type => null/*type => onChange?.(type, index)*/} toggleSlotModal={() => toogleSlot(index)} />
+                    <Slot key={index} type={slot.slot_type} index={index} toggleSlotModal={() => toogleSlot(index)} />
                 ))}
             </div>
         </>

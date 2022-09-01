@@ -52,7 +52,7 @@ For optimal performance (optional and not necessarily needed):
 
 1. Enable right-click player menu (disabled by default)
 2. Disable single-click to attack (disabled by default)
-3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. You can press `T` to bring the player stats up again, as those don't interfere with automation.
+3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. 
 
 ### Slot Configuration
 
@@ -64,12 +64,14 @@ If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Sk
 | 💊         | Pill             |
 | 🐶         | Pickup Pet       |
 | ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
+| ![](./src/assets/icon_refresher_16x16.png) | MP restorer   |
+| ![](./src/assets/icon_vitaldrink_16x16.png) | FP restorer   |
 | 🗡️         | Attack Skill     |
 | 🪄         | Buff Skill       |
 | ✈️         | Board/Mount      |
 
 
-## Support Automation / AutoShout
+## Support Automation
 Not yet implemented. Keep your eyes peeled for an update.
 
 # FAQ

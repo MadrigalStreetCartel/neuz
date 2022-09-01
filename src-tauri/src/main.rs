@@ -80,7 +80,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
 
-    let _res = window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='3px',overlayElem.style.width='3px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},5)");
+    let _res = window.eval("const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},1)");
 
     let mut image_analyzer: ImageAnalyzer = state.image_analyzer.clone();
 

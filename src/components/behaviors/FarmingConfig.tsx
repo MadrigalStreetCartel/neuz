@@ -45,7 +45,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     }
 
     if (!config.aggressive_tolerence){
-        config.aggressive_tolerence = 23
+        config.aggressive_tolerence = 31
     }
 
     const { isShowing, toggle } = useModal();
@@ -73,10 +73,6 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                     <ConfigTableRow
                         label={<ConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically. Make sure the pet is NOT summoned before starting." />}
                         item={<BooleanSlider value={config.on_demand_pet ?? false} onChange={value => onChange?.({ ...config, on_demand_pet: value })} />}
-                    />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Use Skills to Attack" helpText="Enables the use of skills configured in the action slot to attack. DO NOT ACTIVATE unless you got a Refresher Hold or Vital Drink X active (depending on whether it's an MP or FP skill)." />}
-                        item={<BooleanSlider value={config.use_attack_skills ?? false} onChange={value => onChange?.({ ...config, use_attack_skills: value })} />}
                     />
                     <ConfigTableRow
                         disabled={config.unsupervised === true}

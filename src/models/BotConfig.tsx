@@ -1,4 +1,6 @@
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
+import IconVitalDrink from '../assets/icon_vitaldrink.png'
+import IconRefresher from '../assets/icon_refresher.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
@@ -15,8 +17,8 @@ export const translateType = (type: SlotType) => {
         case 'Unused': return ''
         case 'Food': return '🍔'
         case 'Pill': return '💊'
-        case 'MpRestorer': return 'MP'
-        case 'FpRestorer': return 'FP'
+        case 'MpRestorer': return IconRefresher
+        case 'FpRestorer': return IconVitalDrink
         case 'PickupPet': return '🐶'
         case 'PickupMotion': return IconMotionPickup
         case 'AttackSkill': return '🗡️'

@@ -2,7 +2,6 @@ import styled from 'styled-components'
 
 import { SlotModel, SlotType, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
-import { BsFillGearFill } from 'react-icons/bs'
 
 type Props = {
     className?: string,
@@ -21,12 +20,12 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: 
         onChange?.(nextType)
     }
     const symbolOrIcon = translateType(type)
-    const useIcon = symbolOrIcon.startsWith('data:');
+    const useIcon = symbolOrIcon.startsWith('data:') || symbolOrIcon.includes('static');
 
     return (
 
         <div className={className} onClick={toggleSlotModal} >
-            <div className="index" onClick={()=>null/*toggleSlotModal*/}>{index}{/*<BsFillGearFill/>*/}</div>
+            <div className="index">{index}</div>
             <div className='slot' onClick={handleChange}>
                 {useIcon && (
                     <img className="type" src={symbolOrIcon} alt="Slot icon" />

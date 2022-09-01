@@ -1,7 +1,5 @@
-import React, { MouseEventHandler, useState } from 'react'
 import styled from 'styled-components'
-import IconMotionPickup from '../assets/icon_motion_pickup.png'
-import { cooldownSlotTypes, SlotModel, SlotType, SLOT_SIZE_PX, thresholdSlotTypes, translateType } from '../models/BotConfig'
+import { cooldownSlotTypes, SlotModel, SlotType, thresholdSlotTypes } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
@@ -21,15 +19,15 @@ type Props = {
 const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) => {
     const options = [
         { value: 'Unused', label: 'None' },
-        { value: 'Food', label: '🍔 - Food' },
-        { value: 'Pill', label: '💊 - Pill' },
-        { value: 'MpRestorer', label: ' - MP' },
-        { value: 'FpRestorer', label: ' - FP' },
-        { value: 'PickupPet', label: '🐶 - PickupPet' },
-        { value: 'PickupMotion', label: '- PickupMotion'  },
-        { value: 'AttackSkill', label: '🗡️ - AttackSkill' },
-        { value: 'BuffSkill', label: '🪄 - BuffSkill' },
-        { value: 'Flying', label: '✈️ - Flying' },
+        { value: 'Food', label: 'Food' },
+        { value: 'Pill', label: 'Pill' },
+        { value: 'MpRestorer', label: 'MP' },
+        { value: 'FpRestorer', label: 'FP' },
+        { value: 'PickupPet', label: 'PickupPet' },
+        { value: 'PickupMotion', label:'PickupMotion'},
+        { value: 'AttackSkill', label: 'AttackSkill' },
+        { value: 'BuffSkill', label: 'BuffSkill' },
+        { value: 'Flying', label: 'Flying' },
     ]
     //const [selectedOption, setSelectedOption] = useState('None')
     if (slot) {
@@ -70,7 +68,13 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
 
 
 export default styled(SlotModal)`
-
+& img.type {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: .25rem;
+    border-radius: .25rem;
+}
 `
 
 
