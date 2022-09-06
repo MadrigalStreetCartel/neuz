@@ -6,8 +6,7 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{
-        Bounds, MobType, PixelDetection, PixelDetectionKind, StatInfo, StatusBarKind, Target,
-        TargetType,
+        Bounds, MobType, PixelDetection, PixelDetectionKind, StatusBarKind, Target, TargetType,
     },
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
@@ -85,13 +84,13 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             count += 1;
         }
 
-        // Check whether food should be consumed
-        //self.check_food(config, image);
-
         // Check whether something should be used
         self.check_restoration(config, image, StatusBarKind::Hp);
         self.check_restoration(config, image, StatusBarKind::Mp);
         self.check_restoration(config, image, StatusBarKind::Fp);
+
+        // Uses buffs Yiha
+        self.check_buffs(config);
 
         // Check state machine
         self.state = match self.state {
@@ -113,13 +112,9 @@ impl<'a> FarmingBehavior<'_> {
         let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
         let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
 
-        match (
-            config.should_use_on_demand_pet(),
-            pickup_pet_slot,
-            pickup_motion_slot,
-        ) {
+        match (pickup_pet_slot, pickup_motion_slot) {
             // Pickup using pet
-            (true, Some(index), _) => {
+            (Some(index), _) => {
                 play!(self.movement => [
                     // Summon pet
                     PressKey(index.into()),
@@ -130,7 +125,7 @@ impl<'a> FarmingBehavior<'_> {
                 ]);
             }
             // Pickup using motion
-            (false, _, Some(index)) => {
+            (_, Some(index)) => {
                 play!(self.movement => [
                     Repeat(5, vec![
                         Move(MovementDirection::Forward, dur::Random(80..100)),
@@ -145,20 +140,40 @@ impl<'a> FarmingBehavior<'_> {
                 // Do nothing, we have no way to pickup items
             }
         }
+
+        // Check if we're running in unsupervised mode
+        if config.is_unsupervised() {
+            // Sleep until the killed mob has fully disappeared
+            let sleep_time = if pickup_pet_slot.is_some() {
+                Duration::from_millis(3000)
+            } else if pickup_motion_slot.is_some() {
+                Duration::from_millis(5000)
+            } else {
+                Duration::from_millis(0)
+            };
+
+            std::thread::sleep(sleep_time);
+        }
     }
 
-    fn subcheck(&mut self, config: &FarmingConfig, stat: StatInfo, slot_type: SlotType) -> bool {
-        if let Some(slot_index) = config.get_usable_slot_index(
-            slot_type,
-            &mut self.rng,
-            Some(stat.value),
-            self.last_slots_usage,
-        ) {
+    fn subcheck(
+        &mut self,
+        config: &FarmingConfig,
+        threshold: Option<u32>,
+        slot_type: SlotType,
+    ) -> bool {
+        if let Some(slot_index) =
+            config.get_usable_slot_index(slot_type, &mut self.rng, threshold, self.last_slots_usage)
+        {
+            std::thread::sleep(Duration::from_millis(200));
+
             // Send keystroke for first slot mapped to pill
             send_keystroke(slot_index.into(), KeyMode::Press);
 
             // Update state
             self.last_slots_usage[slot_index] = Some(Instant::now());
+            std::thread::sleep(Duration::from_millis(300));
+
             return true;
         }
         return false;
@@ -172,23 +187,27 @@ impl<'a> FarmingBehavior<'_> {
     ) {
         match stat_kind {
             StatusBarKind::Hp => {
-                let stat = image.client_stats.hp;
+                let stat = Some(image.client_stats.hp.value);
                 if !self.subcheck(config, stat, SlotType::Pill) {
                     self.subcheck(config, stat, SlotType::Food);
                 }
             }
             StatusBarKind::Mp => {
-                let stat = image.client_stats.mp;
+                let stat = Some(image.client_stats.mp.value);
                 self.subcheck(config, stat, SlotType::MpRestorer);
             }
             StatusBarKind::Fp => {
-                let stat = image.client_stats.fp;
+                let stat = Some(image.client_stats.fp.value);
                 self.subcheck(config, stat, SlotType::FpRestorer);
             }
             StatusBarKind::Xp => {}
             StatusBarKind::EnemyHp => {}
             StatusBarKind::SpellCasting => {}
         }
+    }
+
+    fn check_buffs(&mut self, config: &FarmingConfig) {
+        self.subcheck(config, None, SlotType::BuffSkill);
     }
 
     fn on_idle(&mut self, _config: &FarmingConfig) -> State {
@@ -301,46 +320,44 @@ impl<'a> FarmingBehavior<'_> {
         State::SearchingForEnemy
     }
 
-    fn on_searching_for_enemy(&mut self, config: &FarmingConfig, image: &ImageAnalyzer) -> State {
-        let mobs = image.identify_mobs(config);
+    fn on_searching_for_enemy(
+        &mut self,
+        config: &FarmingConfig,
+        image: &mut ImageAnalyzer,
+    ) -> State {
         if config.is_stop_fighting() {
             return State::Attacking(Target::default());
         }
+        let mobs = image.identify_mobs(config);
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
         } else {
-            // Check if aggro mobs are found first
-            let aggro_mobs = mobs
-                .iter()
-                .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
-                .cloned()
-                .collect::<Vec<_>>();
-            let passive_mobs = mobs
-                .iter()
-                .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
-                .cloned()
-                .collect::<Vec<_>>();
-
             // Calculate max distance of mobs
             let max_distance = match (config.should_stay_in_area(), config.is_unsupervised()) {
                 (_, true) => 300,
                 (true, _) => 325,
                 (false, false) => 1000,
             };
-            let mut mob_list = aggro_mobs;
+            let mut mob_list = mobs
+                .iter()
+                .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
+                .cloned()
+                .collect::<Vec<_>>();
             let mut mob_type = "aggressive";
             if mob_list.is_empty() {
-                mob_list = passive_mobs;
+                mob_list = mobs
+                    .iter()
+                    .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
+                    .cloned()
+                    .collect::<Vec<_>>();
                 mob_type = "passive";
             }
             if !mob_list.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
-                    if Instant::now().duration_since(self.last_kill_time)
-                        < Duration::from_millis(2500)
-                    {
+                    if self.last_kill_time.elapsed().as_millis() < 7000 {
                         slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
                             mob_list.as_slice(),
@@ -411,40 +428,19 @@ impl<'a> FarmingBehavior<'_> {
     ) -> State {
         //self.client_stats.debug_print();
         if !self.is_attacking {
-            // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else
-            // true not in party
-            // false in party
-            /*let prevent_already_attacked = true;
-            if prevent_already_attacked && self.client_stats.enemy_hp.value < 100 {
-                let marker = image.identify_target_marker();
-                if marker.is_some() {
-                    let marker = marker.unwrap();
-                    self.last_killed_mob_bounds = marker.bounds;
-                }
+            // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
+            if config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100 {
+                self.last_killed_mob_bounds = mob.bounds;
+                use crate::movement::prelude::*;
+                play!(self.movement => [
+                    HoldKeyFor(Key::Escape, dur::Fixed(100)),
+                    Wait(dur::Random(100..300)),
+                ]);
                 return State::SearchingForEnemy;
-            }*/
-
+            }
             self.last_initial_attack_time = Instant::now();
         }
         if image.client_stats.enemy_hp.value > 0 {
-            if image.client_stats.enemy_hp.value == 100 && self.last_initial_attack_time.elapsed().as_millis() > 3000 {
-                self.last_initial_attack_time = Instant::now();
-                use crate::movement::prelude::*;
-                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                let rotation_duration = self.rng.gen_range(100_u64..350_u64);
-                let movement_slices = self.rng.gen_range(1..2);
-
-                // Move into a random direction while jumping
-                play!(self.movement => [
-                    HoldKeys(vec![Key::W, Key::Space]),
-                    Repeat(movement_slices as u64, vec![
-                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                        Wait(dur::Random(200..500)),
-                    ]),
-                    HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                    ReleaseKeys(vec![Key::Space, Key::W]),
-                ]);
-            }
             self.is_attacking = true;
 
             // Target marker found
@@ -461,10 +457,30 @@ impl<'a> FarmingBehavior<'_> {
                 None,
                 self.last_slots_usage,
             ) {
+                // Helps avoid obstacles only works using attack slot
+                if image.client_stats.enemy_hp.value == 100
+                    && self.last_initial_attack_time.elapsed().as_millis() > 7500
+                {
+                    self.last_initial_attack_time = Instant::now();
+                    use crate::movement::prelude::*;
+                    let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+                    let rotation_duration = self.rng.gen_range(100_u64..350_u64);
+                    let movement_slices = self.rng.gen_range(3..5);
+
+                    // Move into a random direction while jumping
+                    play!(self.movement => [
+                        HoldKeys(vec![Key::W, Key::Space]),
+                        Repeat(movement_slices as u64, vec![
+                            HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                            Wait(dur::Random(200..600)),
+                        ]),
+                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                        ReleaseKeys(vec![Key::Space, Key::W]),
+                    ]);
+                }
                 // Only use attack skill if enabled and once a second at most
                 send_keystroke(index.into(), KeyMode::Press);
                 self.last_slots_usage[index] = Some(Instant::now());
-
             }
 
             //  Keep attacking until the target marker is gone
@@ -486,16 +502,6 @@ impl<'a> FarmingBehavior<'_> {
 
         // Pickup items
         self.pickup_items(config);
-
-        // Check if we're running in unsupervised mode
-        if config.is_unsupervised() {
-            // Sleep until the killed mob has fully disappeared
-            let sleep_time = match config.should_use_on_demand_pet() {
-                true => Duration::from_millis(3000),
-                false => Duration::from_millis(5000),
-            };
-            std::thread::sleep(sleep_time);
-        }
 
         // Transition state
         State::SearchingForEnemy

@@ -33,7 +33,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     }
 
     if (!config.passive_mobs_colors){
-        config.passive_mobs_colors = [232, 232, 148]
+        config.passive_mobs_colors = [234, 234, 149]
     }
 
     if (!config.passive_tolerence){
@@ -41,11 +41,11 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     }
 
     if (!config.aggressive_mobs_colors){
-        config.aggressive_mobs_colors = [232, 28, 28]
+        config.aggressive_mobs_colors = [179, 23, 23]
     }
 
     if (!config.aggressive_tolerence){
-        config.aggressive_tolerence = 31
+        config.aggressive_tolerence = 9
     }
 
     const { isShowing, toggle } = useModal();
@@ -57,12 +57,12 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                 <>
                     <ConfigTableRow
                         layout="v"
-                        label={<ConfigLabel name="Colors" helpText="This way you can change detections values, this prevents certains mobs to be untargettable. Edit these values if you are sure what you are doing." />}
+                        label={<ConfigLabel name="Colors" helpText="Custom monster name color reference. Edit these values if you are sure what you are doing." />}
                         item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors : config.aggressive_mobs_colors} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
                     />
                     <ConfigTableRow
                         layout="v"
-                        label={<ConfigLabel name="Tolerence" helpText="Edit these values if you are sure what you are doing." />}
+                        label={<ConfigLabel name="Tolerence" helpText="Custom monster name color tolerence. Edit these values if you are sure what you are doing." />}
                         item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence : config.aggressive_tolerence} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                     />
                 </>
@@ -71,8 +71,8 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
-                        label={<ConfigLabel name="On-Demand Pickup Pet" helpText="Manages pickup pet activation automatically. Make sure the pet is NOT summoned before starting." />}
-                        item={<BooleanSlider value={config.on_demand_pet ?? false} onChange={value => onChange?.({ ...config, on_demand_pet: value })} />}
+                        label={<ConfigLabel name="Avoid already attacked monster (experimental)" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
+                        item={<BooleanSlider value={config.prevent_already_attacked ?? false} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
                     />
                     <ConfigTableRow
                         disabled={config.unsupervised === true}
@@ -80,11 +80,11 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<BooleanSlider value={config.unsupervised === true ? false : config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
                     />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Unsupervised (Experimental)" helpText="The bot will try extra hard not to move too far. Makes farming a bit slower, but also safer. Enabling this will override the 'Stay in Area' setting." />}
+                        label={<ConfigLabel name="Unsupervised (experimental)" helpText="The bot will try extra hard not to move too far. Makes farming a bit slower, but also safer. Enabling this will override the 'Stay in Area' setting." />}
                         item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
                     />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Stop mob searching" helpText="Stop mob searching but keeps benefit of using the bot like slots usage, item pickup, etc..." />}
+                        label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
                     />
                     <ConfigTableRow

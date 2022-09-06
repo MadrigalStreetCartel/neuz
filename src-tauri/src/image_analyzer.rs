@@ -197,12 +197,14 @@ impl ImageAnalyzer {
             .par_bridge()
             .for_each(move |(y, row)| {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
+                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM || y <= 120 {
                     return;
                 }
                 for (x, _, px) in row {
                     if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
+                    } else if x <= 310 {
+                        continue;
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.get_passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));

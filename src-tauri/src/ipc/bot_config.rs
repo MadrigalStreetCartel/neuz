@@ -28,8 +28,8 @@ impl Default for Slot {
     fn default() -> Self {
         Self {
             slot_type: SlotType::Unused,
-            slot_cooldown: 1500,
-            slot_threshold: 30,
+            slot_cooldown: 2000,
+            slot_threshold: 100,
         }
     }
 }
@@ -54,10 +54,6 @@ impl ToString for BotMode {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FarmingConfig {
-    /// Summon pet after kill and unsummon before next attack
-    on_demand_pet: Option<bool>,
-    /// Whether to use attack skills for combat
-    use_attack_skills: Option<bool>,
     /// Whether the bot will try to stay in the area it started in
     stay_in_area: Option<bool>,
     /// Whether the bot should try to level in a fully unsupervised way
@@ -66,6 +62,8 @@ pub struct FarmingConfig {
     slots: Option<[Slot; 10]>,
     /// Disable farming
     farming_enabled: Option<bool>,
+
+    prevent_already_attacked: Option<bool>,
 
     is_stop_fighting: Option<bool>,
 
@@ -76,14 +74,6 @@ pub struct FarmingConfig {
 }
 
 impl FarmingConfig {
-    pub fn should_use_on_demand_pet(&self) -> bool {
-        self.on_demand_pet.unwrap_or(false)
-    }
-
-    pub fn should_use_attack_skills(&self) -> bool {
-        self.use_attack_skills.unwrap_or(false)
-    }
-
     pub fn should_stay_in_area(&self) -> bool {
         self.stay_in_area.unwrap_or(false)
     }
@@ -100,7 +90,6 @@ impl FarmingConfig {
 
     pub fn get_slot_cooldown(&self, slot_index: usize) -> u32 {
         if self.slots.is_some() {
-            // maybe check before call it ?
             self.slots.unwrap()[slot_index].slot_cooldown
         } else {
             0
@@ -108,7 +97,7 @@ impl FarmingConfig {
     }
 
     pub fn get_passive_mobs_colors(&self) -> [u8; 3] {
-        self.passive_mobs_colors.unwrap_or([0xe8, 0xe8, 0x94])
+        self.passive_mobs_colors.unwrap_or([234, 234, 149])
     }
 
     pub fn get_passive_tolerence(&self) -> u8 {
@@ -116,11 +105,11 @@ impl FarmingConfig {
     }
 
     pub fn get_aggressive_mobs_colors(&self) -> [u8; 3] {
-        self.aggressive_mobs_colors.unwrap_or([0xe8, 0x1c, 0x1c])
+        self.aggressive_mobs_colors.unwrap_or([179, 23, 23])
     }
 
     pub fn get_aggressive_tolerence(&self) -> u8 {
-        self.aggressive_tolerence.unwrap_or(35)
+        self.aggressive_tolerence.unwrap_or(9)
     }
 
     /// Get the first matching slot index
@@ -156,21 +145,25 @@ impl FarmingConfig {
     }
 
     /// Get a random matching slot index
-    pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
-    where
-        R: Rng,
-    {
-        self.slots
-            .unwrap_or_default()
-            .iter()
-            .enumerate()
-            .filter(|(_, slot)| slot.slot_type == slot_type)
-            .choose(rng)
-            .map(|(index, _)| index)
-    }
+    //pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
+    //where
+    //    R: Rng,
+    //{
+    //    self.slots
+    //        .unwrap_or_default()
+    //        .iter()
+    //        .enumerate()
+    //        .filter(|(_, slot)| slot.slot_type == slot_type)
+    //        .choose(rng)
+    //        .map(|(index, _)| index)
+    //}
 
     pub fn is_stop_fighting(&self) -> bool {
         self.is_stop_fighting.unwrap_or(false)
+    }
+
+    pub fn get_prevent_already_attacked(&self) -> bool {
+        self.prevent_already_attacked.unwrap_or(false)
     }
 }
 

@@ -8,19 +8,18 @@ Date format: `DD/MM/YYYY`
 **0.13.0**
 > Released on XX.XX.2022
 
-- Improves image detection, make it easier to maintain
-- Adds stop fighting option
-- Add detection value edition that helps when bot can't detect certains mobs because colors of the name is slightly different
+- Improves image detection :
+  - Improves mob detection and attack by detecting cursor
+  - Changes minimum name's length detection (Mias and others were not detected)
+  - Add custom mobs detection values. Default values Passive: R234 G234 B149 Tolerence: 2 / Aggressive: R179 G23 B23 Tolerence: 9
+- Adds stop mobs detection feature
 - Add HP/FP/MP restoration based on threshold and cooldown
-- Improves user interface
-  - Updated slots selection, you can now select threshold and cooldown !
-- Improves mob detection and attack, now detecting cursor
-- Adjust values of detection
-  - Changes minimum name's length detection ( Mias and others were not detected )
-  - Changes aggressive mobs detection values ( certains mobs were not detected )
+- UI enhancements :
+  - Updated slots selection
 - Changes rotation values so only the camera rotate
-- Removes useless setting 'Use skill to attack'
-- Adds a way to avoid obstacles
+- Removes useless settings 'Use skill to attack', 'Use pickup pet'
+- Adds a feature to avoid obstacles (experimental) it'll only works if there's an attack slot to use (advice: add attack motion with a low cooldown)
+- Adds a feature to avoid already attacked monster (disable if you play in party)
 
 **0.12.0**
 > Released on 24.07.2022

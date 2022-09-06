@@ -43,8 +43,8 @@ export const translateDesc = (type: SlotType) => {
 }
 export type SlotModel = {
     slot_type: SlotType,
-    slot_cooldown: number,
-    slot_threshold: number,
+    slot_cooldown?: number,
+    slot_threshold?: number,
 }
 
 export type SlotBarModel = FixedArray<SlotModel, 10>
@@ -62,6 +62,7 @@ export type FarmingConfigModel = Partial<{
     aggressive_mobs_colors: number[];
     aggressive_tolerence: number;
     is_stop_fighting: boolean;
+    prevent_already_attacked: boolean;
 }>
 
 export type SupportConfigModel = Partial<{

@@ -56,7 +56,7 @@ For optimal performance (optional and not necessarily needed):
 
 ### Slot Configuration
 
-If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Skills to Attack`, make sure to configure the slot bar in Neuz accordingly.
+If you're using slot-dependent actions such as `On-Demand Pickup Pet`, make sure to configure the slot bar in Neuz accordingly.
 
 | Slot Symbol | Flyff Equivalent |
 | ----------- | ---------------- |
@@ -84,7 +84,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.12.0_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.13.0_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->

@@ -152,6 +152,7 @@ impl StatInfo {
         if image.is_some() {
             res.update_value(image.unwrap());
         }
+
         res
     }
 
