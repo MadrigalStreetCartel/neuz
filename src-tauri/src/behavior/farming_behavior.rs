@@ -356,7 +356,7 @@ impl<'a> FarmingBehavior<'_> {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
-                    if self.last_kill_time.elapsed().as_millis() < 7000 {
+                    if self.last_kill_time.elapsed().as_millis() < 5000 {
                         slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
                         image.find_closest_mob(
                             mob_list.as_slice(),
@@ -414,7 +414,7 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
-            self.last_killed_mob_bounds = mob.bounds.grow_by(50);
+            self.last_killed_mob_bounds = mob.bounds.grow_by(100);
             State::SearchingForEnemy
         }
     }

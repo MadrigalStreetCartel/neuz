@@ -302,7 +302,7 @@ impl ImageAnalyzer {
         if let Some(_) = avoid_bounds {
             // Try finding closest mob that's not the mob to be avoided
             if let Some((mob, _distance)) = distances.iter().find(|(_mob, distance)| {
-                *distance > 150
+                *distance > 55
                 // let coords = mob.name_bounds.get_lowest_center_point();
                 // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {
