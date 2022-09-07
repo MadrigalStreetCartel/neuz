@@ -19,8 +19,10 @@ Date format: `DD/MM/YYYY`
   - Updated slots selection
 - Changes rotation values so only the camera rotate
 - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
-- Adds a feature to avoid obstacles (experimental) it'll only works if there's an attack slot to use (advice: add attack motion with a low cooldown like 500)
-- Adds a feature to avoid already attacked monster (disable if you play in party)
+- Adds features :
+  - Avoid obstacles (experimental) it'll only works if there's an attack slot to use (advice: add attack motion with a low cooldown like 500)
+  - Avoid already attacked monster (disable if you play in party)
+  - Avoid npc/pets selection (rare)
 - Various fixes
 
 **0.12.0**
