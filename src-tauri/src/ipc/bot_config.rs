@@ -20,16 +20,16 @@ pub enum SlotType {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
-    slot_cooldown: u32,
-    slot_threshold: u32,
+    slot_cooldown: Option<u32>,
+    slot_threshold: Option<u32>,
 }
 
 impl Default for Slot {
     fn default() -> Self {
         Self {
             slot_type: SlotType::Unused,
-            slot_cooldown: 2000,
-            slot_threshold: 100,
+            slot_cooldown: None,
+            slot_threshold: None,
         }
     }
 }
@@ -88,12 +88,11 @@ impl FarmingConfig {
             .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
     }
 
-    pub fn get_slot_cooldown(&self, slot_index: usize) -> u32 {
+    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u32> {
         if self.slots.is_some() {
-            self.slots.unwrap()[slot_index].slot_cooldown
-        } else {
-            0
+            return self.slots.unwrap()[slot_index].slot_cooldown
         }
+        return Some(0)
     }
 
     pub fn get_passive_mobs_colors(&self) -> [u8; 3] {
@@ -101,7 +100,7 @@ impl FarmingConfig {
     }
 
     pub fn get_passive_tolerence(&self) -> u8 {
-        self.passive_tolerence.unwrap_or(2)
+        self.passive_tolerence.unwrap_or(4)
     }
 
     pub fn get_aggressive_mobs_colors(&self) -> [u8; 3] {
@@ -109,7 +108,7 @@ impl FarmingConfig {
     }
 
     pub fn get_aggressive_tolerence(&self) -> u8 {
-        self.aggressive_tolerence.unwrap_or(9)
+        self.aggressive_tolerence.unwrap_or(10)
     }
 
     /// Get the first matching slot index
@@ -137,7 +136,7 @@ impl FarmingConfig {
             .enumerate()
             .filter(|(index, slot)| {
                 slot.slot_type == slot_type
-                    && slot.slot_threshold >= threshold.unwrap_or(0)
+                    && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
                     && last_slots_usage[*index].is_none()
             })
             .choose(rng)

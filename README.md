@@ -51,12 +51,10 @@ No settings have to be changed by default.
 For optimal performance (optional and not necessarily needed):
 
 1. Enable right-click player menu (disabled by default)
-2. Disable single-click to attack (disabled by default)
+2. Disable weather effects
 3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. 
 
 ### Slot Configuration
-
-If you're using slot-dependent actions such as `On-Demand Pickup Pet`, make sure to configure the slot bar in Neuz accordingly.
 
 | Slot Symbol | Flyff Equivalent |
 | ----------- | ---------------- |

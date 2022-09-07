@@ -1,7 +1,6 @@
 import styled from 'styled-components'
 
-import { SlotModel, SlotType, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
-import IconMotionPickup from '../assets/icon_motion_pickup.png'
+import { SlotType, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 
 type Props = {
     className?: string,

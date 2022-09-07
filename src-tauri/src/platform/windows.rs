@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use winput::Vk;
 
 use super::{Key, KeyMode};
@@ -40,6 +42,12 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Hold => winput::press(k),
         KeyMode::Release => winput::release(k),
     }
+}
+
+pub fn send_slot(k:Key) {
+    let k: Vk = k.into();
+    winput::send(k);
+    std::thread::sleep(Duration::from_millis(500));
 }
 
 pub fn send_message(s: &str) {

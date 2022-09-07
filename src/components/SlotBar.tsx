@@ -2,7 +2,7 @@ import styled from 'styled-components'
 
 import Slot from './Slot'
 
-import { SlotType, SlotBarModel, SlotModel } from '../models/BotConfig'
+import { SlotBarModel, SlotModel } from '../models/BotConfig'
 import SlotModal from './SlotModal'
 import useModal from './UseModal'
 import { useState } from 'react'

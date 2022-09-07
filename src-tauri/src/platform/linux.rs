@@ -45,6 +45,14 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     .unwrap();
 }
 
+pub fn send_slot(k:Key) {
+    let k: char = k.into();
+    let k = k as u8;
+    let mut ctx = tfc::Context::new().unwrap();
+    ctx.ascii_char(k);
+    std::thread::sleep(Duration::from_millis(500));
+}
+
 pub fn send_message(text: &str) {
     let mut ctx = tfc::Context::new().unwrap();
     todo!("Seems to be hard to do with ftc. Maybe switch to enigo for all platforms?");

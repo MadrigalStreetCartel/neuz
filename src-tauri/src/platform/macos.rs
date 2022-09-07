@@ -42,6 +42,14 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => enigo.key_up(k),
     }
 }
+
+pub fn send_slot(k:Key) {
+    let k: enigo::Key = k.into();
+    let mut enigo = Enigo::new();
+    enigo.key_click(k);
+    std::thread::sleep(Duration::from_millis(500));
+}
+
 pub fn send_message(text: &str) {
     let mut enigo = Enigo::new();
     enigo.key_sequence(text);

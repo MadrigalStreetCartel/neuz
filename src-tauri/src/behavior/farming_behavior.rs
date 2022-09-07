@@ -11,7 +11,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
     movement::{MovementAccessor, MovementDirection},
-    platform::{send_keystroke, Key, KeyMode, PlatformAccessor},
+    platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
 };
 
@@ -40,6 +40,7 @@ pub struct FarmingBehavior<'a> {
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
+    obstacle_avoidance_count: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -61,6 +62,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
+            obstacle_avoidance_count: 0,
         }
     }
 
@@ -74,7 +76,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         // Update slot timers
         let mut count = 0;
         for last_time in self.last_slots_usage {
-            let cooldown = config.get_slot_cooldown(count).try_into();
+            let cooldown = config.get_slot_cooldown(count).unwrap().try_into();
             if last_time.is_some() && cooldown.is_ok() {
                 let slot_last_time = last_time.unwrap().elapsed().as_millis();
                 if slot_last_time > cooldown.unwrap() {
@@ -89,7 +91,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         self.check_restoration(config, image, StatusBarKind::Mp);
         self.check_restoration(config, image, StatusBarKind::Fp);
 
-        // Uses buffs Yiha
+        // Use buffs Yiha
         self.check_buffs(config);
 
         // Check state machine
@@ -119,7 +121,7 @@ impl<'a> FarmingBehavior<'_> {
                     // Summon pet
                     PressKey(index.into()),
                     // Wait a bit to make sure everything is picked up
-                    Wait(dur::Fixed(2000)),
+                    Wait(dur::Fixed(3000)),
                     // Unsummon pet
                     PressKey(index.into()),
                 ]);
@@ -128,11 +130,11 @@ impl<'a> FarmingBehavior<'_> {
             (_, Some(index)) => {
                 play!(self.movement => [
                     Repeat(5, vec![
-                        Move(MovementDirection::Forward, dur::Random(80..100)),
+                        Move(MovementDirection::Forward, dur::Random(100..150)),
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(350..750)),
+                        Wait(dur::Random(200..500)),
                     ]),
                 ]);
             }
@@ -165,14 +167,11 @@ impl<'a> FarmingBehavior<'_> {
         if let Some(slot_index) =
             config.get_usable_slot_index(slot_type, &mut self.rng, threshold, self.last_slots_usage)
         {
-            std::thread::sleep(Duration::from_millis(200));
-
             // Send keystroke for first slot mapped to pill
-            send_keystroke(slot_index.into(), KeyMode::Press);
+            send_slot(slot_index.into());
 
             // Update state
             self.last_slots_usage[slot_index] = Some(Instant::now());
-            std::thread::sleep(Duration::from_millis(300));
 
             return true;
         }
@@ -428,6 +427,7 @@ impl<'a> FarmingBehavior<'_> {
     ) -> State {
         //self.client_stats.debug_print();
         if !self.is_attacking {
+            self.obstacle_avoidance_count = 0;
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
             if config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100 {
                 self.last_killed_mob_bounds = mob.bounds;
@@ -461,10 +461,18 @@ impl<'a> FarmingBehavior<'_> {
                 if image.client_stats.enemy_hp.value == 100
                     && self.last_initial_attack_time.elapsed().as_millis() > 7500
                 {
+                    if self.obstacle_avoidance_count == 10 {
+                        use crate::movement::prelude::*;
+                        play!(self.movement => [
+                            HoldKeyFor(Key::Escape, dur::Fixed(100)),
+                            Wait(dur::Random(100..300)),
+                        ]);
+                        return State::SearchingForEnemy;
+                    }
                     self.last_initial_attack_time = Instant::now();
                     use crate::movement::prelude::*;
                     let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                    let rotation_duration = self.rng.gen_range(100_u64..350_u64);
+                    let rotation_duration = self.rng.gen_range(50_u64..150_u64);
                     let movement_slices = self.rng.gen_range(3..5);
 
                     // Move into a random direction while jumping
@@ -472,14 +480,14 @@ impl<'a> FarmingBehavior<'_> {
                         HoldKeys(vec![Key::W, Key::Space]),
                         Repeat(movement_slices as u64, vec![
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                            Wait(dur::Random(200..600)),
+                            Wait(dur::Random(500..750)),
                         ]),
                         HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ReleaseKeys(vec![Key::Space, Key::W]),
                     ]);
                 }
                 // Only use attack skill if enabled and once a second at most
-                send_keystroke(index.into(), KeyMode::Press);
+                send_slot(index.into());
                 self.last_slots_usage[index] = Some(Instant::now());
             }
 

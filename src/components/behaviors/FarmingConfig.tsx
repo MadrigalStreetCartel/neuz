@@ -21,7 +21,7 @@ type Props = {
 }
 
 const createSlotBar = () => (
-    [...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_cooldown: 1500, slot_threshold: 30 } as SlotModel)) as SlotBarModel
+    [...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_cooldown: 1000, slot_threshold: 100 } as SlotModel)) as SlotBarModel
 )
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
@@ -37,7 +37,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     }
 
     if (!config.passive_tolerence){
-        config.passive_tolerence = 2
+        config.passive_tolerence = 4
     }
 
     if (!config.aggressive_mobs_colors){
@@ -45,7 +45,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     }
 
     if (!config.aggressive_tolerence){
-        config.aggressive_tolerence = 9
+        config.aggressive_tolerence = 10
     }
 
     const { isShowing, toggle } = useModal();
