@@ -414,7 +414,7 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
-            self.last_killed_mob_bounds = mob.bounds.grow_by(100);
+            self.last_killed_mob_bounds = mob.bounds.grow_by(50);
             State::SearchingForEnemy
         }
     }
