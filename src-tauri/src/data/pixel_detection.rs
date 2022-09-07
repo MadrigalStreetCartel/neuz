@@ -8,11 +8,13 @@ use super::PointCloud;
 pub enum PixelDetectionKind {
     #[default]
     CursorType,
+    IsNpc,
 }
 impl fmt::Display for PixelDetectionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PixelDetectionKind::CursorType => write!(f, "cursor type"),
+            PixelDetectionKind::IsNpc => write!(f, "is NPC"),
         }
     }
 }
@@ -50,6 +52,17 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type.max_y = 1;
 
                 cursor_type
+            },
+            IsNpc => {
+                let mut is_npc = PixelDetectionConfig::new([74, 11, 84]);
+
+                is_npc.min_x = 310;
+                is_npc.min_y = 30;
+
+                is_npc.max_x = 1100;
+                is_npc.max_y = 60;
+
+                is_npc
             }
         }
     }
@@ -119,6 +132,7 @@ impl PixelDetection {
             config.min_y,
             config.max_x,
             config.max_y,
+            Some(10)
         );
 
         // Receive points from channel

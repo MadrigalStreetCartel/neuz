@@ -53,13 +53,12 @@ pub enum Movement {
     Wait(ActionDuration),
 }
 
-pub struct MovementCoordinator /*<'a>*/ {
+pub struct MovementCoordinator {
     rng: rand::rngs::ThreadRng,
-    //platform: &'a PlatformAccessor<'a>,
 }
 
-impl<'a> MovementCoordinator /*<'a>*/ {
-    pub fn new(/*platform: &'a PlatformAccessor<'_>*/) -> Self {
+impl<'a> MovementCoordinator {
+    pub fn new() -> Self {
         let rng = rand::thread_rng();
 
         Self {

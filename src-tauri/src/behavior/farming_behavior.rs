@@ -129,12 +129,12 @@ impl<'a> FarmingBehavior<'_> {
             // Pickup using motion
             (_, Some(index)) => {
                 play!(self.movement => [
-                    Repeat(5, vec![
-                        Move(MovementDirection::Forward, dur::Random(100..150)),
+                    Repeat(7, vec![
+                        Move(MovementDirection::Forward, dur::Random(90..120)),
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(200..500)),
+                        Wait(dur::Random(250..400)),
                     ]),
                 ]);
             }
@@ -384,7 +384,7 @@ impl<'a> FarmingBehavior<'_> {
 
     fn on_enemy_found(
         &mut self,
-        _config: &FarmingConfig,
+        config: &FarmingConfig,
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
@@ -400,7 +400,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        image.capture_window(self.logger);
+        image.capture_window(self.logger, config);
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
             drop(
@@ -419,27 +419,38 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
+    fn abort_attack(&mut self, mob: Target) -> State {
+        self.last_killed_mob_bounds = mob.bounds;
+        use crate::movement::prelude::*;
+        play!(self.movement => [
+            HoldKeyFor(Key::Escape, dur::Fixed(200)),
+            //Wait(dur::Random(100..300)),
+        ]);
+        return State::SearchingForEnemy;
+    }
+
     fn on_attacking(
         &mut self,
         config: &FarmingConfig,
         mob: Target,
-        image: &ImageAnalyzer,
+        image: &mut ImageAnalyzer,
     ) -> State {
-        //self.client_stats.debug_print();
+
+        if PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value {
+            return self.abort_attack(mob);
+        }
+
         if !self.is_attacking {
             self.obstacle_avoidance_count = 0;
+
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
             if config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100 {
-                self.last_killed_mob_bounds = mob.bounds;
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    HoldKeyFor(Key::Escape, dur::Fixed(100)),
-                    Wait(dur::Random(100..300)),
-                ]);
-                return State::SearchingForEnemy;
+                return self.abort_attack(mob);
+
             }
             self.last_initial_attack_time = Instant::now();
         }
+
         if image.client_stats.enemy_hp.value > 0 {
             self.is_attacking = true;
 
@@ -458,10 +469,10 @@ impl<'a> FarmingBehavior<'_> {
                 self.last_slots_usage,
             ) {
                 // Helps avoid obstacles only works using attack slot
-                if image.client_stats.enemy_hp.value == 100
-                    && self.last_initial_attack_time.elapsed().as_millis() > 7500
+                if image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 7500
                 {
-                    if self.obstacle_avoidance_count == 10 {
+                    image.client_stats.enemy_hp.reset_last_time();
+                    if self.obstacle_avoidance_count == 5 {
                         use crate::movement::prelude::*;
                         play!(self.movement => [
                             HoldKeyFor(Key::Escape, dur::Fixed(100)),
@@ -480,7 +491,6 @@ impl<'a> FarmingBehavior<'_> {
                         HoldKeys(vec![Key::W, Key::Space]),
                         Repeat(movement_slices as u64, vec![
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                            Wait(dur::Random(500..750)),
                         ]),
                         HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ReleaseKeys(vec![Key::Space, Key::W]),

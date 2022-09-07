@@ -12,7 +12,7 @@ Date format: `DD/MM/YYYY`
 - Improves image detection :
   - Improves mob detection and attack by detecting cursor
   - Changes minimum name's length detection (Mias and others were not detected)
-  - Add custom mobs detection values. Big thanks to Moe for searching values !
+  - Adds custom mobs detection values. Big thanks to Moe for searching values !
 - Adds stop mobs detection feature
 - Add HP/FP/MP restoration based on threshold and cooldown
 - UI enhancements :

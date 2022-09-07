@@ -156,6 +156,10 @@ impl StatInfo {
         res
     }
 
+    pub fn reset_last_time(&mut self) {
+        self.last_update_time = Some(Instant::now());
+    }
+
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let status_bar_config: StatusBarConfig = self.stat_kind.into();
         let recv = image.pixel_detection(
@@ -164,6 +168,7 @@ impl StatInfo {
             status_bar_config.min_y,
             status_bar_config.max_x,
             status_bar_config.max_y,
+            Some(2)
         );
 
         // Receive points from channel

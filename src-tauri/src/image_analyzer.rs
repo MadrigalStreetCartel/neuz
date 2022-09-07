@@ -1,6 +1,6 @@
 use std::{
     sync::mpsc::{sync_channel, Receiver},
-    time::Instant,
+    time::{Instant, Duration},
 };
 
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
@@ -13,7 +13,7 @@ use crate::{
         TargetType,
     },
     ipc::FarmingConfig,
-    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
+    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP, send_keystroke, Key, KeyMode},
     utils::Timer,
 };
 
@@ -50,11 +50,12 @@ impl ImageAnalyzer {
         self.image.is_some()
     }
 
-    pub fn capture_window(&mut self, logger: &Logger) {
+    pub fn capture_window(&mut self, logger: &Logger, _config: &FarmingConfig) {
         let _timer = Timer::start_new("capture_window");
         if self.window_id == 0 {
             return;
         }
+
         if let Some(provider) = libscreenshot::get_window_capture_provider() {
             if let Ok(image) = provider.capture_window(self.window_id) {
                 self.image = Some(image);
@@ -71,6 +72,7 @@ impl ImageAnalyzer {
         min_y: u32,
         mut max_x: u32,
         mut max_y: u32,
+        tolerence: Option<u8>,
     ) -> Receiver<Point> {
         let (snd, recv) = sync_channel::<Point>(4096);
         let image = self.image.as_ref().unwrap();
@@ -108,7 +110,7 @@ impl ImageAnalyzer {
 
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
-                        if Self::pixel_matches(&px.0, &ref_color.refs, 5) {
+                        if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
                             #[allow(clippy::drop_copy)]
                             drop(snd.send(Point::new(x, y)));
 
@@ -249,7 +251,7 @@ impl ImageAnalyzer {
         let ref_color: Color = Color::new(246, 90, 106);
 
         // Collect pixel clouds
-        let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0);
+        let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
 
         // Receive points from channel
         while let Ok(point) = recv.recv() {
