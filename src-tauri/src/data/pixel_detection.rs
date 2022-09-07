@@ -54,7 +54,7 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type
             },
             IsNpc => {
-                let mut is_npc = PixelDetectionConfig::new([74, 11, 84]);
+                let mut is_npc = PixelDetectionConfig::new([72, 78, 166]);
 
                 is_npc.min_x = 310;
                 is_npc.min_y = 30;
