@@ -32,21 +32,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
         onChange(newConfig)
     }
 
-    if (!config.passive_mobs_colors){
-        config.passive_mobs_colors = [234, 234, 149]
-    }
 
-    if (!config.passive_tolerence){
-        config.passive_tolerence = 4
-    }
-
-    if (!config.aggressive_mobs_colors){
-        config.aggressive_mobs_colors = [179, 23, 23]
-    }
-
-    if (!config.aggressive_tolerence){
-        config.aggressive_tolerence = 10
-    }
 
     const { isShowing, toggle } = useModal();
     const [selectedMobType, setSelectedMobType] = useState(0)
@@ -55,18 +41,30 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
             <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
             <Modal isShowing={isShowing} hide={toggle} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Colors" helpText="Custom monster name color reference. Edit these values if you are sure what you are doing." />}
-                        item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors : config.aggressive_mobs_colors} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Tolerence" helpText="Custom monster name color tolerence. Edit these values if you are sure what you are doing." />}
-                        item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence : config.aggressive_tolerence} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
-                    />
-                </>
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Colors" helpText="Custom monster name color reference. Edit these values if you are sure what you are doing." />}
+                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
+                        />
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Tolerence" helpText="Custom monster name color tolerence. Edit these values if you are sure what you are doing." />}
+                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
+                        />
+                        <ConfigTableRow
+                            label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
+                            item={<button onClick={() => {
+                                if (!onChange) { return;}
+                                if(selectedMobType === 0){
+                                    onChange({...config, passive_mobs_colors: [234, 234, 149], passive_tolerence: 5})
 
+                                } else {
+                                    onChange({...config, aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10})
+                                }
+                            }}>Reset</button>}
+                        />
+
+                </>
             }/>
             <ConfigPanel>
                 <ConfigTable>

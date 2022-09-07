@@ -12,7 +12,7 @@ Date format: `DD/MM/YYYY`
 - Improves image detection :
   - Improves mob detection and attack by detecting cursor
   - Changes minimum name's length detection (Mias and others were not detected)
-  - Add custom mobs detection values. Default values Passive: R234 G234 B149 Tolerence: 2 / Aggressive: R179 G23 B23 Tolerence: 9 thanks to Moe for theses values !
+  - Add custom mobs detection values. Big thanks to Moe for searching values !
 - Adds stop mobs detection feature
 - Add HP/FP/MP restoration based on threshold and cooldown
 - UI enhancements :
@@ -21,6 +21,7 @@ Date format: `DD/MM/YYYY`
 - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
 - Adds a feature to avoid obstacles (experimental) it'll only works if there's an attack slot to use (advice: add attack motion with a low cooldown like 500)
 - Adds a feature to avoid already attacked monster (disable if you play in party)
+- Various fixes
 
 **0.12.0**
 > Released on 24.07.2022

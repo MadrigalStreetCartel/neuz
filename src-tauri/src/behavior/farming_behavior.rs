@@ -473,7 +473,7 @@ impl<'a> FarmingBehavior<'_> {
                     use crate::movement::prelude::*;
                     let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
                     let rotation_duration = self.rng.gen_range(50_u64..150_u64);
-                    let movement_slices = self.rng.gen_range(3..5);
+                    let movement_slices = self.rng.gen_range(2..4);
 
                     // Move into a random direction while jumping
                     play!(self.movement => [

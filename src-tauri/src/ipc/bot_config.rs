@@ -100,7 +100,7 @@ impl FarmingConfig {
     }
 
     pub fn get_passive_tolerence(&self) -> u8 {
-        self.passive_tolerence.unwrap_or(4)
+        self.passive_tolerence.unwrap_or(5)
     }
 
     pub fn get_aggressive_mobs_colors(&self) -> [u8; 3] {
