@@ -5,6 +5,7 @@ import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
 import Select from 'react-select'
 import Modal from './Modal'
+import ConfigTable from './config/ConfigTable'
 
 type Props = {
     className?: string,
@@ -35,7 +36,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
         return(
 
             <Modal isShowing={isShowing} hide={hide} title={<h4>Slot {index} - {slot.slot_type}</h4>} body={
-                <>
+                <ConfigTable>
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Type" helpText="Select action binded to current slot." />}
@@ -57,7 +58,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
                             item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(index, slot)}} />}
                         />
                     }
-                </>
+                </ConfigTable>
             }/>
     )
     }else {

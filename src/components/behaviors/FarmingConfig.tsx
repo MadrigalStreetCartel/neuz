@@ -17,7 +17,7 @@ import { useState } from 'react'
 type Props = {
     className?: string,
     config: FarmingConfigModel,
-    onChange?: (config: FarmingConfigModel) => void,
+    onChange: (config: FarmingConfigModel) => void,
 }
 
 const createSlotBar = () => (
@@ -26,45 +26,50 @@ const createSlotBar = () => (
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
     const handleSlotChange = (index:number, slot:SlotModel) => {
-        if (!onChange) return
         const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
         newConfig.slots[index] = slot
         onChange(newConfig)
     }
-
-
-
     const { isShowing, toggle } = useModal();
     const [selectedMobType, setSelectedMobType] = useState(0)
+    const defaultPassiveValues = {passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}
+    const defaultAggressiveValues = {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}
+    const resetColorsRefs = (both?:boolean) => {
+
+
+        const resetPassive = () => onChange({...config, ...defaultPassiveValues })
+        const resetAggressive = () => onChange({...config, ...defaultAggressiveValues })
+        const resetBoth = () => onChange({...config, ...defaultAggressiveValues, ...defaultPassiveValues})
+        if(both) {
+            resetBoth()
+        } else if(selectedMobType === 0){
+            resetPassive()
+        } else if (selectedMobType == 1) {
+            resetAggressive()
+        }
+    }
+
     return (
         <>
             <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
             <Modal isShowing={isShowing} hide={toggle} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
-                <>
+                <ConfigTable>
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Colors" helpText="Custom monster name color reference. Edit these values if you are sure what you are doing." />}
-                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
+                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? defaultPassiveValues.passive_mobs_colors : config.aggressive_mobs_colors ?? defaultAggressiveValues.aggressive_mobs_colors} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
                         />
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Tolerence" helpText="Custom monster name color tolerence. Edit these values if you are sure what you are doing." />}
-                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
+                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? defaultPassiveValues.passive_tolerence : config.aggressive_tolerence ?? defaultAggressiveValues.aggressive_tolerence} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                         />
                         <ConfigTableRow
                             label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
-                            item={<button onClick={() => {
-                                if (!onChange) { return;}
-                                if(selectedMobType === 0){
-                                    onChange({...config, passive_mobs_colors: [234, 234, 149], passive_tolerence: 5})
-
-                                } else {
-                                    onChange({...config, aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10})
-                                }
-                            }}>Reset</button>}
+                            item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
                         />
 
-                </>
+                </ConfigTable>
             }/>
             <ConfigPanel>
                 <ConfigTable>
