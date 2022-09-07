@@ -10,11 +10,11 @@ const NumericInput = ({ className, value,  onChange }: Props) => {
     return (
         <div className={className}>
             <span className="unit">R </span>
-            <input min={0} max={255} type="number" value={value[0] ?? ""} onChange={(e)=>{value[0] = parseInt(e.target.value);onChange(value)}} />
+            <input min={0} max={255} type="number" value={value[0]} onChange={(e)=>{value[0] = parseInt(e.target.value);onChange(value)}} />
             <span className="unit">G </span>
-            <input min={0} max={255} type="number" value={value[1] ?? ""} onChange={(e)=>{value[1] = parseInt(e.target.value);onChange(value)}} />
+            <input min={0} max={255} type="number" value={value[1]} onChange={(e)=>{value[1] = parseInt(e.target.value);onChange(value)}} />
             <span className="unit">B </span>
-            <input min={0} max={255} type="number" value={value[2] ?? ""} onChange={(e)=>{value[2] = parseInt(e.target.value);onChange(value)}} />
+            <input min={0} max={255} type="number" value={value[2]} onChange={(e)=>{value[2] = parseInt(e.target.value);onChange(value)}} />
         </div>
     )
 }
