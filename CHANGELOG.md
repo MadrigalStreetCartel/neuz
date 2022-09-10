@@ -12,18 +12,19 @@ Date format: `DD/MM/YYYY`
 - Improves image detection :
   - Improves mob detection and attack by detecting cursor
   - Changes minimum name's length detection (Mias and others were not detected)
-  - Adds custom mobs detection values. Big thanks to Moe for searching values !
+  - Adds custom mobs detection values
 - Adds stop mobs detection feature
 - Add HP/FP/MP restoration based on threshold and cooldown
 - UI enhancements :
   - Updated slots selection
 - Changes rotation values so only the camera rotate
 - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
-- Adds features :
-  - Avoid obstacles (experimental) it'll only works if there's an attack slot to use (advice: add attack motion with a low cooldown like 500)
+- Farming behavior update :
+  - Avoid obstacles (experimental) you'll need at least one attack slot to make it works (advice: add attack motion with a low cooldown like 500)
   - Avoid already attacked monster (disable if you play in party)
   - Avoid npc/pets selection (rare)
 - Various fixes
+Big thanks to Moe who helped a lot to make this release perfect !
 
 **0.12.0**
 > Released on 24.07.2022

@@ -131,7 +131,7 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 250;
+        let max_distance_x: u32 = 100;
         let max_distance_y: u32 = 1;
 
         // Cluster coordinates in x-direction
@@ -158,7 +158,7 @@ impl ImageAnalyzer {
                     true
                 } else {
                     // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > 15
+                    mob.bounds.w > 17
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
                     && mob.bounds.size() < (220 * 6)
                 }
@@ -270,7 +270,8 @@ impl ImageAnalyzer {
     pub fn find_closest_mob<'a>(
         &self,
         mobs: &'a [Target],
-        avoid_bounds: Option<&Bounds>,
+        //avoid_bounds: Option<&Bounds>,
+        avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
@@ -299,10 +300,19 @@ impl ImageAnalyzer {
             .filter(|&(_, distance)| distance <= max_distance)
             .collect();
 
-        if let Some(_) = avoid_bounds {
+        if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if let Some((mob, _distance)) = distances.iter().find(|(_mob, distance)| {
-                *distance > 55
+            if let Some((mob, _distance)) = distances.iter().find(|(mob, distance)| {
+                //*distance > 55
+                let coords = mob.bounds.get_lowest_center_point();
+                let mut result = true;
+                for avoided_item in avoided_bounds {
+                   if avoided_item.0.contains_point(&coords) {
+                        result = false;
+                        break
+                   }
+                }
+                result && *distance > 20
                 // let coords = mob.name_bounds.get_lowest_center_point();
                 // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {

@@ -37,6 +37,7 @@ pub struct FarmingBehavior<'a> {
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
+    last_killed_mobs_bounds: Vec<(Bounds,Instant, u128)>,
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
@@ -59,6 +60,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mob_bounds: Bounds::default(),
+            last_killed_mobs_bounds: vec![],
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -85,6 +87,17 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             }
             count += 1;
         }
+        drop(count);
+
+        // Update avoid bounds
+        let mut result: Vec<(Bounds,Instant, u128)> = vec![];
+        for n in 0..self.last_killed_mobs_bounds.len() {
+            let current = self.last_killed_mobs_bounds[n];
+            if current.1.elapsed().as_millis() < current.2 {
+                result.push(current);
+            }
+        }
+        self.last_killed_mobs_bounds = result;
 
         // Check whether something should be used
         self.check_restoration(config, image, StatusBarKind::Hp);
@@ -355,12 +368,14 @@ impl<'a> FarmingBehavior<'_> {
             if !mob_list.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
+
                     // Try avoiding detection of last killed mob
-                    if self.last_kill_time.elapsed().as_millis() < 5000 {
-                        slog::debug!(self.logger, "Avoiding mob"; "mob_bounds" => self.last_killed_mob_bounds);
+                    if self.last_killed_mobs_bounds.len() > 0 {
+                    //if self.last_kill_time.elapsed().as_millis() < 5000 {
+                        slog::debug!(self.logger, "Avoiding mob");
                         image.find_closest_mob(
                             mob_list.as_slice(),
-                            Some(&self.last_killed_mob_bounds),
+                            Some(&self.last_killed_mobs_bounds),
                             max_distance,
                         )
                     } else {
@@ -414,13 +429,13 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
-            self.last_killed_mob_bounds = mob.bounds.grow_by(100);
+            //self.last_killed_mob_bounds = mob.bounds.grow_by(100);
+            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 1000));
             State::SearchingForEnemy
         }
     }
 
-    fn abort_attack(&mut self, mob: Target) -> State {
-        self.last_killed_mob_bounds = mob.bounds;
+    fn abort_attack(&mut self) -> State {
         use crate::movement::prelude::*;
         play!(self.movement => [
             HoldKeyFor(Key::Escape, dur::Fixed(200)),
@@ -436,17 +451,25 @@ impl<'a> FarmingBehavior<'_> {
         image: &mut ImageAnalyzer,
     ) -> State {
 
+        // Target marker found
+        //let marker = image.identify_target_marker();
+        //if marker.is_some() {
+        //    let marker = marker.unwrap();
+        //    self.last_killed_mob_bounds = marker.bounds;
+
+        //}
+
         if PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value {
-            return self.abort_attack(mob);
+            return self.abort_attack();
         }
 
+        // Engagin combat
         if !self.is_attacking {
             self.obstacle_avoidance_count = 0;
 
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
             if config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100 {
-                return self.abort_attack(mob);
-
+                return self.abort_attack();
             }
             self.last_initial_attack_time = Instant::now();
         }
@@ -454,31 +477,24 @@ impl<'a> FarmingBehavior<'_> {
         if image.client_stats.enemy_hp.value > 0 {
             self.is_attacking = true;
 
-            // Target marker found
-            let marker = image.identify_target_marker();
-            if marker.is_some() {
-                let marker = marker.unwrap();
-                self.last_killed_mob_bounds = marker.bounds;
-            }
-
-            // Try to use attack skill
+            // Try to use attack skill if at least one is selected in slot bar
             if let Some(index) = config.get_usable_slot_index(
                 SlotType::AttackSkill,
                 &mut self.rng,
                 None,
                 self.last_slots_usage,
             ) {
-                // Helps avoid obstacles only works using attack slot
+
+                // Helps avoid obstacles only works using attack slot basically try to move after 7.5sec
                 if image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 7500
                 {
+
+                    // Reset timer otherwise it'll trigger one time
                     image.client_stats.enemy_hp.reset_last_time();
+
+                    // Abort attack after 5 avoidance
                     if self.obstacle_avoidance_count == 5 {
-                        use crate::movement::prelude::*;
-                        play!(self.movement => [
-                            HoldKeyFor(Key::Escape, dur::Fixed(100)),
-                            Wait(dur::Random(100..300)),
-                        ]);
-                        return State::SearchingForEnemy;
+                        return self.abort_attack();
                     }
                     self.last_initial_attack_time = Instant::now();
                     use crate::movement::prelude::*;
@@ -495,8 +511,8 @@ impl<'a> FarmingBehavior<'_> {
                         HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ReleaseKeys(vec![Key::Space, Key::W]),
                     ]);
+                    self.obstacle_avoidance_count += 1;
                 }
-                // Only use attack skill if enabled and once a second at most
                 send_slot(index.into());
                 self.last_slots_usage[index] = Some(Instant::now());
             }
@@ -506,6 +522,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             // Target HP = 0
             if self.is_attacking {
+                self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 6000));
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {
