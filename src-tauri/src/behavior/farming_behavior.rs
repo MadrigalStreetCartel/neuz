@@ -261,9 +261,9 @@ impl<'a> FarmingBehavior<'_> {
         if self.rotation_movement_tries < 20 {
             play!(self.movement => [
                 // Rotate in random direction for a random duration
-                Rotate(rot::Random, dur::Random(100..250)),
+                Rotate(rot::Right, dur::Fixed(200)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Random(100..250)),
+                Wait(dur::Fixed(5)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -284,7 +284,7 @@ impl<'a> FarmingBehavior<'_> {
         match self.rng.gen_range(0..3) {
             0 => {
                 let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                let rotation_duration = self.rng.gen_range(100_u64..350_u64);
+                let rotation_duration = self.rng.gen_range(30_u64..100_u64);
                 let movement_slices = self.rng.gen_range(1..4);
                 let movement_slice_duration = self.rng.gen_range(250_u64..500_u64);
                 let movement_overlap_duration =
@@ -305,7 +305,7 @@ impl<'a> FarmingBehavior<'_> {
                 // Move forwards while jumping
                 play!(self.movement => [
                     HoldKeys(vec![Key::W, Key::Space]),
-                    Wait(dur::Random(1000..4000)),
+                    Wait(dur::Random(100..1000)),
                     ReleaseKeys(vec![Key::Space, Key::W]),
                 ]);
             }
