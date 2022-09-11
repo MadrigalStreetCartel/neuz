@@ -429,8 +429,9 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
-            //self.last_killed_mob_bounds = mob.bounds.grow_by(100);
-            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 100));
+            //self.last_killed_mob_bounds = mob.bounds.grow_by(100);3
+            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 1000));
+            std::thread::sleep(Duration::from_millis(50));
             State::SearchingForEnemy
         }
     }
@@ -456,7 +457,7 @@ impl<'a> FarmingBehavior<'_> {
         if marker.is_some() {
             let marker = marker.unwrap();
             //self.last_killed_mob_bounds = marker.bounds;
-            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(50), Instant::now(), 5000));
+            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(50), Instant::now(), 6500));
         }
 
         // Engagin combat
