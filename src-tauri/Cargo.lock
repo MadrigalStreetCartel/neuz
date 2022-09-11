@@ -1831,7 +1831,7 @@ dependencies = [
 [[package]]
 name = "libscreenshot"
 version = "0.3.1"
-source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#0d59df8ced6d485fd640367642d353db93673472"
+source = "git+https://github.com/MadrigalStreetCartel/libscreenshot?branch=area-capture#2bd0a19c8784f8faec535fa5e78199de4d71664d"
 dependencies = [
  "cocoa",
  "core-foundation 0.9.3",
@@ -1909,7 +1909,7 @@ dependencies = [
 [[package]]
 name = "macos-bindings"
 version = "0.1.0"
-source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#0d59df8ced6d485fd640367642d353db93673472"
+source = "git+https://github.com/MadrigalStreetCartel/libscreenshot?branch=area-capture#2bd0a19c8784f8faec535fa5e78199de4d71664d"
 dependencies = [
  "bindgen",
  "objc",

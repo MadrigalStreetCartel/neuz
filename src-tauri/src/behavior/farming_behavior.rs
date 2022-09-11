@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use libscreenshot::shared::Area;
 use rand::{prelude::SliceRandom, Rng};
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
@@ -143,11 +144,10 @@ impl<'a> FarmingBehavior<'_> {
             (_, Some(index)) => {
                 play!(self.movement => [
                     Repeat(7, vec![
-                        Move(MovementDirection::Forward, dur::Random(90..120)),
                         // Press the motion key
                         PressKey(index.into()),
                         // Wait a bit
-                        Wait(dur::Random(250..400)),
+                        Wait(dur::Random(100..180)),
                     ]),
                 ]);
             }
@@ -415,7 +415,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        image.capture_window(self.logger, config);
+        image.capture_window_area(self.logger, config, Area::new(0,0,2,2));
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
             drop(
@@ -430,7 +430,7 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             //self.last_killed_mob_bounds = mob.bounds.grow_by(100);
-            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 1000));
+            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 100));
             State::SearchingForEnemy
         }
     }
@@ -452,15 +452,11 @@ impl<'a> FarmingBehavior<'_> {
     ) -> State {
 
         // Target marker found
-        //let marker = image.identify_target_marker();
-        //if marker.is_some() {
-        //    let marker = marker.unwrap();
-        //    self.last_killed_mob_bounds = marker.bounds;
-
-        //}
-
-        if PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value {
-            return self.abort_attack();
+        let marker = image.identify_target_marker();
+        if marker.is_some() {
+            let marker = marker.unwrap();
+            //self.last_killed_mob_bounds = marker.bounds;
+            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(50), Instant::now(), 5000));
         }
 
         // Engagin combat
@@ -468,9 +464,11 @@ impl<'a> FarmingBehavior<'_> {
             self.obstacle_avoidance_count = 0;
 
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
-            if config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100 {
+            if !config.is_stop_fighting() && ((config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100)
+            || PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value) {
                 return self.abort_attack();
             }
+
             self.last_initial_attack_time = Instant::now();
         }
 
@@ -522,7 +520,6 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             // Target HP = 0
             if self.is_attacking {
-                self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 6000));
                 self.is_attacking = false;
                 State::AfterEnemyKill(mob)
             } else {

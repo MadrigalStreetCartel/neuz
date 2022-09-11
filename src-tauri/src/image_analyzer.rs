@@ -4,6 +4,7 @@ use std::{
 };
 
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
+use libscreenshot::shared::Area;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 
@@ -65,6 +66,21 @@ impl ImageAnalyzer {
         }
     }
 
+    pub fn capture_window_area(&mut self, logger: &Logger, _config: &FarmingConfig, area: Area) {
+        let _timer = Timer::start_new("capture_window_area");
+        if self.window_id == 0 {
+            return;
+        }
+
+        if let Some(provider) = libscreenshot::get_window_capture_provider() {
+            if let Ok(image) = provider.capture_window_area(self.window_id, area) {
+                self.image = Some(image);
+            } else {
+                slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
+            }
+        }
+    }
+
     pub fn pixel_detection(
         &self,
         colors: Vec<Color>,
@@ -90,9 +106,10 @@ impl ImageAnalyzer {
             .par_bridge()
             .for_each(move |(y, row)| {
                 // Skip this row if it's in an ignored area
+                let image_height = image.height();
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if y <= IGNORE_AREA_TOP
-                    || y > image.height() - IGNORE_AREA_BOTTOM
+                    || y > image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height)
                     || y > IGNORE_AREA_TOP + max_y
                     || y > max_y
                     || y < min_y
@@ -131,8 +148,8 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 100;
-        let max_distance_y: u32 = 1;
+        let max_distance_x: u32 = 30;
+        let max_distance_y: u32 = 5;
 
         // Cluster coordinates in x-direction
         let x_clusters = cloud.cluster_by_distance(max_distance_x, point_selector::x_axis);
@@ -205,7 +222,7 @@ impl ImageAnalyzer {
                 for (x, _, px) in row {
                     if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
-                    } else if x <= 310 {
+                    } else if x <= 310 { // avoid detect the health bar as a monster
                         continue;
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.get_passive_tolerence()) {
@@ -304,7 +321,7 @@ impl ImageAnalyzer {
             // Try finding closest mob that's not the mob to be avoided
             if let Some((mob, _distance)) = distances.iter().find(|(mob, distance)| {
                 //*distance > 55
-                let coords = mob.bounds.get_lowest_center_point();
+                let coords = mob.get_attack_coords();
                 let mut result = true;
                 for avoided_item in avoided_bounds {
                    if avoided_item.0.contains_point(&coords) {
@@ -312,7 +329,7 @@ impl ImageAnalyzer {
                         break
                    }
                 }
-                result && *distance > 20
+                result// && *distance > 20
                 // let coords = mob.name_bounds.get_lowest_center_point();
                 // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {
