@@ -57,13 +57,13 @@ impl ClientStats {
 
     // update all bars values at once
     pub fn update(&mut self, image: &ImageAnalyzer) {
-        self.hp.update_value(image);
-        self.mp.update_value(image);
-        self.fp.update_value(image);
+        if self.hp.update_value(image) || self.mp.update_value(image) || self.fp.update_value(image) || self.enemy_hp.update_value(image) {
+            self.debug_print();
+        }
         //self.xp.update_value(image);
-        self.enemy_hp.update_value(image);
+
         //self.spell_cast.update_value(image);
-        self.debug_print()
+        //
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
@@ -121,6 +121,7 @@ pub struct StatInfo {
     pub stat_kind: StatusBarKind,
     pub last_value: u32,
     pub last_update_time: Option<Instant>,
+    loaded: bool,
 }
 
 impl PartialEq for StatInfo {
@@ -148,6 +149,7 @@ impl StatInfo {
             stat_kind,
             last_update_time: Some(Instant::now()),
             last_value: 0,
+            loaded: false,
         };
         if image.is_some() {
             res.update_value(image.unwrap());
@@ -160,7 +162,7 @@ impl StatInfo {
         self.last_update_time = Some(Instant::now());
     }
 
-    pub fn update_value(&mut self, image: &ImageAnalyzer) {
+    pub fn update_value(&mut self, image: &ImageAnalyzer) -> bool {
         let status_bar_config: StatusBarConfig = self.stat_kind.into();
         let recv = image.pixel_detection(
             status_bar_config.refs,
@@ -196,6 +198,15 @@ impl StatInfo {
         if updated_value != old_value {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
+            if self.loaded {
+                return true;
+            }else{
+                self.loaded = true;
+                return false;
+            }
+
+        }else {
+            return false;
         }
     }
 }
@@ -285,8 +296,8 @@ impl Default for StatusBarConfig {
         Self {
             max_x: 300,
             max_y: 120,
-            min_x: 0,
-            min_y: 0,
+            min_x: 2,
+            min_y: 2,
             refs: vec![],
         }
     }

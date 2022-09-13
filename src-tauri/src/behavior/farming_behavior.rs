@@ -11,8 +11,8 @@ use crate::{
     },
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
-    movement::{MovementAccessor, MovementDirection},
-    platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
+    movement::{MovementAccessor},
+    platform::{send_slot, Key, PlatformAccessor, KeyMode, send_keystroke},
     play,
 };
 
@@ -248,8 +248,8 @@ impl<'a> FarmingBehavior<'_> {
         if config.is_unsupervised() {
             // Rotate in random direction for a random duration
             play!(self.movement => [
-                Rotate(rot::Random, dur::Random(100..300)),
-                Wait(dur::Random(100..300)),
+                Rotate(rot::Random, dur::Fixed(250)),
+                Wait(dur::Fixed(300)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -258,10 +258,10 @@ impl<'a> FarmingBehavior<'_> {
         }
 
         // Try rotating first in order to locate nearby enemies
-        if self.rotation_movement_tries < 20 {
+        if self.rotation_movement_tries < 10 {
             play!(self.movement => [
                 // Rotate in random direction for a random duration
-                Rotate(rot::Right, dur::Fixed(200)),
+                Rotate(rot::Right, dur::Fixed(225)),
                 // Wait a bit to wait for monsters to enter view
                 Wait(dur::Fixed(5)),
             ]);
@@ -281,52 +281,73 @@ impl<'a> FarmingBehavior<'_> {
         }
 
         // If rotating multiple times failed, try other movement patterns
-        match self.rng.gen_range(0..3) {
+        /*match self.rng.gen_range(1..3) {
             0 => {
-                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                let rotation_duration = self.rng.gen_range(30_u64..100_u64);
-                let movement_slices = self.rng.gen_range(1..4);
-                let movement_slice_duration = self.rng.gen_range(250_u64..500_u64);
+                println!("Zero was triggered");
+                let rotation_key = Key::A;
+                let rotation_duration = 1000;
+                // let movement_slices = self.rng.gen_range(1..2);
+                let movement_slice_duration = 1000_u64;
                 let movement_overlap_duration =
                     movement_slice_duration.saturating_sub(rotation_duration);
 
                 // Move into a random direction while jumping
                 play!(self.movement => [
                     HoldKeys(vec![Key::W, Key::Space]),
-                    Repeat(movement_slices as u64, vec![
-                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                    Repeat(1, vec![
+                        HoldKeyFor(rotation_key, dur::Fixed(rotation_duration)),
                         Wait(dur::Fixed(movement_overlap_duration)),
                     ]),
-                    HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                    HoldKeyFor(rotation_key, dur::Fixed(rotation_duration)),
                     ReleaseKeys(vec![Key::Space, Key::W]),
                 ]);
             }
             1 => {
+                println!("One was triggered");
                 // Move forwards while jumping
                 play!(self.movement => [
                     HoldKeys(vec![Key::W, Key::Space]),
-                    Wait(dur::Random(100..1000)),
+                    Wait(dur::Fixed(100)),
                     ReleaseKeys(vec![Key::Space, Key::W]),
                 ]);
             }
             2 => {
-                let slalom_switch_duration = Duration::from_millis(self.rng.gen_range(350..650));
-                let total_slaloms = self.rng.gen_range(4..8);
+                println!("Two was triggered");
+                let slalom_switch_duration = Duration::from_millis(25);
+                // let total_slaloms = self.rng.gen_range(1..2);
                 let mut left = self.rng.gen_bool(0.5);
 
                 // Move forwards in a slalom pattern
                 send_keystroke(Key::W, KeyMode::Hold);
-                for _ in 0..total_slaloms {
-                    let cond = if left { Key::A } else { Key::D };
+                // for _ in 0..total_slaloms {
+                    let cond = Key::A;
                     send_keystroke(cond, KeyMode::Hold);
                     std::thread::sleep(slalom_switch_duration);
                     send_keystroke(cond, KeyMode::Release);
                     left = !left;
-                }
+                // }
                 send_keystroke(Key::W, KeyMode::Release);
             }
             _ => unreachable!("Impossible"),
-        }
+        }*/
+        // let total_slaloms = self.rng.gen_range(1..2);
+        send_keystroke(Key::W, KeyMode::Hold);
+        send_keystroke(Key::Space, KeyMode::Hold);
+        send_keystroke(Key::A, KeyMode::Hold);
+        std::thread::sleep(Duration::from_millis(100));
+        send_keystroke(Key::A, KeyMode::Release);
+        std::thread::sleep(Duration::from_millis(100));
+        send_keystroke(Key::Space, KeyMode::Release);
+        send_keystroke(Key::W, KeyMode::Release);
+
+        /*play!(self.movement => [
+            HoldKeyFor(Key::Space, dur::Fixed(5)),
+            HoldKey(Key::W),
+            HoldKeyFor(Key::A, dur::Fixed(50)),
+            ReleaseKey(Key::W),
+        ]);*/
+
+
 
         // Transition to next state
         State::SearchingForEnemy
@@ -371,7 +392,7 @@ impl<'a> FarmingBehavior<'_> {
 
                     // Try avoiding detection of last killed mob
                     if self.last_killed_mobs_bounds.len() > 0 {
-                    //if self.last_kill_time.elapsed().as_millis() < 5000 {
+                    // if self.last_kill_time.elapsed().as_millis() < 3000 {
                         slog::debug!(self.logger, "Avoiding mob");
                         image.find_closest_mob(
                             mob_list.as_slice(),
