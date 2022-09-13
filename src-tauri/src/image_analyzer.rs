@@ -148,8 +148,8 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 30;
-        let max_distance_y: u32 = 5;
+        let max_distance_x: u32 = 50;
+        let max_distance_y: u32 = 3;
 
         // Cluster coordinates in x-direction
         let x_clusters = cloud.cluster_by_distance(max_distance_x, point_selector::x_axis);
@@ -290,6 +290,7 @@ impl ImageAnalyzer {
         //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
+        logger: &Logger,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
         let image = self.image.as_ref().unwrap();
@@ -325,6 +326,7 @@ impl ImageAnalyzer {
                 let mut result = true;
                 for avoided_item in avoided_bounds {
                    if avoided_item.0.contains_point(&coords) {
+                        slog::debug!(logger, "Avoiding mob"; "bounds" => avoided_item.0);
                         result = false;
                         break
                    }
