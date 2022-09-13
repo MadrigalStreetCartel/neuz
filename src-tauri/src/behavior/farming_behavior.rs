@@ -157,20 +157,6 @@ impl<'a> FarmingBehavior<'_> {
                 // Do nothing, we have no way to pickup items
             }
         }
-
-        // Check if we're running in unsupervised mode
-        if config.is_unsupervised() {
-            // Sleep until the killed mob has fully disappeared
-            let sleep_time = if pickup_pet_slot.is_some() {
-                Duration::from_millis(3000)
-            } else if pickup_motion_slot.is_some() {
-                Duration::from_millis(5000)
-            } else {
-                Duration::from_millis(0)
-            };
-
-            std::thread::sleep(sleep_time);
-        }
     }
 
     fn subcheck(
@@ -245,19 +231,6 @@ impl<'a> FarmingBehavior<'_> {
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
         use crate::movement::prelude::*;
-
-        // Check if we are running fully unsupervised
-        if config.is_unsupervised() {
-            // Rotate in random direction for a random duration
-            play!(self.movement => [
-                Rotate(rot::Random, dur::Fixed(250)),
-                Wait(dur::Fixed(300)),
-            ]);
-            self.rotation_movement_tries += 1;
-
-            // Transition to next state
-            return State::SearchingForEnemy;
-        }
 
         // Try rotating first in order to locate nearby enemies
         if self.rotation_movement_tries < 10 {
@@ -368,10 +341,9 @@ impl<'a> FarmingBehavior<'_> {
             State::NoEnemyFound
         } else {
             // Calculate max distance of mobs
-            let max_distance = match (config.should_stay_in_area(), config.is_unsupervised()) {
-                (_, true) => 300,
-                (true, _) => 325,
-                (false, false) => 1000,
+            let max_distance = match config.should_stay_in_area() {
+                true => 325,
+                false => 1000,
             };
             let mut mob_list = mobs
                 .iter()

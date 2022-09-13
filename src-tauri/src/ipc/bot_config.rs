@@ -56,8 +56,6 @@ impl ToString for BotMode {
 pub struct FarmingConfig {
     /// Whether the bot will try to stay in the area it started in
     stay_in_area: Option<bool>,
-    /// Whether the bot should try to level in a fully unsupervised way
-    unsupervised: Option<bool>,
     /// Slot configuration
     slots: Option<[Slot; 10]>,
     /// Disable farming
@@ -76,10 +74,6 @@ pub struct FarmingConfig {
 impl FarmingConfig {
     pub fn should_stay_in_area(&self) -> bool {
         self.stay_in_area.unwrap_or(false)
-    }
-
-    pub fn is_unsupervised(&self) -> bool {
-        self.unsupervised.unwrap_or(false)
     }
 
     pub fn slots(&self) -> Vec<Slot> {

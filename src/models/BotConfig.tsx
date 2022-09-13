@@ -55,7 +55,6 @@ export type FarmingConfigModel = Partial<{
     on_demand_pet: boolean,
     use_attack_skills: boolean,
     stay_in_area: boolean,
-    unsupervised: boolean,
     slots: SlotBarModel,
     passive_mobs_colors: number[];
     passive_tolerence: number;

@@ -78,13 +78,8 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<BooleanSlider value={config.prevent_already_attacked ?? false} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
                     />
                     <ConfigTableRow
-                        disabled={config.unsupervised === true}
                         label={<ConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />}
-                        item={<BooleanSlider value={config.unsupervised === true ? false : config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
-                    />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Unsupervised (experimental)" helpText="The bot will try extra hard not to move too far. Makes farming a bit slower, but also safer. Enabling this will override the 'Stay in Area' setting." />}
-                        item={<BooleanSlider value={config.unsupervised ?? false} onChange={value => onChange?.({ ...config, unsupervised: value })} />}
+                        item={<BooleanSlider value={config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
