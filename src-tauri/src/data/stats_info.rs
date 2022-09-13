@@ -57,7 +57,9 @@ impl ClientStats {
 
     // update all bars values at once
     pub fn update(&mut self, image: &ImageAnalyzer) {
-        if self.hp.update_value(image) || self.mp.update_value(image) || self.fp.update_value(image) || self.enemy_hp.update_value(image) {
+
+        let should_debug = [self.hp.update_value(image), self.mp.update_value(image), self.fp.update_value(image), self.enemy_hp.update_value(image)];
+        if should_debug.contains(&true) {
             self.debug_print();
         }
         //self.xp.update_value(image);
@@ -121,7 +123,6 @@ pub struct StatInfo {
     pub stat_kind: StatusBarKind,
     pub last_value: u32,
     pub last_update_time: Option<Instant>,
-    loaded: bool,
 }
 
 impl PartialEq for StatInfo {
@@ -149,7 +150,6 @@ impl StatInfo {
             stat_kind,
             last_update_time: Some(Instant::now()),
             last_value: 0,
-            loaded: false,
         };
         if image.is_some() {
             res.update_value(image.unwrap());
@@ -198,13 +198,7 @@ impl StatInfo {
         if updated_value != old_value {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
-            if self.loaded {
-                return true;
-            }else{
-                self.loaded = true;
-                return false;
-            }
-
+            return true;
         }else {
             return false;
         }
