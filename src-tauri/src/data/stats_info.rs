@@ -1,5 +1,7 @@
 use std::{fmt, time::Instant};
 
+use slog::Logger;
+
 use crate::{
     image_analyzer::{Color, ImageAnalyzer},
     platform::{send_keystroke, Key, KeyMode},
@@ -56,11 +58,11 @@ impl ClientStats {
     }
 
     // update all bars values at once
-    pub fn update(&mut self, image: &ImageAnalyzer) {
+    pub fn update(&mut self, image: &ImageAnalyzer, logger: &Logger) {
 
         let should_debug = [self.hp.update_value(image), self.mp.update_value(image), self.fp.update_value(image), self.enemy_hp.update_value(image)];
         if should_debug.contains(&true) {
-            self.debug_print();
+            self.debug_print(logger);
         }
         //self.xp.update_value(image);
 
@@ -95,7 +97,7 @@ impl ClientStats {
         }
     }
 
-    pub fn debug_print(&mut self) {
+    pub fn debug_print(&mut self, logger: &Logger) {
         // Stringify is_alive
         let alive_str = {
             if self.is_alive() {
@@ -104,15 +106,7 @@ impl ClientStats {
                 "dead"
             }
         };
-        println!(
-            "hp : {}, mp : {}, fp : {}, enemy hp : {}, spell casting : {}, character is {}",
-            self.hp.value,
-            self.mp.value,
-            self.fp.value,
-            self.enemy_hp.value,
-            self.spell_cast.value,
-            alive_str
-        );
+        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.enemy_hp.value, "Character is" => alive_str);
     }
 }
 

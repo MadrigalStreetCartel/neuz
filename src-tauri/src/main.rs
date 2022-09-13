@@ -203,7 +203,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
                 // Update stats
-                image_analyzer.client_stats.update(&image_analyzer.clone());
+                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
 
                 // Stop bot in case of death
                 if !image_analyzer.client_stats.is_alive() {
