@@ -510,13 +510,14 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = true;
 
             // Try to use attack skill if at least one is selected in slot bar
-            if let Some(index) = config.get_usable_slot_index(
+            let index = config.get_usable_slot_index(
                 SlotType::AttackSkill,
                 &mut self.rng,
                 None,
                 self.last_slots_usage,
-            ) {
-
+            );
+            if index.is_some() && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false {
+                let index = index.unwrap();
                 // Helps avoid obstacles only works using attack slot basically try to move after 7.5sec
                 if !config.is_stop_fighting() && image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 7500
                 {
