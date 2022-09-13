@@ -94,11 +94,11 @@ impl ImageAnalyzer {
         let image = self.image.as_ref().unwrap();
 
         if max_x == 0 {
-            max_x = image.height();
+            max_x = image.width();
         }
 
         if max_y == 0 {
-            max_y = image.width();
+            max_y = image.height();
         }
 
         image
