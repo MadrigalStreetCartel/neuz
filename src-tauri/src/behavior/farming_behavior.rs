@@ -485,7 +485,7 @@ impl<'a> FarmingBehavior<'_> {
         let marker = image.identify_target_marker();
         if marker.is_some() {
             let marker = marker.unwrap();
-            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(70), Instant::now(), 7000));
+            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(100), Instant::now(), 7000));
         }
 
         // Engagin combat
