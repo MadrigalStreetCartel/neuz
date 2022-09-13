@@ -240,9 +240,9 @@ impl<'a> FarmingBehavior<'_> {
         if self.rotation_movement_tries < 10 {
             play!(self.movement => [
                 // Rotate in random direction for a random duration
-                Rotate(rot::Right, dur::Fixed(225)),
+                Rotate(rot::Right, dur::Fixed(200)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Fixed(5)),
+                Wait(dur::Fixed(50)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -262,9 +262,9 @@ impl<'a> FarmingBehavior<'_> {
         send_keystroke(Key::W, KeyMode::Hold);
         send_keystroke(Key::Space, KeyMode::Hold);
         send_keystroke(Key::D, KeyMode::Hold);
-        std::thread::sleep(Duration::from_millis(25));
+        std::thread::sleep(Duration::from_millis(100));
         send_keystroke(Key::D, KeyMode::Release);
-        std::thread::sleep(Duration::from_millis(25));
+        std::thread::sleep(Duration::from_millis(100));
         send_keystroke(Key::Space, KeyMode::Release);
         send_keystroke(Key::W, KeyMode::Release);
         std::thread::sleep(Duration::from_millis(50));
@@ -354,6 +354,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
+        std::thread::sleep(Duration::from_millis(100));
         image.capture_window_area(self.logger, config, Area::new(0, 0, 2, 2));
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
@@ -369,8 +370,9 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
+            std::thread::sleep(Duration::from_millis(100));
             self.last_killed_mobs_bounds
-                .push((mob.bounds.grow_by(20), Instant::now(), 1500));
+                .push((mob.bounds.grow_by(20), Instant::now(), 500));
             if self.missclick_count == 15 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
