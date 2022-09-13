@@ -26,7 +26,7 @@ Date format: `DD/MM/YYYY`
   - Avoid already attacked monster (disable if you play in party)
   - Avoid npc/pets selection (rare)
   - New mob search movements, moves in circle within the current area
-  - PickupPet waiting time is now non blocking
+  - PickupPet waiting time is now non blocking and can be changed
 - Fixes an AutoShout behavior bug where spaces were automatically deleted
 - Lot of various fixes
 Big thanks to Moe who helped a lot to make this release perfect !
