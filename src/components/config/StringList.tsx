@@ -12,7 +12,7 @@ const StringList = ({ className, messages, onChange }: Props) => {
     const getValue = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         return e.target.value.trim().length === 0
             ? []
-            : e.target.value.split('\n').map(line => line.trim())
+            : e.target.value.split('\n').map(line => line)
     }
     return (
         <div className={className}>

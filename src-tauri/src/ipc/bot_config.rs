@@ -177,7 +177,6 @@ impl SupportConfig {
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
     shout_messages: Option<Vec<String>>,
-    shout_enabled: Option<bool>,
 }
 
 impl ShoutConfig {
@@ -187,10 +186,6 @@ impl ShoutConfig {
 
     pub fn shout_messages(&self) -> Vec<String> {
         self.shout_messages.clone().unwrap_or_default()
-    }
-
-    pub fn shout_enabled(&self) -> bool {
-        self.shout_enabled.unwrap_or(false)
     }
 }
 
