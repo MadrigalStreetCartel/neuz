@@ -44,6 +44,7 @@ pub struct FarmingBehavior<'a> {
     kill_count: u32,
     obstacle_avoidance_count: u32,
     missclick_count: u32,
+    last_summon_pet_time: Option<Instant>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -68,6 +69,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             kill_count: 0,
             obstacle_avoidance_count: 0,
             missclick_count: 0,
+            last_summon_pet_time: None,
         }
     }
 
@@ -77,6 +79,16 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
+
+
+        if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
+            if let Some(last_time) = self.last_summon_pet_time {
+                if last_time.elapsed().as_millis() > config.get_slot_cooldown(pickup_pet_slot_index).unwrap_or(3000) as u128 {
+                    send_slot(pickup_pet_slot_index.into());
+                    self.last_summon_pet_time = None;
+                }
+            }
+        }
 
         // Update slot timers
         let mut count = 0;
@@ -133,14 +145,11 @@ impl<'a> FarmingBehavior<'_> {
         match (pickup_pet_slot, pickup_motion_slot) {
             // Pickup using pet
             (Some(index), _) => {
-                play!(self.movement => [
-                    // Summon pet
-                    PressKey(index.into()),
-                    // Wait a bit to make sure everything is picked up
-                    Wait(dur::Fixed(3000)),
-                    // Unsummon pet
-                    PressKey(index.into()),
-                ]);
+                if self.last_summon_pet_time.is_none() {
+                    //self.slots[index].cooldown = 0;
+                    send_slot(index.into());
+                    self.last_summon_pet_time = Some(Instant::now());
+                }
             }
             // Pickup using motion
             (_, Some(index)) => {
@@ -254,74 +263,16 @@ impl<'a> FarmingBehavior<'_> {
             // Stay in state
             return self.state;
         }
-
-        // If rotating multiple times failed, try other movement patterns
-        /*match self.rng.gen_range(1..3) {
-            0 => {
-                println!("Zero was triggered");
-                let rotation_key = Key::A;
-                let rotation_duration = 1000;
-                // let movement_slices = self.rng.gen_range(1..2);
-                let movement_slice_duration = 1000_u64;
-                let movement_overlap_duration =
-                    movement_slice_duration.saturating_sub(rotation_duration);
-
-                // Move into a random direction while jumping
-                play!(self.movement => [
-                    HoldKeys(vec![Key::W, Key::Space]),
-                    Repeat(1, vec![
-                        HoldKeyFor(rotation_key, dur::Fixed(rotation_duration)),
-                        Wait(dur::Fixed(movement_overlap_duration)),
-                    ]),
-                    HoldKeyFor(rotation_key, dur::Fixed(rotation_duration)),
-                    ReleaseKeys(vec![Key::Space, Key::W]),
-                ]);
-            }
-            1 => {
-                println!("One was triggered");
-                // Move forwards while jumping
-                play!(self.movement => [
-                    HoldKeys(vec![Key::W, Key::Space]),
-                    Wait(dur::Fixed(100)),
-                    ReleaseKeys(vec![Key::Space, Key::W]),
-                ]);
-            }
-            2 => {
-                println!("Two was triggered");
-                let slalom_switch_duration = Duration::from_millis(25);
-                // let total_slaloms = self.rng.gen_range(1..2);
-                let mut left = self.rng.gen_bool(0.5);
-
-                // Move forwards in a slalom pattern
-                send_keystroke(Key::W, KeyMode::Hold);
-                // for _ in 0..total_slaloms {
-                    let cond = Key::A;
-                    send_keystroke(cond, KeyMode::Hold);
-                    std::thread::sleep(slalom_switch_duration);
-                    send_keystroke(cond, KeyMode::Release);
-                    left = !left;
-                // }
-                send_keystroke(Key::W, KeyMode::Release);
-            }
-            _ => unreachable!("Impossible"),
-        }*/
-        // let total_slaloms = self.rng.gen_range(1..2);
+        // Updated Moe
         send_keystroke(Key::W, KeyMode::Hold);
         send_keystroke(Key::Space, KeyMode::Hold);
-        send_keystroke(Key::A, KeyMode::Hold);
-        std::thread::sleep(Duration::from_millis(100));
-        send_keystroke(Key::A, KeyMode::Release);
-        std::thread::sleep(Duration::from_millis(100));
+        send_keystroke(Key::D, KeyMode::Hold);
+        std::thread::sleep(Duration::from_millis(25));
+        send_keystroke(Key::D, KeyMode::Release);
+        std::thread::sleep(Duration::from_millis(25));
         send_keystroke(Key::Space, KeyMode::Release);
         send_keystroke(Key::W, KeyMode::Release);
         std::thread::sleep(Duration::from_millis(50));
-
-        /*play!(self.movement => [
-            HoldKeyFor(Key::Space, dur::Fixed(5)),
-            HoldKey(Key::W),
-            HoldKeyFor(Key::A, dur::Fixed(50)),
-            ReleaseKey(Key::W),
-        ]);*/
 
         // Transition to next state
         State::SearchingForEnemy

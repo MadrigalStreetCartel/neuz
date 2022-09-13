@@ -6,7 +6,7 @@ export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { 
 
 export const slotTypes = ["Unused", "Food", "Pill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
 export const thresholdSlotTypes = ["Food", "Pill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "AttackSkill", "BuffSkill", "Pill", "MpRestorer", "FpRestorer"];
+export const cooldownSlotTypes = ["Food", "AttackSkill", "BuffSkill", "Pill", "MpRestorer", "FpRestorer", "PickupPet"];
 export type SlotType = typeof slotTypes[number];
 
 
