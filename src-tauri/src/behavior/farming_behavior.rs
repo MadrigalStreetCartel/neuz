@@ -11,8 +11,8 @@ use crate::{
     },
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, SlotType},
-    movement::{MovementAccessor},
-    platform::{send_slot, Key, PlatformAccessor, KeyMode, send_keystroke},
+    movement::MovementAccessor,
+    platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
 };
 
@@ -38,7 +38,7 @@ pub struct FarmingBehavior<'a> {
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
     last_killed_mob_bounds: Bounds,
-    last_killed_mobs_bounds: Vec<(Bounds,Instant, u128)>,
+    last_killed_mobs_bounds: Vec<(Bounds, Instant, u128)>,
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
@@ -93,7 +93,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         drop(count);
 
         // Update avoid bounds
-        let mut result: Vec<(Bounds,Instant, u128)> = vec![];
+        let mut result: Vec<(Bounds, Instant, u128)> = vec![];
         for n in 0..self.last_killed_mobs_bounds.len() {
             let current = self.last_killed_mobs_bounds[n];
             if current.1.elapsed().as_millis() < current.2 {
@@ -350,8 +350,6 @@ impl<'a> FarmingBehavior<'_> {
             ReleaseKey(Key::W),
         ]);*/
 
-
-
         // Transition to next state
         State::SearchingForEnemy
     }
@@ -392,7 +390,6 @@ impl<'a> FarmingBehavior<'_> {
             if !mob_list.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
-
                     // Try avoiding detection of last killed mob
                     if self.last_killed_mobs_bounds.len() > 0 {
                         slog::debug!(self.logger, "Avoiding mob");
@@ -400,7 +397,7 @@ impl<'a> FarmingBehavior<'_> {
                             mob_list.as_slice(),
                             Some(&self.last_killed_mobs_bounds),
                             max_distance,
-                            self.logger
+                            self.logger,
                         )
                     } else {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
@@ -439,7 +436,7 @@ impl<'a> FarmingBehavior<'_> {
 
         // Set cursor position and simulate a click
         drop(self.platform.window.set_cursor_position(target_cursor_pos));
-        image.capture_window_area(self.logger, config, Area::new(0,0,2,2));
+        image.capture_window_area(self.logger, config, Area::new(0, 0, 2, 2));
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
             drop(
@@ -455,14 +452,14 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             //self.last_killed_mob_bounds = mob.bounds.grow_by(100);3
             self.missclick_count += 1;
-            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 2000));
+            self.last_killed_mobs_bounds
+                .push((mob.bounds, Instant::now(), 2000));
             if self.missclick_count == 15 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
-            }else {
+            } else {
                 State::SearchingForEnemy
             }
-
         }
     }
 
@@ -480,12 +477,12 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-
         // Target marker found
         let marker = image.identify_target_marker();
         if marker.is_some() {
             let marker = marker.unwrap();
-            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(100), Instant::now(), 7000));
+            self.last_killed_mobs_bounds
+                .push((marker.bounds.grow_by(100), Instant::now(), 7000));
         }
 
         // Engagin combat
@@ -493,13 +490,19 @@ impl<'a> FarmingBehavior<'_> {
             self.obstacle_avoidance_count = 0;
 
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
-            if !config.is_stop_fighting() && ((config.get_prevent_already_attacked() && image.client_stats.enemy_hp.value < 100)
-            || PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value) {
+            if !config.is_stop_fighting()
+                && ((config.get_prevent_already_attacked()
+                    && image.client_stats.enemy_hp.value < 100)
+                    || PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value)
+            {
                 return self.abort_attack();
             }
 
             self.last_initial_attack_time = Instant::now();
-        }else if !self.is_attacking && image.client_stats.enemy_hp.value == 0 && !config.is_stop_fighting()  {
+        } else if !self.is_attacking
+            && image.client_stats.enemy_hp.value == 0
+            && !config.is_stop_fighting()
+        {
             use crate::movement::prelude::*;
             play!(self.movement => [
                 HoldKeyFor(Key::S, dur::Fixed(200)),
@@ -516,12 +519,22 @@ impl<'a> FarmingBehavior<'_> {
                 None,
                 self.last_slots_usage,
             );
-            if index.is_some() && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false {
+            if index.is_some()
+                && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false
+            {
                 let index = index.unwrap();
                 // Helps avoid obstacles only works using attack slot basically try to move after 7.5sec
-                if !config.is_stop_fighting() && image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 5000
+                if !config.is_stop_fighting()
+                    && image.client_stats.enemy_hp.last_update_time.is_some()
+                    && image
+                        .client_stats
+                        .enemy_hp
+                        .last_update_time
+                        .unwrap()
+                        .elapsed()
+                        .as_millis()
+                        > 5000
                 {
-
                     // Reset timer otherwise it'll trigger one time
                     image.client_stats.enemy_hp.reset_last_time();
 

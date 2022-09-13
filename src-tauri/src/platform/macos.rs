@@ -43,7 +43,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     }
 }
 
-pub fn send_slot(k:Key) {
+pub fn send_slot(k: Key) {
     let k: enigo::Key = k.into();
     let mut enigo = Enigo::new();
     enigo.key_click(k);

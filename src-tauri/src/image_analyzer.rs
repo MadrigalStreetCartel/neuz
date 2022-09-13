@@ -1,10 +1,10 @@
 use std::{
     sync::mpsc::{sync_channel, Receiver},
-    time::{Instant, Duration},
+    time::{Duration, Instant},
 };
 
-use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use libscreenshot::shared::Area;
+use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 
@@ -14,7 +14,7 @@ use crate::{
         TargetType,
     },
     ipc::FarmingConfig,
-    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP, send_keystroke, Key, KeyMode},
+    platform::{send_keystroke, Key, KeyMode, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 
@@ -109,7 +109,9 @@ impl ImageAnalyzer {
                 let image_height = image.height();
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if y <= IGNORE_AREA_TOP
-                    || y > image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height)
+                    || y > image_height
+                        .checked_sub(IGNORE_AREA_BOTTOM)
+                        .unwrap_or(image_height)
                     || y > IGNORE_AREA_TOP + max_y
                     || y > max_y
                     || y < min_y
@@ -222,7 +224,8 @@ impl ImageAnalyzer {
                 for (x, _, px) in row {
                     if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
                         return;
-                    } else if x <= 310 { // avoid detect the health bar as a monster
+                    } else if x <= 310 {
+                        // avoid detect the health bar as a monster
                         continue;
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.get_passive_tolerence()) {
@@ -325,15 +328,15 @@ impl ImageAnalyzer {
                 let coords = mob.get_attack_coords();
                 let mut result = true;
                 for avoided_item in avoided_bounds {
-                   if avoided_item.0.contains_point(&coords) {
+                    if avoided_item.0.contains_point(&coords) {
                         slog::debug!(logger, "Avoiding mob"; "bounds" => avoided_item.0);
                         result = false;
-                        break
-                   }
+                        break;
+                    }
                 }
-                result// && *distance > 20
-                // let coords = mob.name_bounds.get_lowest_center_point();
-                // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+                result // && *distance > 20
+                       // let coords = mob.name_bounds.get_lowest_center_point();
+                       // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {
                 Some(mob)
             } else {

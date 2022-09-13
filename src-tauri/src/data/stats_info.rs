@@ -59,8 +59,12 @@ impl ClientStats {
 
     // update all bars values at once
     pub fn update(&mut self, image: &ImageAnalyzer, logger: &Logger) {
-
-        let should_debug = [self.hp.update_value(image), self.mp.update_value(image), self.fp.update_value(image), self.enemy_hp.update_value(image)];
+        let should_debug = [
+            self.hp.update_value(image),
+            self.mp.update_value(image),
+            self.fp.update_value(image),
+            self.enemy_hp.update_value(image),
+        ];
         if should_debug.contains(&true) {
             self.debug_print(logger);
         }
@@ -164,7 +168,7 @@ impl StatInfo {
             status_bar_config.min_y,
             status_bar_config.max_x,
             status_bar_config.max_y,
-            Some(2)
+            Some(2),
         );
 
         // Receive points from channel
@@ -193,7 +197,7 @@ impl StatInfo {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
             return true;
-        }else {
+        } else {
             return false;
         }
     }

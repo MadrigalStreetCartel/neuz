@@ -45,7 +45,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     .unwrap();
 }
 
-pub fn send_slot(k:Key) {
+pub fn send_slot(k: Key) {
     let k: char = k.into();
     let k = k as u8;
     let mut ctx = tfc::Context::new().unwrap();

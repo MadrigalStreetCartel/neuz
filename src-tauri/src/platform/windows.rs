@@ -44,7 +44,7 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
     }
 }
 
-pub fn send_slot(k:Key) {
+pub fn send_slot(k: Key) {
     let k: Vk = k.into();
     winput::send(k);
     std::thread::sleep(Duration::from_millis(500));

@@ -90,9 +90,9 @@ impl FarmingConfig {
 
     pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u32> {
         if self.slots.is_some() {
-            return self.slots.unwrap()[slot_index].slot_cooldown
+            return self.slots.unwrap()[slot_index].slot_cooldown;
         }
-        return Some(0)
+        return Some(0);
     }
 
     pub fn get_passive_mobs_colors(&self) -> [u8; 3] {

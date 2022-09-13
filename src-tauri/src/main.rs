@@ -145,7 +145,15 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             let config = &*config.read();
 
             // Check if cursor div is well shown
-           drop(window.eval(format!("if(!document.getElementById('fuck')){{ {} }}",cursor_detection_js).as_str()));
+            drop(
+                window.eval(
+                    format!(
+                        "if(!document.getElementById('fuck')){{ {} }}",
+                        cursor_detection_js
+                    )
+                    .as_str(),
+                ),
+            );
 
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
@@ -203,7 +211,9 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
                 // Update stats
-                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
+                image_analyzer
+                    .client_stats
+                    .update(&image_analyzer.clone(), &logger);
 
                 // Stop bot in case of death
                 if !image_analyzer.client_stats.is_alive() {

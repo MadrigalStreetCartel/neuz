@@ -52,7 +52,7 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type.max_y = 1;
 
                 cursor_type
-            },
+            }
             IsNpc => {
                 let mut is_npc = PixelDetectionConfig::new([72, 78, 166]);
 
@@ -132,7 +132,7 @@ impl PixelDetection {
             config.min_y,
             config.max_x,
             config.max_y,
-            Some(10)
+            Some(10),
         );
 
         // Receive points from channel
