@@ -14,7 +14,7 @@ use crate::{
         TargetType,
     },
     ipc::FarmingConfig,
-    platform::{send_keystroke, Key, KeyMode, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
+    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 
@@ -218,13 +218,13 @@ impl ImageAnalyzer {
             .par_bridge()
             .for_each(move |(y, row)| {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM || y <= 120 {
+                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM  {
                     return;
                 }
                 for (x, _, px) in row {
-                    if px.0[3] != 255 || y > image.height() - IGNORE_AREA_BOTTOM {
+                    if px.0[3] != 255 {
                         return;
-                    } else if x <= 310 {
+                    } else if x <= 250 && y <= 110 {
                         // avoid detect the health bar as a monster
                         continue;
                     }

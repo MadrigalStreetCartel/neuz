@@ -15,9 +15,7 @@ pub enum StatusBarKind {
     Hp,
     Mp,
     Fp,
-    Xp,
     EnemyHp,
-    SpellCasting,
 }
 impl fmt::Display for StatusBarKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -25,9 +23,7 @@ impl fmt::Display for StatusBarKind {
             StatusBarKind::Hp => write!(f, "HP"),
             StatusBarKind::Mp => write!(f, "MP"),
             StatusBarKind::Fp => write!(f, "FP"),
-            StatusBarKind::Xp => write!(f, "XP"),
             StatusBarKind::EnemyHp => write!(f, "enemy HP"),
-            StatusBarKind::SpellCasting => write!(f, "spell cast"),
         }
     }
 }
@@ -37,9 +33,7 @@ pub struct ClientStats {
     pub hp: StatInfo,
     pub mp: StatInfo,
     pub fp: StatInfo,
-    pub xp: StatInfo,
     pub enemy_hp: StatInfo,
-    pub spell_cast: StatInfo,
 
     pub stat_try_not_detected_count: i32,
 }
@@ -49,9 +43,7 @@ impl ClientStats {
             hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
-            xp: StatInfo::new(0, 0, StatusBarKind::Xp, None),
             enemy_hp: StatInfo::new(0, 0, StatusBarKind::EnemyHp, None),
-            spell_cast: StatInfo::new(0, 0, StatusBarKind::SpellCasting, None),
 
             stat_try_not_detected_count: 0,
         }
@@ -68,10 +60,6 @@ impl ClientStats {
         if should_debug.contains(&true) {
             self.debug_print(logger);
         }
-        //self.xp.update_value(image);
-
-        //self.spell_cast.update_value(image);
-        //
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
@@ -243,12 +231,6 @@ impl From<StatusBarKind> for StatusBarConfig {
                 StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
             }
 
-            Xp => StatusBarConfig::new([
-                [48, 185, 244],
-                [128, 212, 245],
-                [52, 196, 252],
-                [92, 236, 252],
-            ]),
             EnemyHp => {
                 let mut enemy_hp_bar = StatusBarConfig::new([
                     [174, 18, 55],
@@ -264,21 +246,6 @@ impl From<StatusBarKind> for StatusBarConfig {
 
                 enemy_hp_bar
             }
-            SpellCasting => {
-                let mut spell_casting_bar = StatusBarConfig::new([
-                    [16, 186, 15],
-                    [20, 157, 20],
-                    [15, 210, 14],
-                    [92, 164, 92],
-                ]);
-                spell_casting_bar.min_x = 310;
-                spell_casting_bar.min_y = 500;
-
-                spell_casting_bar.max_x = 1000;
-                spell_casting_bar.max_y = 1080;
-
-                spell_casting_bar
-            }
         }
     }
 }
@@ -286,8 +253,8 @@ impl From<StatusBarKind> for StatusBarConfig {
 impl Default for StatusBarConfig {
     fn default() -> Self {
         Self {
-            max_x: 300,
-            max_y: 120,
+            max_x: 250,
+            max_y: 110,
             min_x: 2,
             min_y: 2,
             refs: vec![],
