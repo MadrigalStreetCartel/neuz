@@ -43,6 +43,7 @@ pub struct FarmingBehavior<'a> {
     is_attacking: bool,
     kill_count: u32,
     obstacle_avoidance_count: u32,
+    missclick_count: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -66,6 +67,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             rotation_movement_tries: 0,
             kill_count: 0,
             obstacle_avoidance_count: 0,
+            missclick_count: 0,
         }
     }
 
@@ -100,7 +102,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
         self.last_killed_mobs_bounds = result;
 
-        // Check whether something should be used
+        // Check whether something should be restored
         self.check_restoration(config, image, StatusBarKind::Hp);
         self.check_restoration(config, image, StatusBarKind::Mp);
         self.check_restoration(config, image, StatusBarKind::Fp);
@@ -339,6 +341,7 @@ impl<'a> FarmingBehavior<'_> {
         std::thread::sleep(Duration::from_millis(100));
         send_keystroke(Key::Space, KeyMode::Release);
         send_keystroke(Key::W, KeyMode::Release);
+        std::thread::sleep(Duration::from_millis(50));
 
         /*play!(self.movement => [
             HoldKeyFor(Key::Space, dur::Fixed(5)),
@@ -392,15 +395,15 @@ impl<'a> FarmingBehavior<'_> {
 
                     // Try avoiding detection of last killed mob
                     if self.last_killed_mobs_bounds.len() > 0 {
-                    // if self.last_kill_time.elapsed().as_millis() < 3000 {
                         slog::debug!(self.logger, "Avoiding mob");
                         image.find_closest_mob(
                             mob_list.as_slice(),
                             Some(&self.last_killed_mobs_bounds),
                             max_distance,
+                            self.logger
                         )
                     } else {
-                        image.find_closest_mob(mob_list.as_slice(), None, max_distance)
+                        image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                     }
                 } {
                     // Transition to next state
@@ -445,15 +448,21 @@ impl<'a> FarmingBehavior<'_> {
                     .click(&mouse_rs::types::keys::Keys::LEFT),
             );
             slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
-
+            self.missclick_count = 0;
             // Wait a few ms before transitioning state
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
             //self.last_killed_mob_bounds = mob.bounds.grow_by(100);3
-            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 1000));
-            std::thread::sleep(Duration::from_millis(50));
-            State::SearchingForEnemy
+            self.missclick_count += 1;
+            self.last_killed_mobs_bounds.push((mob.bounds, Instant::now(), 2000));
+            if self.missclick_count == 15 {
+                self.missclick_count = 0;
+                State::NoEnemyFound
+            }else {
+                State::SearchingForEnemy
+            }
+
         }
     }
 
@@ -461,7 +470,6 @@ impl<'a> FarmingBehavior<'_> {
         use crate::movement::prelude::*;
         play!(self.movement => [
             HoldKeyFor(Key::Escape, dur::Fixed(200)),
-            //Wait(dur::Random(100..300)),
         ]);
         return State::SearchingForEnemy;
     }
@@ -477,12 +485,11 @@ impl<'a> FarmingBehavior<'_> {
         let marker = image.identify_target_marker();
         if marker.is_some() {
             let marker = marker.unwrap();
-            //self.last_killed_mob_bounds = marker.bounds;
-            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(50), Instant::now(), 6500));
+            self.last_killed_mobs_bounds.push((marker.bounds.grow_by(70), Instant::now(), 7000));
         }
 
         // Engagin combat
-        if !self.is_attacking {
+        if !self.is_attacking && image.client_stats.enemy_hp.value > 0 {
             self.obstacle_avoidance_count = 0;
 
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
@@ -492,6 +499,11 @@ impl<'a> FarmingBehavior<'_> {
             }
 
             self.last_initial_attack_time = Instant::now();
+        }else if !self.is_attacking && image.client_stats.enemy_hp.value == 0 {
+            use crate::movement::prelude::*;
+            play!(self.movement => [
+                HoldKeyFor(Key::S, dur::Fixed(200)),
+            ]);
         }
 
         if image.client_stats.enemy_hp.value > 0 {
