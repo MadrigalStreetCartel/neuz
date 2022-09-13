@@ -499,7 +499,7 @@ impl<'a> FarmingBehavior<'_> {
             }
 
             self.last_initial_attack_time = Instant::now();
-        }else if !self.is_attacking && image.client_stats.enemy_hp.value == 0 {
+        }else if !self.is_attacking && image.client_stats.enemy_hp.value == 0 && !config.is_stop_fighting()  {
             use crate::movement::prelude::*;
             play!(self.movement => [
                 HoldKeyFor(Key::S, dur::Fixed(200)),
