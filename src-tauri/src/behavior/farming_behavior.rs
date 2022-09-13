@@ -370,7 +370,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             self.missclick_count += 1;
             self.last_killed_mobs_bounds
-                .push((mob.bounds.grow_by(50), Instant::now(), 3000));
+                .push((mob.bounds.grow_by(20), Instant::now(), 1500));
             if self.missclick_count == 15 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
