@@ -519,7 +519,7 @@ impl<'a> FarmingBehavior<'_> {
             if index.is_some() && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false {
                 let index = index.unwrap();
                 // Helps avoid obstacles only works using attack slot basically try to move after 7.5sec
-                if !config.is_stop_fighting() && image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 7500
+                if !config.is_stop_fighting() && image.client_stats.enemy_hp.last_update_time.is_some() && image.client_stats.enemy_hp.last_update_time.unwrap().elapsed().as_millis() > 5000
                 {
 
                     // Reset timer otherwise it'll trigger one time
