@@ -37,7 +37,6 @@ pub struct FarmingBehavior<'a> {
     last_slots_usage: [Option<Instant>; 10],
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
-    last_killed_mob_bounds: Bounds,
     last_killed_mobs_bounds: Vec<(Bounds, Instant, u128)>,
     rotation_movement_tries: u32,
     is_attacking: bool,
@@ -62,7 +61,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_slots_usage: [None; 10],
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
-            last_killed_mob_bounds: Bounds::default(),
             last_killed_mobs_bounds: vec![],
             is_attacking: false,
             rotation_movement_tries: 0,
@@ -79,7 +77,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
-
 
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
@@ -209,9 +206,7 @@ impl<'a> FarmingBehavior<'_> {
                 let stat = Some(image.client_stats.fp.value);
                 self.subcheck(config, stat, SlotType::FpRestorer);
             }
-            StatusBarKind::Xp => {}
-            StatusBarKind::EnemyHp => {}
-            StatusBarKind::SpellCasting => {}
+            StatusBarKind::EnemyHp => {unimplemented!()}
         }
     }
 
@@ -373,10 +368,9 @@ impl<'a> FarmingBehavior<'_> {
             std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
-            //self.last_killed_mob_bounds = mob.bounds.grow_by(100);3
             self.missclick_count += 1;
             self.last_killed_mobs_bounds
-                .push((mob.bounds, Instant::now(), 2000));
+                .push((mob.bounds.grow_by(50), Instant::now(), 3000));
             if self.missclick_count == 15 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -401,12 +395,12 @@ impl<'a> FarmingBehavior<'_> {
         image: &mut ImageAnalyzer,
     ) -> State {
         // Target marker found
-        let marker = image.identify_target_marker();
+        /* let marker = image.identify_target_marker();
         if marker.is_some() {
             let marker = marker.unwrap();
             self.last_killed_mobs_bounds
                 .push((marker.bounds.grow_by(100), Instant::now(), 7000));
-        }
+        } */
 
         // Engagin combat
         if !self.is_attacking && image.client_stats.enemy_hp.value > 0 {
@@ -446,7 +440,7 @@ impl<'a> FarmingBehavior<'_> {
                 && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false
             {
                 let index = index.unwrap();
-                // Helps avoid obstacles only works using attack slot basically try to move after 7.5sec
+                // Helps avoid obstacles only works using attack slot basically try to move after 5sec
                 if !config.is_stop_fighting()
                     && image.client_stats.enemy_hp.last_update_time.is_some()
                     && image
