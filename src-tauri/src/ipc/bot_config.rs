@@ -21,11 +21,65 @@ pub enum SlotType {
 pub struct SlotBar {
     slots: Option<[Slot; 10]>,
 }
+
 impl Default for SlotBar {
     fn default() -> Self {
         Self {
             slots: Some([Slot::default(); 10]),
         }
+    }
+}
+
+impl SlotBar {
+    pub fn slots(&self) -> Vec<Slot> {
+        return self.slots.unwrap().into_iter().collect::<Vec<_>>();
+    }
+    /// Get the first matching slot index
+    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
+        let found_index = self
+            .slots()
+            .iter()
+            .position(|slot| slot.slot_type == slot_type);
+        if found_index.is_some() {
+            return Some(found_index.unwrap());
+        }
+
+        None
+    }
+
+    /// Get a random usable matching slot index
+    pub fn get_usable_slot_index<R>(
+        &self,
+        slot_type: SlotType,
+        rng: &mut R,
+        threshold: Option<u32>,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+        slot_bar_index: usize
+    ) -> Option<(usize, usize)>
+    where
+        R: Rng,
+    {
+        let mut slots = self
+        .slots();
+        slots.sort_by(|a, b| a.slot_threshold.partial_cmp(&b.slot_threshold).unwrap());
+
+        let found_index = slots
+            .iter()
+            .enumerate()
+
+            .filter(|(index, slot)| {
+                slot.slot_type == slot_type
+                    && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
+                    && last_slots_usage[slot_bar_index][*index].is_none()
+            }).min_by(|x, y| x.1.slot_threshold.cmp(&y.1.slot_threshold))
+            //.choose(rng)
+            .map(|(index, _)| index);
+
+        if found_index.is_some() {
+            return Some((slot_bar_index, found_index.unwrap()));
+        }
+
+        None
     }
 }
 
@@ -43,6 +97,16 @@ impl Default for Slot {
             slot_cooldown: None,
             slot_threshold: None,
         }
+    }
+}
+
+impl Slot {
+    pub fn get_slot_cooldown(&self) -> Option<u32> {
+        let cooldown = self.slot_cooldown;
+        if cooldown.is_some() {
+            return cooldown;
+        }
+        return Some(0);
     }
 }
 
@@ -89,28 +153,6 @@ impl FarmingConfig {
         self.stay_in_area.unwrap_or(false)
     }
 
-    pub fn slot_bars(&self) -> Vec<SlotBar> {
-        self.slot_bars
-            .map(|slots| slots.into_iter().collect::<Vec<_>>())
-            .unwrap_or_else(|| [SlotBar::default(); 9].into_iter().collect::<Vec<_>>())
-    }
-
-    pub fn slots(&self, slot_bar_index: usize) -> Vec<Slot> {
-        return self.slot_bars()[slot_bar_index]
-            .slots
-            .unwrap()
-            .into_iter()
-            .collect::<Vec<_>>();
-    }
-
-    pub fn get_slot_cooldown(&self, slot_bar_index: usize, slot_index: usize) -> Option<u32> {
-        let cooldown = self.slots(slot_bar_index)[slot_index].slot_cooldown;
-        if cooldown.is_some() {
-            return cooldown;
-        }
-        return Some(0);
-    }
-
     pub fn get_passive_mobs_colors(&self) -> [u8; 3] {
         self.passive_mobs_colors.unwrap_or([234, 234, 149])
     }
@@ -127,13 +169,25 @@ impl FarmingConfig {
         self.aggressive_tolerence.unwrap_or(10)
     }
 
+    pub fn slot_bars(&self) -> Vec<SlotBar> {
+        self.slot_bars
+            .map(|slots| slots.into_iter().collect::<Vec<_>>())
+            .unwrap_or_else(|| [SlotBar::default(); 9].into_iter().collect::<Vec<_>>())
+    }
+
+    pub fn slots(&self, slot_bar_index: usize) -> Vec<Slot> {
+        return self.slot_bars()[slot_bar_index].slots();
+    }
+
+    pub fn get_slot_cooldown(&self, slot_bar_index: usize, slot_index: usize) -> Option<u32> {
+        return self.slots(slot_bar_index)[slot_index].get_slot_cooldown();
+    }
+
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self
-                .slots(n)
-                .iter()
-                .position(|slot| slot.slot_type == slot_type);
+                .slot_bars()[n].get_slot_index(slot_type);
             if found_index.is_some() {
                 return Some((n, found_index.unwrap()));
             }
@@ -154,19 +208,9 @@ impl FarmingConfig {
     {
         for n in 0..9 {
             let found_index = self
-                .slots(n)
-                .iter()
-                .enumerate()
-                .filter(|(index, slot)| {
-                    slot.slot_type == slot_type
-                        && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
-                        && last_slots_usage[n][*index].is_none()
-                })
-                .choose(rng)
-                .map(|(index, _)| index);
-
+            .slot_bars()[n].get_usable_slot_index(slot_type, rng, threshold, last_slots_usage, n);
             if found_index.is_some() {
-                return Some((n, found_index.unwrap()));
+                return Some(found_index.unwrap());
             }
         }
         None
@@ -208,11 +252,44 @@ impl SupportConfig {
     }
 
     pub fn slots(&self, slot_bar_index: usize) -> Vec<Slot> {
-        return self.slot_bars()[slot_bar_index]
-            .slots
-            .unwrap()
-            .into_iter()
-            .collect::<Vec<_>>();
+        return self.slot_bars()[slot_bar_index].slots();
+    }
+
+    pub fn get_slot_cooldown(&self, slot_bar_index: usize, slot_index: usize) -> Option<u32> {
+        return self.slots(slot_bar_index)[slot_index].get_slot_cooldown();
+    }
+
+    /// Get the first matching slot index
+    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
+        for n in 0..9 {
+            let found_index = self
+                .slot_bars()[n].get_slot_index(slot_type);
+            if found_index.is_some() {
+                return Some((n, found_index.unwrap()));
+            }
+        }
+        None
+    }
+
+    /// Get a random usable matching slot index
+    pub fn get_usable_slot_index<R>(
+        &self,
+        slot_type: SlotType,
+        rng: &mut R,
+        threshold: Option<u32>,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+    ) -> Option<(usize, usize)>
+    where
+        R: Rng,
+    {
+        for n in 0..9 {
+            let found_index = self
+            .slot_bars()[n].get_usable_slot_index(slot_type, rng, threshold, last_slots_usage, n);
+            if found_index.is_some() {
+                return Some(found_index.unwrap());
+            }
+        }
+        None
     }
 }
 
