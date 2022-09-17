@@ -19,13 +19,11 @@ pub enum SlotType {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SlotBar {
-    //slot_bar_index: u8,
     slots: Option<[Slot; 10]>,
 }
 impl Default for SlotBar {
     fn default() -> Self {
         Self {
-            //slot_bar_index: 0,
             slots: Some([Slot::default(); 10]),
         }
     }
@@ -71,7 +69,6 @@ pub struct FarmingConfig {
     /// Whether the bot will try to stay in the area it started in
     stay_in_area: Option<bool>,
     /// Slot configuration
-    //slots: Option<[Slot; 10]>,
     slot_bars: Option<[SlotBar; 9]>,
 
     /// Disable farming
@@ -104,8 +101,6 @@ impl FarmingConfig {
             .unwrap()
             .into_iter()
             .collect::<Vec<_>>();
-        /* .map(|slots| slots.into_iter().collect::<Vec<_>>())
-        .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>()) */
     }
 
     pub fn get_slot_cooldown(&self, slot_bar_index: usize, slot_index: usize) -> Option<u32> {
