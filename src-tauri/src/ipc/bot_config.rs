@@ -197,14 +197,22 @@ impl FarmingConfig {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SupportConfig {
-    slots: Option<[Slot; 10]>,
+    slot_bars: Option<[SlotBar; 9]>,
 }
 
 impl SupportConfig {
-    pub fn slots(&self) -> Vec<Slot> {
-        self.slots
+    pub fn slot_bars(&self) -> Vec<SlotBar> {
+        self.slot_bars
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
-            .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
+            .unwrap_or_else(|| [SlotBar::default(); 9].into_iter().collect::<Vec<_>>())
+    }
+
+    pub fn slots(&self, slot_bar_index: usize) -> Vec<Slot> {
+        return self.slot_bars()[slot_bar_index]
+            .slots
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<_>>();
     }
 }
 
