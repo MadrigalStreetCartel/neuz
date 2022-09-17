@@ -238,7 +238,7 @@ impl From<StatusBarKind> for StatusBarConfig {
                     [204, 30, 70],
                     [220, 36, 78],
                 ]);
-                enemy_hp_bar.min_x = 315;
+                enemy_hp_bar.min_x = 300;
                 enemy_hp_bar.min_y = 30;
 
                 enemy_hp_bar.max_x = 1100;
@@ -255,8 +255,8 @@ impl Default for StatusBarConfig {
         Self {
             max_x: 250,
             max_y: 110,
-            min_x: 2,
-            min_y: 2,
+            min_x: 105,
+            min_y: 30,
             refs: vec![],
         }
     }
