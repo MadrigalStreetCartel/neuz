@@ -20,7 +20,6 @@ use super::Behavior;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
-    Idle,
     NoEnemyFound,
     SearchingForEnemy,
     EnemyFound(Target),
@@ -34,10 +33,10 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
     state: State,
-    slot_bars_slots_last_time: [[Option<Instant>; 10]; 9],
+    slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
-    last_killed_mobs_bounds: Vec<(Bounds, Instant, u128)>,
+    avoided_bounds: Vec<(Bounds, Instant, u128)>,
     rotation_movement_tries: u32,
     is_attacking: bool,
     kill_count: u32,
@@ -58,10 +57,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            slot_bars_slots_last_time: [[None; 10]; 9],
+            slots_usage_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
-            last_killed_mobs_bounds: vec![],
+            avoided_bounds: vec![],
             is_attacking: false,
             rotation_movement_tries: 0,
             kill_count: 0,
@@ -78,6 +77,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
 
+        // Check whether pickup pet should be unsummoned
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
                 if last_time.elapsed().as_millis()
@@ -91,9 +91,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             }
         }
 
-        // Update slot timers
+        // Update slots cooldown timers
         let mut slotbar_index = 0;
-        for slot_bars in self.slot_bars_slots_last_time {
+        for slot_bars in self.slots_usage_last_time {
             let mut slot_index = 0;
             for last_time in slot_bars {
                 let cooldown = config
@@ -103,7 +103,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
                 if last_time.is_some() && cooldown.is_ok() {
                     let slot_last_time = last_time.unwrap().elapsed().as_millis();
                     if slot_last_time > cooldown.unwrap() {
-                        self.slot_bars_slots_last_time[slotbar_index][slot_index] = None;
+                        self.slots_usage_last_time[slotbar_index][slot_index] = None;
                     }
                 }
                 slot_index += 1;
@@ -113,27 +113,24 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
         drop(slotbar_index);
 
-        // Update avoid bounds
+        // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
-        for n in 0..self.last_killed_mobs_bounds.len() {
-            let current = self.last_killed_mobs_bounds[n];
+        for n in 0..self.avoided_bounds.len() {
+            let current = self.avoided_bounds[n];
             if current.1.elapsed().as_millis() < current.2 {
                 result.push(current);
             }
         }
-        self.last_killed_mobs_bounds = result;
+        self.avoided_bounds = result;
 
         // Check whether something should be restored
-        self.check_restoration(config, image, StatusBarKind::Hp);
-        self.check_restoration(config, image, StatusBarKind::Mp);
-        self.check_restoration(config, image, StatusBarKind::Fp);
+        self.check_restorations(config, image);
 
         // Use buffs Yiha
         self.check_buffs(config);
 
         // Check state machine
         self.state = match self.state {
-            State::Idle => self.on_idle(config),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
@@ -175,77 +172,57 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn subcheck(
+    fn get_slot_for(
         &mut self,
         config: &FarmingConfig,
         threshold: Option<u32>,
         slot_type: SlotType,
-    ) -> bool {
+        send: bool,
+    ) -> Option<(usize, usize)> {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
             &mut self.rng,
             threshold,
-            self.slot_bars_slots_last_time,
+            self.slots_usage_last_time,
         ) {
-            // Send keystroke for first slot mapped to pill
-            send_slot(slot_index.0, slot_index.1.into());
+            if send {
+                self.send_slot(slot_index);
+            }
 
-            // Update state
-            self.slot_bars_slots_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
-
-            return true;
+            return Some(slot_index);
         }
-        return false;
+        return None;
     }
 
-    fn check_restoration(
-        &mut self,
-        config: &FarmingConfig,
-        image: &mut ImageAnalyzer,
-        stat_kind: StatusBarKind,
-    ) {
-        match stat_kind {
-            StatusBarKind::Hp => {
-                let stat = Some(image.client_stats.hp.value);
-                if !self.subcheck(config, stat, SlotType::Pill) {
-                    self.subcheck(config, stat, SlotType::Food);
-                }
-            }
-            StatusBarKind::Mp => {
-                let stat = Some(image.client_stats.mp.value);
-                self.subcheck(config, stat, SlotType::MpRestorer);
-            }
-            StatusBarKind::Fp => {
-                let stat = Some(image.client_stats.fp.value);
-                self.subcheck(config, stat, SlotType::FpRestorer);
-            }
-            StatusBarKind::EnemyHp => {
-                unimplemented!()
-            }
+    fn send_slot(&mut self, slot_index: (usize, usize)) {
+        // Send keystroke for first slot mapped to pill
+        send_slot(slot_index.0, slot_index.1.into());
+
+        // Update usage last time
+        self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
+    }
+
+    fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
+        // Check HP
+        let stat = Some(image.client_stats.hp.value);
+        if self
+            .get_slot_for(config, stat, SlotType::Pill, true)
+            .is_none()
+        {
+            self.get_slot_for(config, stat, SlotType::Food, true);
         }
+
+        // Check MP
+        let stat = Some(image.client_stats.mp.value);
+        self.get_slot_for(config, stat, SlotType::MpRestorer, true);
+
+        // Check FP
+        let stat = Some(image.client_stats.fp.value);
+        self.get_slot_for(config, stat, SlotType::FpRestorer, true);
     }
 
     fn check_buffs(&mut self, config: &FarmingConfig) {
-        self.subcheck(config, None, SlotType::BuffSkill);
-    }
-
-    fn on_idle(&mut self, _config: &FarmingConfig) -> State {
-        let total_idle_duration = Duration::from_millis(self.rng.gen_range(500..2000));
-        let idle_chunks = self.rng.gen_range(1..4);
-        let idle_chunk_duration = total_idle_duration / idle_chunks;
-
-        // Do mostly nothing, but jump sometimes
-        self.movement.schedule(|movement| {
-            for _ in 0..idle_chunks {
-                movement.with_probability(0.1, |movement| {
-                    movement.jump();
-                });
-                std::thread::sleep(idle_chunk_duration);
-            }
-        });
-
-        // Transition to next state
-        State::SearchingForEnemy
+        self.get_slot_for(config, None, SlotType::BuffSkill, true);
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
@@ -273,7 +250,8 @@ impl<'a> FarmingBehavior<'_> {
             // Stay in state
             return self.state;
         }
-        // Updated Moe
+
+        // Move in a circle pattern
         send_keystroke(Key::W, KeyMode::Hold);
         send_keystroke(Key::Space, KeyMode::Hold);
         send_keystroke(Key::D, KeyMode::Hold);
@@ -306,12 +284,16 @@ impl<'a> FarmingBehavior<'_> {
                 true => 325,
                 false => 1000,
             };
+
+            // Get aggressive mobs to prioritize them
             let mut mob_list = mobs
                 .iter()
                 .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
                 .cloned()
                 .collect::<Vec<_>>();
             let mut mob_type = "aggressive";
+
+            // Check if there's aggressive mobs otherwise collect passive mobs
             if mob_list.is_empty() {
                 mob_list = mobs
                     .iter()
@@ -320,15 +302,17 @@ impl<'a> FarmingBehavior<'_> {
                     .collect::<Vec<_>>();
                 mob_type = "passive";
             }
+
+            // Check again
             if !mob_list.is_empty() {
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
-                    if self.last_killed_mobs_bounds.len() > 0 {
+                    if self.avoided_bounds.len() > 0 {
                         slog::debug!(self.logger, "Avoiding mob");
                         image.find_closest_mob(
                             mob_list.as_slice(),
-                            Some(&self.last_killed_mobs_bounds),
+                            Some(&self.avoided_bounds),
                             max_distance,
                             self.logger,
                         )
@@ -385,8 +369,8 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
-            std::thread::sleep(Duration::from_millis(10));
-            self.last_killed_mobs_bounds
+            //std::thread::sleep(Duration::from_millis(10));
+            self.avoided_bounds
                 .push((mob.bounds.grow_by(20), Instant::now(), 500));
             if self.missclick_count == 15 {
                 self.missclick_count = 0;
@@ -442,12 +426,7 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = true;
 
             // Try to use attack skill if at least one is selected in slot bar
-            if let Some(index) = config.get_usable_slot_index(
-                SlotType::AttackSkill,
-                &mut self.rng,
-                None,
-                self.slot_bars_slots_last_time,
-            ) {
+            if let Some(index) = self.get_slot_for(config, None, SlotType::AttackSkill, false) {
                 // Helps avoid obstacles only works using attack slot basically try to move after 5sec
                 if !config.is_stop_fighting()
                     && image.client_stats.enemy_hp.last_update_time.is_some()
@@ -484,8 +463,8 @@ impl<'a> FarmingBehavior<'_> {
                     ]);
                     self.obstacle_avoidance_count += 1;
                 }
-                send_slot(index.0, index.1.into());
-                self.slot_bars_slots_last_time[index.0][index.1] = Some(Instant::now());
+
+                self.send_slot(index);
             }
 
             //  Keep attacking until the target marker is gone
