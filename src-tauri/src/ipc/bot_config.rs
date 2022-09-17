@@ -36,15 +36,10 @@ impl SlotBar {
     }
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
-        let found_index = self
+        self
             .slots()
             .iter()
-            .position(|slot| slot.slot_type == slot_type);
-        if found_index.is_some() {
-            return Some(found_index.unwrap());
-        }
-
-        None
+            .position(|slot| slot.slot_type == slot_type)
     }
 
     /// Get a random usable matching slot index
@@ -59,11 +54,7 @@ impl SlotBar {
     where
         R: Rng,
     {
-        let mut slots = self
-        .slots();
-        slots.sort_by(|a, b| a.slot_threshold.partial_cmp(&b.slot_threshold).unwrap());
-
-        let found_index = slots
+        self.slots()
             .iter()
             .enumerate()
 
@@ -73,13 +64,7 @@ impl SlotBar {
                     && last_slots_usage[slot_bar_index][*index].is_none()
             }).min_by(|x, y| x.1.slot_threshold.cmp(&y.1.slot_threshold))
             //.choose(rng)
-            .map(|(index, _)| index);
-
-        if found_index.is_some() {
-            return Some((slot_bar_index, found_index.unwrap()));
-        }
-
-        None
+            .map(|(index, _)| (slot_bar_index, index))
     }
 }
 

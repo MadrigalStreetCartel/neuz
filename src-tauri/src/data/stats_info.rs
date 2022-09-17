@@ -58,7 +58,7 @@ impl ClientStats {
             self.enemy_hp.update_value(image),
         ];
         if should_debug.contains(&true) {
-            self.debug_print(logger);
+            //self.debug_print(logger);
         }
     }
 
