@@ -46,8 +46,12 @@ export type SlotModel = {
     slot_cooldown?: number,
     slot_threshold?: number,
 }
+export type SlotBarHolder = {
+    slots: SlotBarModel
+}
 
-export type SlotBarModel = FixedArray<SlotModel, 10>
+type SlotBarModel = FixedArray<SlotModel, 10>
+export type SlotBars = FixedArray<SlotBarHolder, 9>
 
 export type ModeModel = "Farming" | "Support" | "AutoShout"
 
@@ -55,7 +59,7 @@ export type FarmingConfigModel = Partial<{
     on_demand_pet: boolean,
     use_attack_skills: boolean,
     stay_in_area: boolean,
-    slots: SlotBarModel,
+    slot_bars: SlotBars,
     passive_mobs_colors: number[];
     passive_tolerence: number;
     aggressive_mobs_colors: number[];

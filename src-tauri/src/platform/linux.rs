@@ -29,6 +29,15 @@ impl From<Key> for char {
             T => todo!(),
             Left => todo!(),
             Right => todo!(),
+            _F1 => todo!(),
+            _F2 => todo!(),
+            _F3 => todo!(),
+            _F4 => todo!(),
+            _F5 => todo!(),
+            _F6 => todo!(),
+            _F7 => todo!(),
+            _F8 => todo!(),
+            _F9 => todo!(),
         }
     }
 }

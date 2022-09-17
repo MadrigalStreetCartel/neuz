@@ -13,11 +13,13 @@ type Props = {
     hide: () => void,
     index: number,
     slot?: SlotModel,
-    onChange: (index:number, slot:SlotModel) => void,
+    onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
+    barIndex: number,
+    indexName: string
 
 }
 
-const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) => {
+const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName }: Props) => {
     const options = [
         { value: 'Unused', label: 'None' },
         { value: 'Food', label: 'Food' },
@@ -35,19 +37,19 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
         //const symbolOrIcon = translateType(slot.slot_type)
         return(
 
-            <Modal isShowing={isShowing} hide={hide} title={<h4>Slot {index} - {slot.slot_type}</h4>} body={
+            <Modal isShowing={isShowing} hide={hide} title={<h4>Slot F{barIndex + 1}-{indexName} - {slot.slot_type}</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Type" helpText="Select action binded to current slot." />}
-                        item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
+                        item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(barIndex, index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
                     />
 
                     {cooldownSlotTypes.includes(slot.slot_type) &&
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
-                            item={<NumericInput unit="ms" value={slot.slot_cooldown ?? false} onChange={value => {slot.slot_cooldown = value;onChange(index, slot)}} />}
+                            item={<NumericInput unit="ms" value={slot.slot_cooldown ?? false} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 
@@ -55,7 +57,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange }: Props) 
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Threshold" helpText="Limit trigger value." />}
-                            item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(index, slot)}} />}
+                            item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
                 </ConfigTable>

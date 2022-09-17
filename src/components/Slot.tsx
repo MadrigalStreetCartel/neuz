@@ -6,6 +6,7 @@ type Props = {
     className?: string,
     type: SlotType,
     index: number,
+    indexName: string,
     onChange?: (type: SlotType) => void,
     toggleSlotModal: () => void,
 }
@@ -13,7 +14,7 @@ type Props = {
 const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
 
 
-const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: Props) => {
+const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName }: Props) => {
     const handleChange = () => {
         const nextType: SlotType = types[(types.indexOf(type) + 1) % types.length];
         onChange?.(nextType)
@@ -24,7 +25,7 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal }: 
     return (
 
         <div className={className} onClick={toggleSlotModal} >
-            <div className="index">{index}</div>
+            <div className="index">{indexName}</div>
             <div className='slot' onClick={handleChange}>
                 {useIcon && (
                     <img className="type" src={symbolOrIcon} alt="Slot icon" />
@@ -52,7 +53,7 @@ export default styled(Slot)`
     cursor: pointer;
 
     &:first-child {
-        order: 1;
+        order: 1 !important;
     }
 
     &:hover {

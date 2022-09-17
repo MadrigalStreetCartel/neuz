@@ -18,6 +18,20 @@ pub enum SlotType {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct SlotBar {
+    //slot_bar_index: u8,
+    slots: Option<[Slot; 10]>,
+}
+impl Default for SlotBar {
+    fn default() -> Self {
+        Self {
+            //slot_bar_index: 0,
+            slots: Some([Slot::default(); 10]),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slot {
     slot_type: SlotType,
     slot_cooldown: Option<u32>,
@@ -57,7 +71,9 @@ pub struct FarmingConfig {
     /// Whether the bot will try to stay in the area it started in
     stay_in_area: Option<bool>,
     /// Slot configuration
-    slots: Option<[Slot; 10]>,
+    //slots: Option<[Slot; 10]>,
+    slot_bars: Option<[SlotBar; 9]>,
+
     /// Disable farming
     farming_enabled: Option<bool>,
 
@@ -76,15 +92,26 @@ impl FarmingConfig {
         self.stay_in_area.unwrap_or(false)
     }
 
-    pub fn slots(&self) -> Vec<Slot> {
-        self.slots
+    pub fn slot_bars(&self) -> Vec<SlotBar> {
+        self.slot_bars
             .map(|slots| slots.into_iter().collect::<Vec<_>>())
-            .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>())
+            .unwrap_or_else(|| [SlotBar::default(); 9].into_iter().collect::<Vec<_>>())
     }
 
-    pub fn get_slot_cooldown(&self, slot_index: usize) -> Option<u32> {
-        if self.slots.is_some() {
-            return self.slots.unwrap()[slot_index].slot_cooldown;
+    pub fn slots(&self, slot_bar_index: usize) -> Vec<Slot> {
+        return self.slot_bars()[slot_bar_index]
+            .slots
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<_>>();
+        /* .map(|slots| slots.into_iter().collect::<Vec<_>>())
+        .unwrap_or_else(|| [Slot::default(); 10].into_iter().collect::<Vec<_>>()) */
+    }
+
+    pub fn get_slot_cooldown(&self, slot_bar_index: usize, slot_index: usize) -> Option<u32> {
+        let cooldown = self.slots(slot_bar_index)[slot_index].slot_cooldown;
+        if cooldown.is_some() {
+            return cooldown;
         }
         return Some(0);
     }
@@ -106,11 +133,17 @@ impl FarmingConfig {
     }
 
     /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
-        self.slots
-            .unwrap_or_default()
-            .iter()
-            .position(|slot| slot.slot_type == slot_type)
+    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
+        for n in 0..9 {
+            let found_index = self
+                .slots(n)
+                .iter()
+                .position(|slot| slot.slot_type == slot_type);
+            if found_index.is_some() {
+                return Some((n, found_index.unwrap()));
+            }
+        }
+        None
     }
 
     /// Get a random usable matching slot index
@@ -119,22 +152,29 @@ impl FarmingConfig {
         slot_type: SlotType,
         rng: &mut R,
         threshold: Option<u32>,
-        last_slots_usage: [Option<Instant>; 10],
-    ) -> Option<usize>
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+    ) -> Option<(usize, usize)>
     where
         R: Rng,
     {
-        self.slots
-            .unwrap_or_default()
-            .iter()
-            .enumerate()
-            .filter(|(index, slot)| {
-                slot.slot_type == slot_type
-                    && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
-                    && last_slots_usage[*index].is_none()
-            })
-            .choose(rng)
-            .map(|(index, _)| index)
+        for n in 0..9 {
+            let found_index = self
+                .slots(n)
+                .iter()
+                .enumerate()
+                .filter(|(index, slot)| {
+                    slot.slot_type == slot_type
+                        && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
+                        && last_slots_usage[n][*index].is_none()
+                })
+                .choose(rng)
+                .map(|(index, _)| index);
+
+            if found_index.is_some() {
+                return Some((n, found_index.unwrap()));
+            }
+        }
+        None
     }
 
     /// Get a random matching slot index

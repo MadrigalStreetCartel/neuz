@@ -7,7 +7,7 @@ import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
 
 import SlotBar from '../SlotBar'
-import { FarmingConfigModel, SlotBarModel, SlotModel } from '../../models/BotConfig'
+import { FarmingConfigModel, SlotBarHolder, SlotBars, SlotModel } from '../../models/BotConfig'
 import NumericInput from '../config/NumericInput'
 import ColorSelector from '../config/ColorSelector'
 import Modal from '../Modal'
@@ -20,14 +20,14 @@ type Props = {
     onChange: (config: FarmingConfigModel) => void,
 }
 
-const createSlotBar = () => (
-    [...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_cooldown: 1000, slot_threshold: 100 } as SlotModel)) as SlotBarModel
+const createSlotBars = () => (
+    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_cooldown: 1000, slot_threshold: 100 } as SlotModel))})) as SlotBars
 )
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
-    const handleSlotChange = (index:number, slot:SlotModel) => {
-        const newConfig = { ...config, slots: config.slots ?? createSlotBar() }
-        newConfig.slots[index] = slot
+    const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
+        const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
+        newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
         onChange(newConfig)
     }
     const { isShowing, toggle } = useModal();
@@ -51,7 +51,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 
     return (
         <>
-            <SlotBar slots={config.slots ?? createSlotBar()} onChange={handleSlotChange} />
+            <SlotBar slots={config.slot_bars ?? createSlotBars()} onChange={handleSlotChange} />
             <Modal isShowing={isShowing} hide={toggle} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <ConfigTable>
                         <ConfigTableRow

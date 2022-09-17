@@ -34,7 +34,7 @@ pub struct FarmingBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
     state: State,
-    last_slots_usage: [Option<Instant>; 10],
+    slot_bars_slots_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
     last_killed_mobs_bounds: Vec<(Bounds, Instant, u128)>,
@@ -58,7 +58,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            last_slots_usage: [None; 10],
+            slot_bars_slots_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             last_killed_mobs_bounds: vec![],
@@ -80,26 +80,38 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
-                if last_time.elapsed().as_millis() > config.get_slot_cooldown(pickup_pet_slot_index).unwrap_or(3000) as u128 {
-                    send_slot(pickup_pet_slot_index.into());
+                if last_time.elapsed().as_millis()
+                    > config
+                        .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
+                        .unwrap_or(3000) as u128
+                {
+                    send_slot(pickup_pet_slot_index.0, pickup_pet_slot_index.1.into());
                     self.last_summon_pet_time = None;
                 }
             }
         }
 
         // Update slot timers
-        let mut count = 0;
-        for last_time in self.last_slots_usage {
-            let cooldown = config.get_slot_cooldown(count).unwrap().try_into();
-            if last_time.is_some() && cooldown.is_ok() {
-                let slot_last_time = last_time.unwrap().elapsed().as_millis();
-                if slot_last_time > cooldown.unwrap() {
-                    self.last_slots_usage[count] = None;
+        let mut slotbar_index = 0;
+        for slot_bars in self.slot_bars_slots_last_time {
+            let mut slot_index = 0;
+            for last_time in slot_bars {
+                let cooldown = config
+                    .get_slot_cooldown(slotbar_index, slot_index)
+                    .unwrap()
+                    .try_into();
+                if last_time.is_some() && cooldown.is_ok() {
+                    let slot_last_time = last_time.unwrap().elapsed().as_millis();
+                    if slot_last_time > cooldown.unwrap() {
+                        self.slot_bars_slots_last_time[slotbar_index][slot_index] = None;
+                    }
                 }
+                slot_index += 1;
             }
-            count += 1;
+            slotbar_index += 1;
+            drop(slot_index);
         }
-        drop(count);
+        drop(slotbar_index);
 
         // Update avoid bounds
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
@@ -144,7 +156,7 @@ impl<'a> FarmingBehavior<'_> {
             (Some(index), _) => {
                 if self.last_summon_pet_time.is_none() {
                     //self.slots[index].cooldown = 0;
-                    send_slot(index.into());
+                    send_slot(index.0, index.1.into());
                     self.last_summon_pet_time = Some(Instant::now());
                 }
             }
@@ -153,9 +165,7 @@ impl<'a> FarmingBehavior<'_> {
                 play!(self.movement => [
                     Repeat(7, vec![
                         // Press the motion key
-                        PressKey(index.into()),
-                        // Wait a bit
-                        Wait(dur::Random(100..180)),
+                        SendSlot(index.0,index.1.into()),
                     ]),
                 ]);
             }
@@ -171,14 +181,17 @@ impl<'a> FarmingBehavior<'_> {
         threshold: Option<u32>,
         slot_type: SlotType,
     ) -> bool {
-        if let Some(slot_index) =
-            config.get_usable_slot_index(slot_type, &mut self.rng, threshold, self.last_slots_usage)
-        {
+        if let Some(slot_index) = config.get_usable_slot_index(
+            slot_type,
+            &mut self.rng,
+            threshold,
+            self.slot_bars_slots_last_time,
+        ) {
             // Send keystroke for first slot mapped to pill
-            send_slot(slot_index.into());
+            send_slot(slot_index.0, slot_index.1.into());
 
             // Update state
-            self.last_slots_usage[slot_index] = Some(Instant::now());
+            self.slot_bars_slots_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
 
             return true;
         }
@@ -206,7 +219,9 @@ impl<'a> FarmingBehavior<'_> {
                 let stat = Some(image.client_stats.fp.value);
                 self.subcheck(config, stat, SlotType::FpRestorer);
             }
-            StatusBarKind::EnemyHp => {unimplemented!()}
+            StatusBarKind::EnemyHp => {
+                unimplemented!()
+            }
         }
     }
 
@@ -237,10 +252,10 @@ impl<'a> FarmingBehavior<'_> {
         use crate::movement::prelude::*;
 
         // Try rotating first in order to locate nearby enemies
-        if self.rotation_movement_tries < 10 {
+        if self.rotation_movement_tries < 20 {
             play!(self.movement => [
                 // Rotate in random direction for a random duration
-                Rotate(rot::Right, dur::Fixed(200)),
+                Rotate(rot::Right, dur::Fixed(100)),
                 // Wait a bit to wait for monsters to enter view
                 Wait(dur::Fixed(50)),
             ]);
@@ -436,7 +451,7 @@ impl<'a> FarmingBehavior<'_> {
                 SlotType::AttackSkill,
                 &mut self.rng,
                 None,
-                self.last_slots_usage,
+                self.slot_bars_slots_last_time,
             );
             if index.is_some()
                 && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false
@@ -478,8 +493,8 @@ impl<'a> FarmingBehavior<'_> {
                     ]);
                     self.obstacle_avoidance_count += 1;
                 }
-                send_slot(index.into());
-                self.last_slots_usage[index] = Some(Instant::now());
+                send_slot(index.0, index.1.into());
+                self.slot_bars_slots_last_time[index.0][index.1] = Some(Instant::now());
             }
 
             //  Keep attacking until the target marker is gone

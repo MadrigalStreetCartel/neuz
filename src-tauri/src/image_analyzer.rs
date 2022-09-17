@@ -218,7 +218,7 @@ impl ImageAnalyzer {
             .par_bridge()
             .for_each(move |(y, row)| {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM  {
+                if y <= IGNORE_AREA_TOP || y > image.height() - IGNORE_AREA_BOTTOM {
                     return;
                 }
                 for (x, _, px) in row {
