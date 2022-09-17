@@ -381,11 +381,11 @@ impl<'a> FarmingBehavior<'_> {
             slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
             self.missclick_count = 0;
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(100));
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(10));
             self.last_killed_mobs_bounds
                 .push((mob.bounds.grow_by(20), Instant::now(), 500));
             if self.missclick_count == 15 {
@@ -400,7 +400,7 @@ impl<'a> FarmingBehavior<'_> {
     fn abort_attack(&mut self) -> State {
         use crate::movement::prelude::*;
         play!(self.movement => [
-            HoldKeyFor(Key::Escape, dur::Fixed(200)),
+            PressKey(Key::Escape),
         ]);
         return State::SearchingForEnemy;
     }
@@ -411,16 +411,11 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-        // Target marker found
-        /* let marker = image.identify_target_marker();
-        if marker.is_some() {
-            let marker = marker.unwrap();
-            self.last_killed_mobs_bounds
-                .push((marker.bounds.grow_by(100), Instant::now(), 7000));
-        } */
-
         // Engagin combat
-        if !self.is_attacking && image.client_stats.enemy_hp.value > 0 {
+        if (!self.is_attacking && image.client_stats.enemy_hp.value > 0)
+            || (!config.is_stop_fighting()
+                && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value)
+        {
             self.obstacle_avoidance_count = 0;
 
             // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
@@ -439,7 +434,7 @@ impl<'a> FarmingBehavior<'_> {
         {
             use crate::movement::prelude::*;
             play!(self.movement => [
-                HoldKeyFor(Key::S, dur::Fixed(200)),
+                PressKey(Key::S),
             ]);
         }
 
@@ -447,16 +442,12 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = true;
 
             // Try to use attack skill if at least one is selected in slot bar
-            let index = config.get_usable_slot_index(
+            if let Some(index) = config.get_usable_slot_index(
                 SlotType::AttackSkill,
                 &mut self.rng,
                 None,
                 self.slot_bars_slots_last_time,
-            );
-            if index.is_some()
-                && PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value == false
-            {
-                let index = index.unwrap();
+            ) {
                 // Helps avoid obstacles only works using attack slot basically try to move after 5sec
                 if !config.is_stop_fighting()
                     && image.client_stats.enemy_hp.last_update_time.is_some()
@@ -479,7 +470,7 @@ impl<'a> FarmingBehavior<'_> {
                     self.last_initial_attack_time = Instant::now();
                     use crate::movement::prelude::*;
                     let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                    let rotation_duration = self.rng.gen_range(50_u64..150_u64);
+                    let rotation_duration = self.rng.gen_range(70_u64..100_u64);
                     let movement_slices = self.rng.gen_range(2..4);
 
                     // Move into a random direction while jumping

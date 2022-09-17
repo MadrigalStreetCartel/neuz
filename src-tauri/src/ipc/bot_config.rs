@@ -36,8 +36,7 @@ impl SlotBar {
     }
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<usize> {
-        self
-            .slots()
+        self.slots()
             .iter()
             .position(|slot| slot.slot_type == slot_type)
     }
@@ -49,7 +48,7 @@ impl SlotBar {
         rng: &mut R,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
-        slot_bar_index: usize
+        slot_bar_index: usize,
     ) -> Option<(usize, usize)>
     where
         R: Rng,
@@ -57,12 +56,12 @@ impl SlotBar {
         self.slots()
             .iter()
             .enumerate()
-
             .filter(|(index, slot)| {
                 slot.slot_type == slot_type
                     && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
                     && last_slots_usage[slot_bar_index][*index].is_none()
-            }).min_by(|x, y| x.1.slot_threshold.cmp(&y.1.slot_threshold))
+            })
+            .min_by(|x, y| x.1.slot_threshold.cmp(&y.1.slot_threshold))
             //.choose(rng)
             .map(|(index, _)| (slot_bar_index, index))
     }
@@ -171,8 +170,7 @@ impl FarmingConfig {
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
         for n in 0..9 {
-            let found_index = self
-                .slot_bars()[n].get_slot_index(slot_type);
+            let found_index = self.slot_bars()[n].get_slot_index(slot_type);
             if found_index.is_some() {
                 return Some((n, found_index.unwrap()));
             }
@@ -192,8 +190,13 @@ impl FarmingConfig {
         R: Rng,
     {
         for n in 0..9 {
-            let found_index = self
-            .slot_bars()[n].get_usable_slot_index(slot_type, rng, threshold, last_slots_usage, n);
+            let found_index = self.slot_bars()[n].get_usable_slot_index(
+                slot_type,
+                rng,
+                threshold,
+                last_slots_usage,
+                n,
+            );
             if found_index.is_some() {
                 return Some(found_index.unwrap());
             }
@@ -247,8 +250,7 @@ impl SupportConfig {
     /// Get the first matching slot index
     pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
         for n in 0..9 {
-            let found_index = self
-                .slot_bars()[n].get_slot_index(slot_type);
+            let found_index = self.slot_bars()[n].get_slot_index(slot_type);
             if found_index.is_some() {
                 return Some((n, found_index.unwrap()));
             }
@@ -268,8 +270,13 @@ impl SupportConfig {
         R: Rng,
     {
         for n in 0..9 {
-            let found_index = self
-            .slot_bars()[n].get_usable_slot_index(slot_type, rng, threshold, last_slots_usage, n);
+            let found_index = self.slot_bars()[n].get_usable_slot_index(
+                slot_type,
+                rng,
+                threshold,
+                last_slots_usage,
+                n,
+            );
             if found_index.is_some() {
                 return Some(found_index.unwrap());
             }
