@@ -93,7 +93,7 @@ impl Slot {
         if cooldown.is_some() {
             return cooldown;
         }
-        return Some(0);
+        return Some(1000);
     }
 }
 
