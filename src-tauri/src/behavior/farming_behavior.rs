@@ -382,7 +382,7 @@ impl<'a> FarmingBehavior<'_> {
             self.missclick_count = 0;
 
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(250));
+            std::thread::sleep(Duration::from_millis(100));
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
