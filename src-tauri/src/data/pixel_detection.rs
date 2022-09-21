@@ -59,7 +59,7 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 is_npc.min_x = 310;
                 is_npc.min_y = 30;
 
-                is_npc.max_x = 1100;
+                is_npc.max_x = 500;
                 is_npc.max_y = 60;
 
                 is_npc

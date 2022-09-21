@@ -137,7 +137,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement);
         let mut last_mode: Option<BotMode> = None;
 
-        let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.01)";
+        let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.05)";
 
         // Enter main loop
         loop {

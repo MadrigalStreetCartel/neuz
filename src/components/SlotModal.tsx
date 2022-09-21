@@ -6,6 +6,7 @@ import NumericInput from './config/NumericInput'
 import Select from 'react-select'
 import Modal from './Modal'
 import ConfigTable from './config/ConfigTable'
+import BooleanSlider from './config/BooleanSlider'
 
 type Props = {
     className?: string,
@@ -60,6 +61,12 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                             item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
+
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Enabled" />}
+                        item={<BooleanSlider value={slot.slot_enabled ?? true} onChange={value => {slot.slot_enabled = value;onChange(barIndex, index, slot)}} />}
+                    />
                 </ConfigTable>
             }/>
     )

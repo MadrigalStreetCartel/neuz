@@ -241,7 +241,7 @@ impl From<StatusBarKind> for StatusBarConfig {
                 enemy_hp_bar.min_x = 300;
                 enemy_hp_bar.min_y = 30;
 
-                enemy_hp_bar.max_x = 1100;
+                enemy_hp_bar.max_x = 700;
                 enemy_hp_bar.max_y = 60;
 
                 enemy_hp_bar

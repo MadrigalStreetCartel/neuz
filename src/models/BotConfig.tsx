@@ -45,6 +45,7 @@ export type SlotModel = {
     slot_type: SlotType,
     slot_cooldown?: number,
     slot_threshold?: number,
+    slot_enabled: boolean,
 }
 export type SlotBarHolder = {
     slots: SlotBarModel

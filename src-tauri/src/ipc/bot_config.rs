@@ -58,6 +58,7 @@ impl SlotBar {
             .enumerate()
             .filter(|(index, slot)| {
                 slot.slot_type == slot_type
+                    && slot.slot_enabled
                     && slot.slot_threshold.unwrap_or(100) >= threshold.unwrap_or(0)
                     && last_slots_usage[slot_bar_index][*index].is_none()
             })
@@ -72,6 +73,7 @@ pub struct Slot {
     slot_type: SlotType,
     slot_cooldown: Option<u32>,
     slot_threshold: Option<u32>,
+    slot_enabled: bool
 }
 
 impl Default for Slot {
@@ -80,6 +82,7 @@ impl Default for Slot {
             slot_type: SlotType::Unused,
             slot_cooldown: None,
             slot_threshold: None,
+            slot_enabled: true,
         }
     }
 }

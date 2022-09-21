@@ -21,7 +21,7 @@ type Props = {
 }
 
 const createSlotBars = () => (
-    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_cooldown: 1000, slot_threshold: 100 } as SlotModel))})) as SlotBars
+    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', /* slot_cooldown: 1000, slot_threshold: 100 ,*/ slot_enabled: true } as SlotModel))})) as SlotBars
 )
 
 const FarmingConfig = ({ className, config, onChange }: Props) => {
