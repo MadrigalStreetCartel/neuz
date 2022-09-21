@@ -43,6 +43,7 @@ pub struct FarmingBehavior<'a> {
     obstacle_avoidance_count: u32,
     missclick_count: u32,
     last_summon_pet_time: Option<Instant>,
+    last_killed_type: MobType,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -67,6 +68,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             obstacle_avoidance_count: 0,
             missclick_count: 0,
             last_summon_pet_time: None,
+            last_killed_type: MobType::Passive,
         }
     }
 
@@ -293,8 +295,9 @@ impl<'a> FarmingBehavior<'_> {
                 .collect::<Vec<_>>();
             let mut mob_type = "aggressive";
 
+
             // Check if there's aggressive mobs otherwise collect passive mobs
-            if mob_list.is_empty() {
+            if mob_list.is_empty() || (self.last_killed_type == MobType::Aggressive && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000) {
                 mob_list = mobs
                     .iter()
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
@@ -304,9 +307,20 @@ impl<'a> FarmingBehavior<'_> {
             }
 
             // Check again
-            if !mob_list.is_empty() {
+            if !mob_list.is_empty()  {
+                let killed_type = {
+                    if mob_type == "aggressive" {
+                        MobType::Aggressive
+                    } else {
+                        MobType::Passive
+                    }
+                };
                 slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
+                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
+                        // Transition to next state
+                        return State::NoEnemyFound
+                    }
                     // Try avoiding detection of last killed mob
                     if self.avoided_bounds.len() > 0 {
                         slog::debug!(self.logger, "Avoiding mob");
@@ -320,6 +334,8 @@ impl<'a> FarmingBehavior<'_> {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                     }
                 } {
+                    self.last_killed_type = killed_type;
+
                     // Transition to next state
                     State::EnemyFound(*mob)
                 } else {
@@ -364,15 +380,16 @@ impl<'a> FarmingBehavior<'_> {
             );
             slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
             self.missclick_count = 0;
+
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(250));
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
             //std::thread::sleep(Duration::from_millis(10));
             self.avoided_bounds
                 .push((mob.bounds.grow_by(20), Instant::now(), 500));
-            if self.missclick_count == 15 {
+            if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
             } else {
@@ -398,7 +415,13 @@ impl<'a> FarmingBehavior<'_> {
         // Engagin combat
         let is_npc = PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value;
         if !self.is_attacking && !config.is_stop_fighting() {
-            println!("HP : {}", image.client_stats.enemy_hp.value);
+            if image.client_stats.enemy_hp.value == 0 {
+                use crate::movement::prelude::*;
+                play!(self.movement => [
+                    HoldKeyFor(Key::S, dur::Fixed(50)),
+                ]);
+                return State::SearchingForEnemy;
+            }
             if image.client_stats.enemy_hp.value > 0 {
                 // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
                 if (config.get_prevent_already_attacked()
@@ -407,20 +430,15 @@ impl<'a> FarmingBehavior<'_> {
                 {
                     return self.abort_attack();
                 }
-            } else {
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    PressKey(Key::S),
-                    PressKey(Key::S),
-                ]);
-                return self.abort_attack();
             }
-        }
 
-        if image.client_stats.enemy_hp.value > 0 && !is_npc {
-            self.obstacle_avoidance_count = 0;
-            self.last_initial_attack_time = Instant::now();
-            self.is_attacking = true;
+        }
+        if !is_npc && image.client_stats.enemy_hp.value > 0 {
+            if !self.is_attacking {
+                self.obstacle_avoidance_count = 0;
+                self.last_initial_attack_time = Instant::now();
+                self.is_attacking = true;
+            }
             // Try to use attack skill if at least one is selected in slot bar
             if let Some(index) = self.get_slot_for(config, None, SlotType::AttackSkill, false) {
                 // Helps avoid obstacles only works using attack slot basically try to move after 5sec
@@ -454,7 +472,8 @@ impl<'a> FarmingBehavior<'_> {
                         Repeat(movement_slices as u64, vec![
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ]),
-                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration + 100)),
+                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                        Wait(dur::Fixed(50)),
                         ReleaseKeys(vec![Key::Space, Key::W]),
                     ]);
                     self.obstacle_avoidance_count += 1;
@@ -465,8 +484,10 @@ impl<'a> FarmingBehavior<'_> {
         } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking {
             self.is_attacking = false;
             return State::AfterEnemyKill(mob);
+        }else {
+            self.is_attacking = false;
+            return State::SearchingForEnemy;
         }
-
         self.state
     }
 
