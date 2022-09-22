@@ -44,6 +44,7 @@ pub struct FarmingBehavior<'a> {
     missclick_count: u32,
     last_summon_pet_time: Option<Instant>,
     last_killed_type: MobType,
+    start_time: Instant,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -69,6 +70,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             missclick_count: 0,
             last_summon_pet_time: None,
             last_killed_type: MobType::Passive,
+            start_time: Instant::now(),
+
         }
     }
 
@@ -236,7 +239,7 @@ impl<'a> FarmingBehavior<'_> {
                 // Rotate in random direction for a random duration
                 Rotate(rot::Right, dur::Fixed(100)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Fixed(50)),
+                Wait(dur::Fixed(100)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -315,15 +318,14 @@ impl<'a> FarmingBehavior<'_> {
                         MobType::Passive
                     }
                 };
-                slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
+                //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
-                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
+                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5500 {
                         // Transition to next state
                         return State::NoEnemyFound
                     }
                     // Try avoiding detection of last killed mob
                     if self.avoided_bounds.len() > 0 {
-                        slog::debug!(self.logger, "Avoiding mob");
                         image.find_closest_mob(
                             mob_list.as_slice(),
                             Some(&self.avoided_bounds),
@@ -378,7 +380,6 @@ impl<'a> FarmingBehavior<'_> {
                     .mouse
                     .click(&mouse_rs::types::keys::Keys::LEFT),
             );
-            slog::debug!(self.logger, "Trying to attack mob"; "mob_coords" => &point);
             self.missclick_count = 0;
 
             // Wait a few ms before transitioning state
@@ -386,7 +387,6 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
-            //std::thread::sleep(Duration::from_millis(10));
             self.avoided_bounds
                 .push((mob.bounds.grow_by(20), Instant::now(), 500));
             if self.missclick_count == 30 {
@@ -453,7 +453,7 @@ impl<'a> FarmingBehavior<'_> {
                         .as_millis()
                         > 4000
                 {
-                    // Reset timer otherwise it'll trigger one time
+                    // Reset timer otherwise it'll trigger every tick
                     image.client_stats.enemy_hp.reset_last_time();
 
                     // Abort attack after 5 avoidance
@@ -473,7 +473,7 @@ impl<'a> FarmingBehavior<'_> {
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ]),
                         HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                        Wait(dur::Fixed(50)),
+                        Wait(dur::Fixed(30)),
                         ReleaseKeys(vec![Key::Space, Key::W]),
                     ]);
                     self.obstacle_avoidance_count += 1;
@@ -490,9 +490,40 @@ impl<'a> FarmingBehavior<'_> {
         }
         self.state
     }
-
+    fn format_float(&self ,float: f32, precision: usize) -> f32 {
+        let result = format!("{:.prec$}", float, prec = precision).parse::<f32>();
+        if result.is_ok() {
+                result.unwrap()
+        } else {
+            0.0
+        }
+    }
     fn after_enemy_kill(&mut self, config: &FarmingConfig) -> State {
         self.kill_count += 1;
+
+        // Let's introduce some stats
+        let started_elapsed = self.start_time.elapsed();
+        let started_seconds = started_elapsed.as_secs() % 60;
+        let started_minutes = (started_elapsed.as_secs() / 60) % 60;
+        let started_hours = (started_elapsed.as_secs() / 60) / 60;
+        let started_formatted = format!("{}:{}:{}", started_hours, started_minutes, started_seconds);
+
+        let elapsed_time_to_kill = self.last_initial_attack_time.elapsed();
+        let elapsed_search_time = self.last_kill_time.elapsed() - elapsed_time_to_kill;
+
+        let search_time_as_secs = elapsed_search_time.as_secs_f32();
+        let time_to_kill_as_secs = elapsed_time_to_kill.as_secs_f32();
+
+        let kill_per_minute = self.format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
+        let kill_per_hour = self.format_float(kill_per_minute * 60.0, 0);
+
+        let elapsed_search_time = format!("{}secs",  self.format_float(search_time_as_secs, 2));
+        let elapsed_time_to_kill = format!("{}secs", self.format_float(time_to_kill_as_secs, 2));
+
+        slog::debug!(self.logger, "Monster was killed"; "kill_count" => self.kill_count, "elapsed since start" => started_formatted);
+        slog::debug!(self.logger, "Elapsed times"; "elapsed to kill" => elapsed_time_to_kill, "elapsed to find" => elapsed_search_time);
+        slog::debug!(self.logger, "Stats"; "approximative kill/min" => kill_per_minute ,"approximative kill per/hr" => kill_per_hour);
+
         self.last_kill_time = Instant::now();
 
         // Pickup items

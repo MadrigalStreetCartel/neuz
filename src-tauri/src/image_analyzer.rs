@@ -329,7 +329,7 @@ impl ImageAnalyzer {
                 let mut result = true;
                 for avoided_item in avoided_bounds {
                     if avoided_item.0.contains_point(&coords) {
-                        slog::debug!(logger, "Avoiding mob"; "bounds" => avoided_item.0);
+                        //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
                         result = false;
                         break;
                     }
