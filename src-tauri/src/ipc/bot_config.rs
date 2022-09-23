@@ -1,4 +1,5 @@
-use std::{fs::File, time::Instant};
+
+use std::{fs::File, time::Instant, fmt};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,21 @@ pub enum SlotType {
     AttackSkill,
     BuffSkill,
     Flying,
+}
+impl fmt::Display for SlotType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SlotType::Food => write!(f, "food"),
+            SlotType::Pill => write!(f, "pill"),
+            SlotType::MpRestorer => write!(f, "mp restorer"),
+            SlotType::FpRestorer => write!(f, "fp restorer"),
+            SlotType::PickupPet => write!(f, "food"),
+            SlotType::AttackSkill => write!(f, "food"),
+            SlotType::BuffSkill => write!(f, "food"),
+            SlotType::Flying => write!(f, "food"),
+            _ => write!(f, "??none??"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

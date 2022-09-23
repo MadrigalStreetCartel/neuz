@@ -82,6 +82,44 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
 
+        // Update all needed timestamps
+        self.update_pickup_pet(config);
+
+        self.update_slots(config);
+
+        self.update_avoid_bounds(config);
+
+        // Check whether something should be restored
+        self.check_restorations(config, image);
+
+        // Use buffs Yiha
+        self.check_buffs(config);
+
+        // Check state machine
+        self.state = match self.state {
+            State::NoEnemyFound => self.on_no_enemy_found(config),
+            State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
+            State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
+            State::Attacking(mob) => self.on_attacking(config, mob, image),
+            State::AfterEnemyKill(_) => self.after_enemy_kill(config),
+        }
+    }
+}
+
+impl<'a> FarmingBehavior<'_> {
+    fn update_avoid_bounds(&mut self, config: &FarmingConfig) {
+        // Update avoid bounds cooldowns timers
+        let mut result: Vec<(Bounds, Instant, u128)> = vec![];
+        for n in 0..self.avoided_bounds.len() {
+            let current = self.avoided_bounds[n];
+            if current.1.elapsed().as_millis() < current.2 {
+                result.push(current);
+            }
+        }
+        self.avoided_bounds = result;
+    }
+
+    fn update_pickup_pet(&mut self, config: &FarmingConfig) {
         // Check whether pickup pet should be unsummoned
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
@@ -95,7 +133,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
                 }
             }
         }
-
+    }
+    fn update_slots(&mut self, config: &FarmingConfig) {
         // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
@@ -117,64 +156,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             drop(slot_index);
         }
         drop(slotbar_index);
-
-        // Update avoid bounds cooldowns timers
-        let mut result: Vec<(Bounds, Instant, u128)> = vec![];
-        for n in 0..self.avoided_bounds.len() {
-            let current = self.avoided_bounds[n];
-            if current.1.elapsed().as_millis() < current.2 {
-                result.push(current);
-            }
-        }
-        self.avoided_bounds = result;
-
-        // Check whether something should be restored
-        self.check_restorations(config, image);
-
-        // Use buffs Yiha
-        self.check_buffs(config);
-
-        // Check state machine
-        self.state = match self.state {
-            State::NoEnemyFound => self.on_no_enemy_found(config),
-            State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
-            State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
-            State::Attacking(mob) => self.on_attacking(config, mob, image),
-            State::AfterEnemyKill(_) => self.after_enemy_kill(config),
-        }
-    }
-}
-
-impl<'a> FarmingBehavior<'_> {
-    /// Pickup items on the ground.
-    fn pickup_items(&mut self, config: &FarmingConfig) {
-        use crate::movement::prelude::*;
-
-        let pickup_pet_slot = config.get_slot_index(SlotType::PickupPet);
-        let pickup_motion_slot = config.get_slot_index(SlotType::PickupMotion);
-
-        match (pickup_pet_slot, pickup_motion_slot) {
-            // Pickup using pet
-            (Some(index), _) => {
-                if self.last_summon_pet_time.is_none() {
-                    //self.slots[index].cooldown = 0;
-                    send_slot(index.0, index.1.into());
-                    self.last_summon_pet_time = Some(Instant::now());
-                }
-            }
-            // Pickup using motion
-            (_, Some(index)) => {
-                play!(self.movement => [
-                    Repeat(7, vec![
-                        // Press the motion key
-                        SendSlot(index.0,index.1.into()),
-                    ]),
-                ]);
-            }
-            _ => {
-                // Do nothing, we have no way to pickup items
-            }
-        }
     }
 
     fn get_slot_for(
@@ -191,6 +172,7 @@ impl<'a> FarmingBehavior<'_> {
             self.slots_usage_last_time,
         ) {
             if send {
+                //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);
             }
 
@@ -205,6 +187,52 @@ impl<'a> FarmingBehavior<'_> {
 
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
+    }
+
+    /// Pickup items on the ground.
+    fn pickup_items(&mut self, config: &FarmingConfig) {
+        use crate::movement::prelude::*;
+
+        let mut is_pet = true;
+        let pickup_slot = {
+            let slot = self.get_slot_for(config, None, SlotType::PickupPet, false);
+            if slot.is_some() {
+                slot
+            } else {
+                is_pet = false;
+                let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
+                if slot.is_some() {
+                slot
+                }else{
+                None
+                }
+            }
+        };
+
+        match (pickup_slot, is_pet) {
+            // Pickup using pet
+            (Some(index), true) => {
+                if self.last_summon_pet_time.is_none() {
+                    send_slot(index.0, index.1.into());
+                    self.last_summon_pet_time = Some(Instant::now());
+                } else {
+                    // if pet is already out, just reset it's timer
+                    self.last_summon_pet_time = Some(Instant::now());
+                }
+            }
+            // Pickup using motion
+            (Some(index), false) => {
+                play!(self.movement => [
+                    Repeat(7, vec![
+                        // Press the motion key
+                        SendSlot(index.0,index.1.into()),
+                    ]),
+                ]);
+            }
+            _ => {
+                // Do nothing, we have no way to pickup items
+            }
+        }
     }
 
     fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
@@ -345,8 +373,6 @@ impl<'a> FarmingBehavior<'_> {
                     State::NoEnemyFound
                 }
             } else {
-                slog::warn!(self.logger, "Mob detection anomaly"; "description" => "mob list is not empty but contains neither aggro nor passive mobs");
-
                 // Transition to next state
                 State::NoEnemyFound
             }
@@ -388,7 +414,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             self.missclick_count += 1;
             self.avoided_bounds
-                .push((mob.bounds.grow_by(20), Instant::now(), 500));
+                .push((mob.bounds, Instant::now(), 500));
             if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -498,20 +524,24 @@ impl<'a> FarmingBehavior<'_> {
             0.0
         }
     }
-    fn after_enemy_kill(&mut self, config: &FarmingConfig) -> State {
-        self.kill_count += 1;
-
+    fn after_enemy_kill_debug(&mut self) {
         // Let's introduce some stats
         let started_elapsed = self.start_time.elapsed();
+
         let started_seconds = started_elapsed.as_secs() % 60;
         let started_minutes = (started_elapsed.as_secs() / 60) % 60;
         let started_hours = (started_elapsed.as_secs() / 60) / 60;
-        let started_formatted = format!("{}:{}:{}", started_hours, started_minutes, started_seconds);
+
+        let started_seconds_formatted = {if started_seconds < 10 {format!("0{}", started_seconds)} else {started_seconds.to_string()}};
+        let started_minutes_formatted = {if started_minutes < 10 {format!("0{}", started_minutes)} else {started_minutes.to_string()}};
+        let started_hours_formatted = {if started_hours < 10 {format!("0{}", started_hours)} else {started_hours.to_string()}};
+
+        let started_formatted = format!("{}:{}:{}",started_hours_formatted , started_minutes_formatted, started_seconds_formatted);
 
         let elapsed_time_to_kill = self.last_initial_attack_time.elapsed();
         let elapsed_search_time = self.last_kill_time.elapsed() - elapsed_time_to_kill;
 
-        let search_time_as_secs = elapsed_search_time.as_secs_f32();
+        let search_time_as_secs = {if self.kill_count > 0 {elapsed_search_time.as_secs_f32()} else {elapsed_search_time.as_secs_f32() - started_elapsed.as_secs_f32()}};
         let time_to_kill_as_secs = elapsed_time_to_kill.as_secs_f32();
 
         let kill_per_minute = self.format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
@@ -524,10 +554,17 @@ impl<'a> FarmingBehavior<'_> {
         slog::debug!(self.logger, "Elapsed times"; "elapsed to kill" => elapsed_time_to_kill, "elapsed to find" => elapsed_search_time);
         slog::debug!(self.logger, "Stats"; "approximative kill/min" => kill_per_minute ,"approximative kill per/hr" => kill_per_hour);
 
+    }
+    fn after_enemy_kill(&mut self, config: &FarmingConfig) -> State {
+        self.kill_count += 1;
+
+        self.after_enemy_kill_debug();
+
         self.last_kill_time = Instant::now();
 
         // Pickup items
         self.pickup_items(config);
+
         // Transition state
         State::SearchingForEnemy
     }
