@@ -414,7 +414,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             self.missclick_count += 1;
             self.avoided_bounds
-                .push((mob.bounds, Instant::now(), 500));
+                .push((mob.bounds, Instant::now(), 1500));
             if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -499,7 +499,7 @@ impl<'a> FarmingBehavior<'_> {
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
                         ]),
                         HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                        Wait(dur::Fixed(30)),
+                        Wait(dur::Fixed(50)),
                         ReleaseKeys(vec![Key::Space, Key::W]),
                     ]);
                     self.obstacle_avoidance_count += 1;

@@ -24,7 +24,7 @@ export default styled(BooleanSlider)`
     position: relative;
     border: 2px solid hsla(0,0%,0%,.75);
     cursor: pointer;
-
+    z-index: -1;
     & .symbol {
         left: -2px;
         position: absolute;

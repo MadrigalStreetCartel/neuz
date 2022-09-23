@@ -12,15 +12,15 @@ Date format: `DD/MM/YYYY`
 - Improves image detection & target selection :
   - Improves mob detection and attack by detecting cursor
   - Changes minimum name's length detection (Mias and others were not detected)
-  - Adds custom mobs detection values
   - Adds pnj detection and 'avoidance' (basically press escape)
 - Adds stop mobs detection feature
 - Add HP/FP/MP restoration based on threshold and cooldown
 - UI enhancements :
   - Updated slots selection
   - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
-- Changes rotation values so only the camera rotate
-- Removes unsupervised mode since the bot will now be more autonomous
+  - Adds the F1 to F9 slot bars (90 slots availible)
+- Changes rotation keys so only the camera rotate
+- Removes unsupervised mode
 - Farming behavior update :
   - Avoid obstacles (experimental) you'll need at least one attack slot to make it works (advice: add attack motion with a low cooldown like 500)
   - Avoid already attacked monster (disable if you play in party)
@@ -28,6 +28,8 @@ Date format: `DD/MM/YYYY`
   - New mob search movements, moves in circle within the current area
   - PickupPet waiting time is now non blocking and can be changed
 - Fixes an AutoShout behavior bug where spaces were automatically deleted
+- Debug options :
+  - Adds customisable mobs detection values
 - Lot of various fixes
 Big thanks to Moe who helped a lot to make this release perfect !
 

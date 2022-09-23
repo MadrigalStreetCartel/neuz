@@ -14,7 +14,7 @@ type Props = {
 }
 
 const SlotBar = ({ className, slots, onChange }: Props) => {
-    const { isShowing, toggle } = useModal();
+    const { isShown, toggle } = useModal();
     const [currentSlotId, setCurrentSlotId] = useState(-1)
     const [currentBarIndex, setCurrentBarIndex] = useState(0)
     const toogleSlot = (id: number) => {
@@ -24,7 +24,7 @@ const SlotBar = ({ className, slots, onChange }: Props) => {
 
     return (
         <>
-            <SlotModal isShowing={isShowing} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
+            <SlotModal isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
             <div className={className}>
 
                 <div className="slots">

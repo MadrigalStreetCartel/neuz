@@ -30,7 +30,11 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
         newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
         onChange(newConfig)
     }
-    const { isShowing, toggle } = useModal();
+    const debugModal = useModal();
+    const mobsDebugModal = useModal(debugModal);
+
+
+
     const [selectedMobType, setSelectedMobType] = useState(0)
     const defaultPassiveValues = {passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}
     const defaultAggressiveValues = {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}
@@ -52,16 +56,35 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     return (
         <>
             <SlotBar slots={config.slot_bars ?? createSlotBars()} onChange={handleSlotChange} />
-            <Modal isShowing={isShowing} hide={toggle} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
+            {/* DEBUG */}
+            <Modal isShowing={debugModal.isShown} hide={debugModal.toggle} title={<h4>DEBUG</h4>} body={
+                <ConfigTable>
+                        <ConfigTableRow
+                        label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
+                        item={<button onClick={() => {
+                            setSelectedMobType(0);
+                            mobsDebugModal.toggle();
+                        }}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
+                        item={<button onClick={() => {
+                            setSelectedMobType(1);
+                            mobsDebugModal.toggle();
+                        }}>⚙️</button>}
+                    />
+                </ConfigTable>
+            }/>
+            <Modal isShowing={mobsDebugModal.isShown} hide={mobsDebugModal.toggle} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <ConfigTable>
                         <ConfigTableRow
                             layout="v"
-                            label={<ConfigLabel name="Colors" helpText="Custom monster name color reference. Edit these values if you are sure what you are doing." />}
+                            label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
                             item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? defaultPassiveValues.passive_mobs_colors : config.aggressive_mobs_colors ?? defaultAggressiveValues.aggressive_mobs_colors} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
                         />
                         <ConfigTableRow
                             layout="v"
-                            label={<ConfigLabel name="Tolerence" helpText="Custom monster name color tolerence. Edit these values if you are sure what you are doing." />}
+                            label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
                             item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? defaultPassiveValues.passive_tolerence : config.aggressive_tolerence ?? defaultAggressiveValues.aggressive_tolerence} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                         />
                         <ConfigTableRow
@@ -71,6 +94,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
 
                 </ConfigTable>
             }/>
+
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -85,18 +109,12 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
                     />
+
+
                     <ConfigTableRow
-                        label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
+                        label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(0);
-                            toggle();
-                        }}>⚙️</button>}
-                    />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
-                        item={<button onClick={() => {
-                            setSelectedMobType(1);
-                            toggle();
+                            debugModal.toggle();
                         }}>⚙️</button>}
                     />
 

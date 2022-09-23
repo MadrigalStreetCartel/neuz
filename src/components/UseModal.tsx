@@ -1,22 +1,32 @@
 import { useState } from "react";
 
-const useModal = () => {
-  const [isShowing, setIsShowing] = useState(false);
+const useModal = (parent: { isShown: boolean; close: () => void; open: () => void; } | undefined = undefined) => {
+  const [isShown, setIsShown] = useState(false);
 
   function toggle() {
-    setIsShowing(!isShowing);
+    if(isShown) {
+        close()
+    } else {
+        open()
+    }
   }
 
   function open() {
-    setIsShowing(true);
+    if (parent?.isShown) {
+        parent.close()
+    }
+    setIsShown(true);
   }
 
   function close() {
-    setIsShowing(false);
+    if (parent?.isShown == false) {
+        parent.open()
+    }
+    setIsShown(false);
   }
 
   return {
-    isShowing,
+    isShown: isShown,
     toggle,
     open,
     close
