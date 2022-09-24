@@ -1,7 +1,7 @@
 use slog::Logger;
 
 use crate::{
-    image_analyzer::ImageAnalyzer, ipc::BotConfig, movement::MovementAccessor,
+    image_analyzer::ImageAnalyzer, ipc::{BotConfig, FrontendInfo}, movement::MovementAccessor,
     platform::PlatformAccessor,
 };
 
@@ -23,5 +23,5 @@ pub trait Behavior<'a> {
     fn stop(&mut self, config: &BotConfig);
 
     /// Runs every frame
-    fn run_iteration(&mut self, config: &BotConfig, analyzer: &mut ImageAnalyzer);
+    fn run_iteration(&mut self, frontend_info: &mut FrontendInfo, config: &BotConfig, analyzer: &mut ImageAnalyzer);
 }

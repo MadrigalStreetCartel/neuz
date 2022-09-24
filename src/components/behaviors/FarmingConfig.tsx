@@ -13,18 +13,21 @@ import ColorSelector from '../config/ColorSelector'
 import Modal from '../Modal'
 import useModal from '../UseModal'
 import { useState } from 'react'
+import { FrontendInfoModel } from '../../models/FrontendInfo'
 
 type Props = {
     className?: string,
+    info: FrontendInfoModel | null,
     config: FarmingConfigModel,
     onChange: (config: FarmingConfigModel) => void,
+    running: boolean,
 }
 
 const createSlotBars = () => (
-    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', /* slot_cooldown: 1000, slot_threshold: 100 ,*/ slot_enabled: true } as SlotModel))})) as SlotBars
+    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', /* slot_cooldown: 1000, slot_threshold: 100 ,*/ slot_enabled: false } as SlotModel))})) as SlotBars
 )
 
-const FarmingConfig = ({ className, config, onChange }: Props) => {
+const FarmingConfig = ({ className, info, config, onChange, running }: Props) => {
     const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
         const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
         newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
@@ -33,7 +36,7 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
     const debugModal = useModal();
     const mobsDebugModal = useModal(debugModal);
 
-
+    const [debugModeCount, setDebugModeCount] = useState(0)
 
     const [selectedMobType, setSelectedMobType] = useState(0)
     const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
@@ -67,6 +70,13 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<button onClick={() => {
                             setSelectedMobType(1);
                             mobsDebugModal.open();
+                        }}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Reset all slots" helpText="" />}
+                        item={<button onClick={() => {
+                            const newConfig = { ...config, slot_bars: createSlotBars() }
+                            onChange(newConfig)
                         }}>⚙️</button>}
                     />
                 </ConfigTable>
@@ -106,20 +116,33 @@ const FarmingConfig = ({ className, config, onChange }: Props) => {
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
                     />
 
+                    {debugModeCount >= 3 &&
+                        <ConfigTableRow
+                            label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
+                            item={<button onClick={() => {
+                                debugModal.open();
+                            }}>⚙️</button>}
+                        />
+                    }
 
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
-                        item={<button onClick={() => {
-                            debugModal.open();
-                        }}>⚙️</button>}
-                    />
 
                 </ConfigTable>
+
             </ConfigPanel>
+            {info && (
+                    <div className="info" onClick={() => setDebugModeCount(debugModeCount + 1) }>
+                        <div className="row">
+                            <div>Kills: {info.enemy_kill_count}</div>
+                            <div>State: {running? info.is_attacking? "fight" : config.is_stop_fighting? "manual" : "searching" : "ready"}</div>
+                        </div>
+                        <div className="row">
+                            <div>Stats(approx): K/min {info.kill_min_avg} | K/hour {info.kill_hour_avg}</div>
+                        </div>
+                    </div>
+                )}
         </>
     )
 }
 
 export default styled(FarmingConfig)`
-
 `

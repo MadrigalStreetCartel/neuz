@@ -14,6 +14,7 @@ mod utils;
 use std::{sync::Arc, time::Duration};
 
 use guard::guard;
+use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
 use tauri::Manager;
@@ -117,6 +118,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             drop(app_handle.emit_all("bot_config_s2c", &*config) as Result<(), _>)
         };
 
+        let send_info = |config: &FrontendInfo| {
+            drop(app_handle.emit_all("bot_info_s2c", &*config) as Result<(), _>)
+        };
+
         // Wait a second for frontend to become ready
         std::thread::sleep(Duration::from_secs(1));
 
@@ -138,11 +143,14 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         let mut last_mode: Option<BotMode> = None;
 
         let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.05)";
-
+        let mut frontend_info: Arc<RwLock<FrontendInfo>> =
+        Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
+        send_info(&*frontend_info.read());
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
             let config = &*config.read();
+            let mut frontend_info_mut = *frontend_info.read();
 
             // Check if cursor div is well shown
             drop(
@@ -225,13 +233,16 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
                 match mode {
                     BotMode::Farming => {
-                        farming_behavior.run_iteration(config, &mut image_analyzer);
+                        farming_behavior.run_iteration(&mut frontend_info_mut, config, &mut image_analyzer);
                     }
                     BotMode::AutoShout => {
-                        shout_behavior.run_iteration(config, &mut image_analyzer);
+                        shout_behavior.run_iteration(&mut frontend_info_mut, config, &mut image_analyzer);
                     }
                     _ => (),
                 }
+                frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                // Send infos to frontend
+                send_info(&*frontend_info.read());
             }
 
             // Update last mode

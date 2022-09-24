@@ -16,16 +16,9 @@ import { BotConfigModel, ModeModel } from './models/BotConfig'
 import FarmingConfig from "./components/behaviors/FarmingConfig"
 import ShoutConfig from "./components/behaviors/ShoutConfig"
 import Footer from "./components/Footer"
+import { FrontendInfoModel } from "./models/FrontendInfo"
 
 type Bounds = {x: number, y: number, w: number, h: number}
-
-type FrontendInfoModel = {
-    enemy_bounds?: Bounds[],
-    active_enemy_bounds?: Bounds,
-    enemy_kill_count: number,
-    is_attacking: boolean,
-    is_running: boolean,
-}
 
 type Props = {
     className?: string,
@@ -76,13 +69,6 @@ const MissionControl = ({ className }: Props) => {
     return (
         <div className={className}>
             <div className="vstack">
-                {info && (
-                    <div className="info">
-                        <div className="row">
-                            <div>Kills: {info.enemy_kill_count}</div>
-                        </div>
-                    </div>
-                )}
                 {config && (
                     <>
                         <TabControl activeMode={config.mode} onSelect={handleTabSelect}>
@@ -91,7 +77,7 @@ const MissionControl = ({ className }: Props) => {
                             <Tab mode="AutoShout" image={ImageShout} />
                         </TabControl>
                         <div className="config-container">
-                            {config?.mode === 'Farming' && (<FarmingConfig config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
+                            {config?.mode === 'Farming' && (<FarmingConfig running={config.is_running} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
                             {config?.mode === 'Support' && (<ConfigPanel>Not yet implemented. Heal yourself manually for now.</ConfigPanel>)}
                             {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
                         </div>
@@ -149,7 +135,7 @@ export default styled(MissionControl)`
         border-radius: 0.25rem;
         box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1);
         border: 1px solid hsl(0,0%,10%);
-        z-index: 9999;
+        z-index: 0;
 
         &--slotbar {
             width: auto;

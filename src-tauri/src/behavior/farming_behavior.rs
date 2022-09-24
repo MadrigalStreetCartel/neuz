@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::{time::{Duration, Instant}, f32::consts::E};
 
 use libscreenshot::shared::Area;
 use rand::{prelude::SliceRandom, Rng};
@@ -10,7 +10,7 @@ use crate::{
         Bounds, MobType, PixelDetection, PixelDetectionKind, StatusBarKind, Target, TargetType,
     },
     image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, FarmingConfig, SlotType},
+    ipc::{BotConfig, FarmingConfig, SlotType, FrontendInfo},
     movement::MovementAccessor,
     platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
@@ -79,7 +79,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, config: &BotConfig, image: &mut ImageAnalyzer) {
+    fn run_iteration(&mut self, frontend_info: &mut FrontendInfo,config: &BotConfig, image: &mut ImageAnalyzer) {
         let config = config.farming_config();
 
         // Update all needed timestamps
@@ -101,8 +101,12 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
             State::Attacking(mob) => self.on_attacking(config, mob, image),
-            State::AfterEnemyKill(_) => self.after_enemy_kill(config),
-        }
+            State::AfterEnemyKill(_) => self.after_enemy_kill(frontend_info, config),
+        };
+
+        frontend_info.set_is_attacking(self.is_attacking);
+
+
     }
 }
 
@@ -328,7 +332,7 @@ impl<'a> FarmingBehavior<'_> {
 
 
             // Check if there's aggressive mobs otherwise collect passive mobs
-            if mob_list.is_empty() || (self.last_killed_type == MobType::Aggressive && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000) {
+            if mob_list.is_empty() || self.last_killed_type == MobType::Aggressive && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
                 mob_list = mobs
                     .iter()
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
@@ -348,7 +352,7 @@ impl<'a> FarmingBehavior<'_> {
                 };
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
-                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5500 {
+                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
                         // Transition to next state
                         return State::NoEnemyFound
                     }
@@ -364,8 +368,6 @@ impl<'a> FarmingBehavior<'_> {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                     }
                 } {
-                    self.last_killed_type = killed_type;
-
                     // Transition to next state
                     State::EnemyFound(*mob)
                 } else {
@@ -389,7 +391,6 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-
         let target_cursor_pos = Position::Physical(PhysicalPosition {
             x: point.x as i32,
             y: point.y as i32,
@@ -414,7 +415,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             self.missclick_count += 1;
             self.avoided_bounds
-                .push((mob.bounds, Instant::now(), 1500));
+                .push((mob.bounds, Instant::now(), 500));
             if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -509,6 +510,12 @@ impl<'a> FarmingBehavior<'_> {
             }
         } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking {
             self.is_attacking = false;
+            match (mob.target_type) {
+                TargetType::Mob(MobType::Aggressive) => {self.last_killed_type = MobType::Aggressive}
+                TargetType::Mob(MobType::Passive) => {self.last_killed_type = MobType::Passive}
+                TargetType::TargetMarker => {},
+                _ => {},
+            }
             return State::AfterEnemyKill(mob);
         }else {
             self.is_attacking = false;
@@ -524,7 +531,9 @@ impl<'a> FarmingBehavior<'_> {
             0.0
         }
     }
-    fn after_enemy_kill_debug(&mut self) {
+    fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
+        self.kill_count += 1;
+        frontend_info.set_kill_count(self.kill_count);
         // Let's introduce some stats
         let started_elapsed = self.start_time.elapsed();
 
@@ -550,15 +559,14 @@ impl<'a> FarmingBehavior<'_> {
         let elapsed_search_time = format!("{}secs",  self.format_float(search_time_as_secs, 2));
         let elapsed_time_to_kill = format!("{}secs", self.format_float(time_to_kill_as_secs, 2));
 
-        slog::debug!(self.logger, "Monster was killed"; "kill_count" => self.kill_count, "elapsed since start" => started_formatted);
-        slog::debug!(self.logger, "Elapsed times"; "elapsed to kill" => elapsed_time_to_kill, "elapsed to find" => elapsed_search_time);
-        slog::debug!(self.logger, "Stats"; "approximative kill/min" => kill_per_minute ,"approximative kill per/hr" => kill_per_hour);
+        let elapsed = format!("Elapsed time : since start {} to kill {} to find {}\nStats (approx) : kill/min {} kill_per_hour {} ", started_formatted, elapsed_time_to_kill, elapsed_search_time, kill_per_minute, kill_per_hour);
+        slog::debug!(self.logger, "Monster was killed\n{}", elapsed);
+
+        frontend_info.set_kill_avg((kill_per_minute,kill_per_hour))
 
     }
-    fn after_enemy_kill(&mut self, config: &FarmingConfig) -> State {
-        self.kill_count += 1;
-
-        self.after_enemy_kill_debug();
+    fn after_enemy_kill(&mut self, frontend_info: &mut FrontendInfo, config: &FarmingConfig) -> State {
+        self.after_enemy_kill_debug(frontend_info);
 
         self.last_kill_time = Instant::now();
 
