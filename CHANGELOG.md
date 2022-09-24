@@ -19,6 +19,7 @@ Date format: `DD/MM/YYYY`
   - Updated slots selection
   - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
   - Adds the F1 to F9 slot bars (90 slots availible)
+  - Displays stats
 - Changes rotation keys so only the camera rotate
 - Removes unsupervised mode
 - Farming behavior update :
