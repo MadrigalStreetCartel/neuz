@@ -1,5 +1,4 @@
-
-use std::{fs::File, time::Instant, fmt};
+use std::{fmt, fs::File, time::Instant};
 
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -89,7 +88,7 @@ pub struct Slot {
     slot_type: SlotType,
     slot_cooldown: Option<u32>,
     slot_threshold: Option<u32>,
-    slot_enabled: bool
+    slot_enabled: bool,
 }
 
 impl Default for Slot {

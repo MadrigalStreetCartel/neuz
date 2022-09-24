@@ -1,4 +1,7 @@
-use std::{time::{Duration, Instant}, f32::consts::E};
+use std::{
+    f32::consts::E,
+    time::{Duration, Instant},
+};
 
 use libscreenshot::shared::Area;
 use rand::{prelude::SliceRandom, Rng};
@@ -10,7 +13,7 @@ use crate::{
         Bounds, MobType, PixelDetection, PixelDetectionKind, StatusBarKind, Target, TargetType,
     },
     image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, FarmingConfig, SlotType, FrontendInfo},
+    ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
@@ -71,7 +74,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_summon_pet_time: None,
             last_killed_type: MobType::Passive,
             start_time: Instant::now(),
-
         }
     }
 
@@ -79,7 +81,12 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn update(&mut self, _config: &BotConfig) {}
     fn stop(&mut self, _config: &BotConfig) {}
 
-    fn run_iteration(&mut self, frontend_info: &mut FrontendInfo,config: &BotConfig, image: &mut ImageAnalyzer) {
+    fn run_iteration(
+        &mut self,
+        frontend_info: &mut FrontendInfo,
+        config: &BotConfig,
+        image: &mut ImageAnalyzer,
+    ) {
         let config = config.farming_config();
 
         // Update all needed timestamps
@@ -105,8 +112,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         };
 
         frontend_info.set_is_attacking(self.is_attacking);
-
-
     }
 }
 
@@ -206,9 +211,9 @@ impl<'a> FarmingBehavior<'_> {
                 is_pet = false;
                 let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
                 if slot.is_some() {
-                slot
-                }else{
-                None
+                    slot
+                } else {
+                    None
                 }
             }
         };
@@ -330,9 +335,12 @@ impl<'a> FarmingBehavior<'_> {
                 .collect::<Vec<_>>();
             let mut mob_type = "aggressive";
 
-
             // Check if there's aggressive mobs otherwise collect passive mobs
-            if mob_list.is_empty() || self.last_killed_type == MobType::Aggressive && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
+            if mob_list.is_empty()
+                || self.last_killed_type == MobType::Aggressive
+                    && mob_list.len() == 1
+                    && self.last_kill_time.elapsed().as_millis() < 5000
+            {
                 mob_list = mobs
                     .iter()
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
@@ -342,7 +350,7 @@ impl<'a> FarmingBehavior<'_> {
             }
 
             // Check again
-            if !mob_list.is_empty()  {
+            if !mob_list.is_empty() {
                 let killed_type = {
                     if mob_type == "aggressive" {
                         MobType::Aggressive
@@ -352,9 +360,12 @@ impl<'a> FarmingBehavior<'_> {
                 };
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
-                    if killed_type == self.last_killed_type && mob_list.len() == 1 && self.last_kill_time.elapsed().as_millis() < 5000 {
+                    if killed_type == self.last_killed_type
+                        && mob_list.len() == 1
+                        && self.last_kill_time.elapsed().as_millis() < 5000
+                    {
                         // Transition to next state
-                        return State::NoEnemyFound
+                        return State::NoEnemyFound;
                     }
                     // Try avoiding detection of last killed mob
                     if self.avoided_bounds.len() > 0 {
@@ -414,8 +425,7 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
-            self.avoided_bounds
-                .push((mob.bounds, Instant::now(), 500));
+            self.avoided_bounds.push((mob.bounds, Instant::now(), 500));
             if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -458,7 +468,6 @@ impl<'a> FarmingBehavior<'_> {
                     return self.abort_attack();
                 }
             }
-
         }
         if !is_npc && image.client_stats.enemy_hp.value > 0 {
             if !self.is_attacking {
@@ -511,22 +520,22 @@ impl<'a> FarmingBehavior<'_> {
         } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking {
             self.is_attacking = false;
             match (mob.target_type) {
-                TargetType::Mob(MobType::Aggressive) => {self.last_killed_type = MobType::Aggressive}
-                TargetType::Mob(MobType::Passive) => {self.last_killed_type = MobType::Passive}
-                TargetType::TargetMarker => {},
-                _ => {},
+                TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
+                TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
+                TargetType::TargetMarker => {}
+                _ => {}
             }
             return State::AfterEnemyKill(mob);
-        }else {
+        } else {
             self.is_attacking = false;
             return State::SearchingForEnemy;
         }
         self.state
     }
-    fn format_float(&self ,float: f32, precision: usize) -> f32 {
+    fn format_float(&self, float: f32, precision: usize) -> f32 {
         let result = format!("{:.prec$}", float, prec = precision).parse::<f32>();
         if result.is_ok() {
-                result.unwrap()
+            result.unwrap()
         } else {
             0.0
         }
@@ -541,31 +550,62 @@ impl<'a> FarmingBehavior<'_> {
         let started_minutes = (started_elapsed.as_secs() / 60) % 60;
         let started_hours = (started_elapsed.as_secs() / 60) / 60;
 
-        let started_seconds_formatted = {if started_seconds < 10 {format!("0{}", started_seconds)} else {started_seconds.to_string()}};
-        let started_minutes_formatted = {if started_minutes < 10 {format!("0{}", started_minutes)} else {started_minutes.to_string()}};
-        let started_hours_formatted = {if started_hours < 10 {format!("0{}", started_hours)} else {started_hours.to_string()}};
+        let started_seconds_formatted = {
+            if started_seconds < 10 {
+                format!("0{}", started_seconds)
+            } else {
+                started_seconds.to_string()
+            }
+        };
+        let started_minutes_formatted = {
+            if started_minutes < 10 {
+                format!("0{}", started_minutes)
+            } else {
+                started_minutes.to_string()
+            }
+        };
+        let started_hours_formatted = {
+            if started_hours < 10 {
+                format!("0{}", started_hours)
+            } else {
+                started_hours.to_string()
+            }
+        };
 
-        let started_formatted = format!("{}:{}:{}",started_hours_formatted , started_minutes_formatted, started_seconds_formatted);
+        let started_formatted = format!(
+            "{}:{}:{}",
+            started_hours_formatted, started_minutes_formatted, started_seconds_formatted
+        );
 
         let elapsed_time_to_kill = self.last_initial_attack_time.elapsed();
         let elapsed_search_time = self.last_kill_time.elapsed() - elapsed_time_to_kill;
 
-        let search_time_as_secs = {if self.kill_count > 0 {elapsed_search_time.as_secs_f32()} else {elapsed_search_time.as_secs_f32() - started_elapsed.as_secs_f32()}};
+        let search_time_as_secs = {
+            if self.kill_count > 0 {
+                elapsed_search_time.as_secs_f32()
+            } else {
+                elapsed_search_time.as_secs_f32() - started_elapsed.as_secs_f32()
+            }
+        };
         let time_to_kill_as_secs = elapsed_time_to_kill.as_secs_f32();
 
-        let kill_per_minute = self.format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
+        let kill_per_minute =
+            self.format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
         let kill_per_hour = self.format_float(kill_per_minute * 60.0, 0);
 
-        let elapsed_search_time = format!("{}secs",  self.format_float(search_time_as_secs, 2));
+        let elapsed_search_time = format!("{}secs", self.format_float(search_time_as_secs, 2));
         let elapsed_time_to_kill = format!("{}secs", self.format_float(time_to_kill_as_secs, 2));
 
         let elapsed = format!("Elapsed time : since start {} to kill {} to find {}\nStats (approx) : kill/min {} kill_per_hour {} ", started_formatted, elapsed_time_to_kill, elapsed_search_time, kill_per_minute, kill_per_hour);
         slog::debug!(self.logger, "Monster was killed\n{}", elapsed);
 
-        frontend_info.set_kill_avg((kill_per_minute,kill_per_hour))
-
+        frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))
     }
-    fn after_enemy_kill(&mut self, frontend_info: &mut FrontendInfo, config: &FarmingConfig) -> State {
+    fn after_enemy_kill(
+        &mut self,
+        frontend_info: &mut FrontendInfo,
+        config: &FarmingConfig,
+    ) -> State {
         self.after_enemy_kill_debug(frontend_info);
 
         self.last_kill_time = Instant::now();

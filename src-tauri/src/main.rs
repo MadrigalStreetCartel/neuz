@@ -144,7 +144,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
         let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.05)";
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
-        Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
+            Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
         send_info(&*frontend_info.read());
         // Enter main loop
         loop {
@@ -233,10 +233,18 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
                 match mode {
                     BotMode::Farming => {
-                        farming_behavior.run_iteration(&mut frontend_info_mut, config, &mut image_analyzer);
+                        farming_behavior.run_iteration(
+                            &mut frontend_info_mut,
+                            config,
+                            &mut image_analyzer,
+                        );
                     }
                     BotMode::AutoShout => {
-                        shout_behavior.run_iteration(&mut frontend_info_mut, config, &mut image_analyzer);
+                        shout_behavior.run_iteration(
+                            &mut frontend_info_mut,
+                            config,
+                            &mut image_analyzer,
+                        );
                     }
                     _ => (),
                 }
