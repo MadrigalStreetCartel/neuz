@@ -10,13 +10,13 @@ Date format: `DD/MM/YYYY`
 
 - image detection
   - Improves mob detection and attack by detecting cursor
-  - Changes minimum name's length detection (Mias, Bang and others were not detected)
+  - Changes min & max name's length detection (Mias, Bang, Master Mage Prankster  and others were not detected)
   - Adds PNJ/FP/MP detection
   - IGNORE_AREA_BOTTOM decreased to 110px instead of 150px
 - UI enhancements
   - Removes settings 'Use skill to attack', 'Use pickup pet' (functionnalities still implemented)
   - Displays stats
-  - Slot: 
+  - Slot
     - Adds the F1 to F9 slot bars (90 slots availible) - use shortcut like in game to navigate
     - Reworked to fit with new threshold and cooldown restoration
     - Can be disabled instead of removed
@@ -34,8 +34,9 @@ Date format: `DD/MM/YYYY`
 - Misc
   - Adds buffs support !
   - Add HP/FP/MP restoration based on threshold and cooldown
-  - Debug options (click 3 times on stats to show, one last to hide)
+  - Debug options (click 3 times on stats to show, click again to hide)
     - Adds customisable mobs detection values
+    - Reset slot bars
 - Lot of various fixes
 
 Big thanks to Moe who helped a lot to make this release perfect !
