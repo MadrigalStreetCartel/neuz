@@ -1,5 +1,4 @@
 use std::{
-    f32::consts::E,
     time::{Duration, Instant},
 };
 
@@ -10,14 +9,14 @@ use tauri::{PhysicalPosition, Position};
 
 use crate::{
     data::{
-        Bounds, MobType, PixelDetection, PixelDetectionKind, StatusBarKind, Target, TargetType,
+        Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType,
     },
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
-    utils::{self, DateTime},
+    utils::{DateTime},
 };
 
 use super::Behavior;
@@ -119,9 +118,9 @@ impl<'a> FarmingBehavior<'_> {
 
         self.update_slots(config);
 
-        self.update_avoid_bounds(config);
+        self.update_avoid_bounds();
     }
-    fn update_avoid_bounds(&mut self, config: &FarmingConfig) {
+    fn update_avoid_bounds(&mut self) {
         // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
         for n in 0..self.avoided_bounds.len() {

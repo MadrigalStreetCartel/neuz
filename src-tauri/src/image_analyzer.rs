@@ -1,6 +1,6 @@
 use std::{
     sync::mpsc::{sync_channel, Receiver},
-    time::{Duration, Instant},
+    time::{Instant},
 };
 
 use libscreenshot::shared::Area;
