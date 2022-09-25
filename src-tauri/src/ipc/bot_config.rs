@@ -311,7 +311,7 @@ pub struct ShoutConfig {
 
 impl ShoutConfig {
     pub fn shout_interval(&self) -> u64 {
-        self.shout_interval.unwrap_or(60)
+        self.shout_interval.unwrap_or(30000)
     }
 
     pub fn shout_messages(&self) -> Vec<String> {
