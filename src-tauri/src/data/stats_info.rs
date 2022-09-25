@@ -73,6 +73,8 @@ impl ClientStats {
                 // Try to open char stat tray
                 send_keystroke(Key::T, KeyMode::Press);
             }
+        } else {
+            self.stat_try_not_detected_count = 0;
         }
     }
 
