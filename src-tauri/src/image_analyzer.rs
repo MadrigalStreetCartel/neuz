@@ -179,7 +179,7 @@ impl ImageAnalyzer {
                     // Filter out small clusters (likely to cause misclicks)
                     mob.bounds.w > 17
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
-                    && mob.bounds.size() < (220 * 6)
+                    && mob.bounds.w < (30 * 6)
                 }
             })
             .collect()
