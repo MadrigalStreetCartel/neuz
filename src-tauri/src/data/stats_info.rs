@@ -15,7 +15,7 @@ pub enum StatusBarKind {
     Hp,
     Mp,
     Fp,
-    EnemyHp,
+    TargetHP,
 }
 impl fmt::Display for StatusBarKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -23,7 +23,7 @@ impl fmt::Display for StatusBarKind {
             StatusBarKind::Hp => write!(f, "HP"),
             StatusBarKind::Mp => write!(f, "MP"),
             StatusBarKind::Fp => write!(f, "FP"),
-            StatusBarKind::EnemyHp => write!(f, "enemy HP"),
+            StatusBarKind::TargetHP => write!(f, "enemy HP"),
         }
     }
 }
@@ -43,7 +43,7 @@ impl ClientStats {
             hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
-            enemy_hp: StatInfo::new(0, 0, StatusBarKind::EnemyHp, None),
+            enemy_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
 
             stat_try_not_detected_count: 0,
         }
@@ -67,7 +67,7 @@ impl ClientStats {
         // Since HP/MP/FP are 0 we know bar should be hidden
         if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
             self.stat_try_not_detected_count += 1;
-            if self.stat_try_not_detected_count == 3 {
+            if self.stat_try_not_detected_count == 4 {
                 self.stat_try_not_detected_count = 0;
 
                 // Try to open char stat tray
@@ -82,7 +82,7 @@ impl ClientStats {
         self.detect_stat_tray();
 
         // Obfviously
-        if self.hp.value == 0 {
+        if self.hp.value == 0 && self.stat_try_not_detected_count == 0 {
             false
         } else {
             true
@@ -144,7 +144,7 @@ impl StatInfo {
         res
     }
 
-    pub fn reset_last_time(&mut self) {
+    pub fn reset_last_update_time(&mut self) {
         self.last_update_time = Some(Instant::now());
     }
 
@@ -231,20 +231,20 @@ impl From<StatusBarKind> for StatusBarConfig {
                 StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
             }
 
-            EnemyHp => {
-                let mut enemy_hp_bar = StatusBarConfig::new([
+            TargetHP => {
+                let mut target_hp_bar = StatusBarConfig::new([
                     [174, 18, 55],
                     [188, 24, 62],
                     [204, 30, 70],
                     [220, 36, 78],
                 ]);
-                enemy_hp_bar.min_x = 300;
-                enemy_hp_bar.min_y = 30;
+                target_hp_bar.min_x = 300;
+                target_hp_bar.min_y = 30;
 
-                enemy_hp_bar.max_x = 700;
-                enemy_hp_bar.max_y = 60;
+                target_hp_bar.max_x = 700;
+                target_hp_bar.max_y = 60;
 
-                enemy_hp_bar
+                target_hp_bar
             }
         }
     }

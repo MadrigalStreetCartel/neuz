@@ -4,8 +4,9 @@ import Slot from './Slot'
 
 import { SlotBarHolder, SlotBars, SlotModel } from '../models/BotConfig'
 import SlotModal from './SlotModal'
-import useModal from './UseModal'
+import useModal from './utils/UseModal'
 import { useState } from 'react'
+import { useKeyPress } from './utils/KeyboardHotkeys'
 
 type Props = {
     className?: string,
@@ -21,6 +22,13 @@ const SlotBar = ({ className, slots, onChange }: Props) => {
         setCurrentSlotId(id)
         toggle()
     }
+
+    // Bind Neuz slotbars with F1-F9 just like in game
+    useKeyPress(["F1","F2","F3","F4","F5","F6","F7","F8","F9",], (event: { key: string }) => {
+        //alert(event.key + " was pressed")
+        setCurrentBarIndex(parseInt(event.key.replace("F","")) - 1)
+
+    })
 
     return (
         <>

@@ -8,30 +8,36 @@ Date format: `DD/MM/YYYY`
 **0.13.0**
 > Released on XX.09.2022
 
-- Adds buffs support !
-- Improves image detection & target selection :
+- image detection
   - Improves mob detection and attack by detecting cursor
-  - Changes minimum name's length detection (Mias and others were not detected)
-  - Adds pnj detection and 'avoidance' (basically press escape)
-- Adds stop mobs detection feature
-- Add HP/FP/MP restoration based on threshold and cooldown
-- UI enhancements :
-  - Updated slots selection
-  - Removes useless settings 'Use skill to attack', 'Use pickup pet' (functionnality's still implemented)
-  - Adds the F1 to F9 slot bars (90 slots availible)
+  - Changes minimum name's length detection (Mias, Bang and others were not detected)
+  - Adds PNJ/FP/MP detection
+  - IGNORE_AREA_BOTTOM decreased to 110px instead of 150px
+- UI enhancements
+  - Removes settings 'Use skill to attack', 'Use pickup pet' (functionnalities still implemented)
   - Displays stats
+  - Slot: 
+    - Adds the F1 to F9 slot bars (90 slots availible) - use shortcut like in game to navigate
+    - Reworked to fit with new threshold and cooldown restoration
+    - Can be disabled instead of removed
 - Changes rotation keys so only the camera rotate
 - Removes unsupervised mode
-- Farming behavior update :
+- Farming behavior
   - Avoid obstacles (experimental) you'll need at least one attack slot to make it works (advice: add attack motion with a low cooldown like 500)
   - Avoid already attacked monster (disable if you play in party)
   - Avoid npc/pets selection (rare)
-  - New mob search movements, moves in circle within the current area
+  - New mob search movements pattern, moves in circle
   - PickupPet waiting time is now non blocking and can be changed
-- Fixes an AutoShout behavior bug where spaces were automatically deleted
-- Debug options :
-  - Adds customisable mobs detection values
+  - Adds stop mobs detection feature, it disable the mob detection but keeps slots usage
+- AutoShout behaviour
+  - Fixes an AutoShout behavior bug where spaces were automatically deleted
+- Misc
+  - Adds buffs support !
+  - Add HP/FP/MP restoration based on threshold and cooldown
+  - Debug options (click 3 times on stats to show, one last to hide)
+    - Adds customisable mobs detection values
 - Lot of various fixes
+
 Big thanks to Moe who helped a lot to make this release perfect !
 
 **0.12.1**

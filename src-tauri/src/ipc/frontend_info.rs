@@ -11,6 +11,7 @@ pub struct FrontendInfo {
     kill_hour_avg: f32,
     is_attacking: bool,
     is_running: bool,
+    is_alive: bool,
 }
 
 impl FrontendInfo {
@@ -23,6 +24,7 @@ impl FrontendInfo {
             kill_hour_avg: 0.0,
             is_attacking: false,
             is_running: false,
+            is_alive: false,
         }
     }
 
@@ -50,6 +52,13 @@ impl FrontendInfo {
         self.is_running = is_running;
     }
 
+    pub fn set_is_alive(&mut self, is_alive: bool) {
+        self.is_alive = is_alive;
+    }
+
+    pub fn is_alive(&mut self) -> bool {
+        self.is_alive
+    }
     /// Serialize config to disk
     pub fn serialize(&self) {
         let config = {

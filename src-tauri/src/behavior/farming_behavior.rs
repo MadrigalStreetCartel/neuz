@@ -17,6 +17,7 @@ use crate::{
     movement::MovementAccessor,
     platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
+    utils::{self, DateTime},
 };
 
 use super::Behavior;
@@ -90,11 +91,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         let config = config.farming_config();
 
         // Update all needed timestamps
-        self.update_pickup_pet(config);
-
-        self.update_slots(config);
-
-        self.update_avoid_bounds(config);
+        self.update_timestamps(config);
 
         // Check whether something should be restored
         self.check_restorations(config, image);
@@ -116,6 +113,14 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl<'a> FarmingBehavior<'_> {
+
+    fn update_timestamps(&mut self, config: &FarmingConfig) {
+        self.update_pickup_pet(config);
+
+        self.update_slots(config);
+
+        self.update_avoid_bounds(config);
+    }
     fn update_avoid_bounds(&mut self, config: &FarmingConfig) {
         // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
@@ -247,20 +252,26 @@ impl<'a> FarmingBehavior<'_> {
     fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
         // Check HP
         let stat = Some(image.client_stats.hp.value);
-        if self
-            .get_slot_for(config, stat, SlotType::Pill, true)
-            .is_none()
-        {
-            self.get_slot_for(config, stat, SlotType::Food, true);
+        if image.client_stats.hp.value > 0 {
+            if self
+                .get_slot_for(config, stat, SlotType::Pill, true)
+                .is_none()
+            {
+                self.get_slot_for(config, stat, SlotType::Food, true);
+            }
         }
 
         // Check MP
         let stat = Some(image.client_stats.mp.value);
-        self.get_slot_for(config, stat, SlotType::MpRestorer, true);
+        if image.client_stats.mp.value > 0 {
+            self.get_slot_for(config, stat, SlotType::MpRestorer, true);
+        }
 
         // Check FP
         let stat = Some(image.client_stats.fp.value);
-        self.get_slot_for(config, stat, SlotType::FpRestorer, true);
+        if image.client_stats.fp.value > 0 {
+            self.get_slot_for(config, stat, SlotType::FpRestorer, true);
+        }
     }
 
     fn check_buffs(&mut self, config: &FarmingConfig) {
@@ -339,7 +350,7 @@ impl<'a> FarmingBehavior<'_> {
             if mob_list.is_empty()
                 || self.last_killed_type == MobType::Aggressive
                     && mob_list.len() == 1
-                    && self.last_kill_time.elapsed().as_millis() < 5000
+                    && self.last_kill_time.elapsed().as_millis() < 5500
             {
                 mob_list = mobs
                     .iter()
@@ -362,7 +373,7 @@ impl<'a> FarmingBehavior<'_> {
                 if let Some(mob) = {
                     if killed_type == self.last_killed_type
                         && mob_list.len() == 1
-                        && self.last_kill_time.elapsed().as_millis() < 5000
+                        && self.last_kill_time.elapsed().as_millis() < 5500
                     {
                         // Transition to next state
                         return State::NoEnemyFound;
@@ -421,7 +432,7 @@ impl<'a> FarmingBehavior<'_> {
             self.missclick_count = 0;
 
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(500));
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
@@ -469,6 +480,7 @@ impl<'a> FarmingBehavior<'_> {
                 }
             }
         }
+
         if !is_npc && image.client_stats.enemy_hp.value > 0 {
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
@@ -490,7 +502,7 @@ impl<'a> FarmingBehavior<'_> {
                         > 4000
                 {
                     // Reset timer otherwise it'll trigger every tick
-                    image.client_stats.enemy_hp.reset_last_time();
+                    image.client_stats.enemy_hp.reset_last_update_time();
 
                     // Abort attack after 5 avoidance
                     if self.obstacle_avoidance_count == 5 {
@@ -517,13 +529,12 @@ impl<'a> FarmingBehavior<'_> {
 
                 self.send_slot(index);
             }
-        } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking {
+        } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking && image.client_stats.is_alive() {
             self.is_attacking = false;
-            match (mob.target_type) {
+            match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
                 TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
                 TargetType::TargetMarker => {}
-                _ => {}
             }
             return State::AfterEnemyKill(mob);
         } else {
@@ -532,50 +543,14 @@ impl<'a> FarmingBehavior<'_> {
         }
         self.state
     }
-    fn format_float(&self, float: f32, precision: usize) -> f32 {
-        let result = format!("{:.prec$}", float, prec = precision).parse::<f32>();
-        if result.is_ok() {
-            result.unwrap()
-        } else {
-            0.0
-        }
-    }
+
     fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
         self.kill_count += 1;
         frontend_info.set_kill_count(self.kill_count);
+
         // Let's introduce some stats
         let started_elapsed = self.start_time.elapsed();
-
-        let started_seconds = started_elapsed.as_secs() % 60;
-        let started_minutes = (started_elapsed.as_secs() / 60) % 60;
-        let started_hours = (started_elapsed.as_secs() / 60) / 60;
-
-        let started_seconds_formatted = {
-            if started_seconds < 10 {
-                format!("0{}", started_seconds)
-            } else {
-                started_seconds.to_string()
-            }
-        };
-        let started_minutes_formatted = {
-            if started_minutes < 10 {
-                format!("0{}", started_minutes)
-            } else {
-                started_minutes.to_string()
-            }
-        };
-        let started_hours_formatted = {
-            if started_hours < 10 {
-                format!("0{}", started_hours)
-            } else {
-                started_hours.to_string()
-            }
-        };
-
-        let started_formatted = format!(
-            "{}:{}:{}",
-            started_hours_formatted, started_minutes_formatted, started_seconds_formatted
-        );
+        let started_formatted = DateTime::format_time(started_elapsed);
 
         let elapsed_time_to_kill = self.last_initial_attack_time.elapsed();
         let elapsed_search_time = self.last_kill_time.elapsed() - elapsed_time_to_kill;
@@ -590,14 +565,15 @@ impl<'a> FarmingBehavior<'_> {
         let time_to_kill_as_secs = elapsed_time_to_kill.as_secs_f32();
 
         let kill_per_minute =
-            self.format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
-        let kill_per_hour = self.format_float(kill_per_minute * 60.0, 0);
+            DateTime::format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
+        let kill_per_hour = DateTime::format_float(kill_per_minute * 60.0, 0);
 
-        let elapsed_search_time = format!("{}secs", self.format_float(search_time_as_secs, 2));
-        let elapsed_time_to_kill = format!("{}secs", self.format_float(time_to_kill_as_secs, 2));
+        let elapsed_search_time = format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
+        let elapsed_time_to_kill =
+            format!("{}secs", DateTime::format_float(time_to_kill_as_secs, 2));
 
-        let elapsed = format!("Elapsed time : since start {} to kill {} to find {}\nStats (approx) : kill/min {} kill_per_hour {} ", started_formatted, elapsed_time_to_kill, elapsed_search_time, kill_per_minute, kill_per_hour);
-        slog::debug!(self.logger, "Monster was killed\n{}", elapsed);
+        let elapsed = format!("Elapsed time : since start {} to kill {} to find {} ", started_formatted, elapsed_time_to_kill, elapsed_search_time);
+        slog::debug!(self.logger, "Monster was killed {}", elapsed);
 
         frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))
     }

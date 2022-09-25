@@ -11,9 +11,10 @@ import { FarmingConfigModel, SlotBarHolder, SlotBars, SlotModel } from '../../mo
 import NumericInput from '../config/NumericInput'
 import ColorSelector from '../config/ColorSelector'
 import Modal from '../Modal'
-import useModal from '../UseModal'
 import { useState } from 'react'
 import { FrontendInfoModel } from '../../models/FrontendInfo'
+import useModal from '../utils/UseModal'
+import { StopWatch } from '../utils/StopWatch'
 
 type Props = {
     className?: string,
@@ -24,7 +25,7 @@ type Props = {
 }
 
 const createSlotBars = () => (
-    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', /* slot_cooldown: 1000, slot_threshold: 100 ,*/ slot_enabled: false } as SlotModel))})) as SlotBars
+    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_enabled: false } as SlotModel))})) as SlotBars
 )
 
 const FarmingConfig = ({ className, info, config, onChange, running }: Props) => {
@@ -51,6 +52,8 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             resets[selectedMobType]()
         }
     }
+
+    let stopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false));
 
     return (
         <>
@@ -130,14 +133,17 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
 
             </ConfigPanel>
             {info && (
-                    <div className="info" onClick={() => setDebugModeCount(debugModeCount + 1) }>
+                    <div className="info" onClick={() => setDebugModeCount(debugModeCount >= 3 ? 0 : debugModeCount + 1) }>
                         <div className="row">
-                            <div>Kills: {info.enemy_kill_count}</div>
-                            <div>State: {running? info.is_attacking? "fight" : config.is_stop_fighting? "manual" : "searching" : "ready"}</div>
+                            <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
                         </div>
                         <div className="row">
-                            <div>Stats(approx): K/min {info.kill_min_avg} | K/hour {info.kill_hour_avg}</div>
+                            <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
                         </div>
+                        <div className="row">
+                            <div>Botting time : {stopWatch[0]}:{stopWatch[1]}:{stopWatch[2]}</div>
+                        </div>
+
                     </div>
                 )}
         </>

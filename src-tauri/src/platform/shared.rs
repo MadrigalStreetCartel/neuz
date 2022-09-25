@@ -8,7 +8,7 @@ pub use key::{Key, KeyMode};
 pub use platform_accessor::PlatformAccessor;
 
 // For visual recognition: Avoids mouse clicks outside the window by ignoring monster names that are too close to the bottom of the GUI
-pub const IGNORE_AREA_BOTTOM: u32 = 150;
+pub const IGNORE_AREA_BOTTOM: u32 = 110;
 
 /// Get the native window id.
 pub fn get_window_id(window: &Window) -> Option<u64> {

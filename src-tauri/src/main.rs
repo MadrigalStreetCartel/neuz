@@ -183,10 +183,15 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
             // Try again a bit later if the window is not focused
             if !platform::get_window_focused(&window) {
+                frontend_info_mut.set_is_running(false);
+                frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                // Send infos to frontend
+                send_info(&*frontend_info.read());
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 timer.silence();
                 continue;
             }
+            frontend_info_mut.set_is_running(true);
 
             // Make sure an operation mode is set
             guard!(let Some(mode) = config.mode() else {
@@ -223,14 +228,20 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                     .client_stats
                     .update(&image_analyzer.clone(), &logger);
 
-                // Stop bot in case of death
-                if !image_analyzer.client_stats.is_alive() {
-                    continue;
-                }
-
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
+                // Stop bot in case of death
+                let is_alive = image_analyzer.client_stats.is_alive();
+                if !is_alive {
+                    frontend_info_mut.set_is_alive(false);
+                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    // Send infos to frontend
+                    send_info(&*frontend_info.read());
+                    continue;
+                } else if is_alive && !frontend_info_mut.is_alive() {
+                    frontend_info_mut.set_is_alive(true);
+                }
                 match mode {
                     BotMode::Farming => {
                         farming_behavior.run_iteration(
