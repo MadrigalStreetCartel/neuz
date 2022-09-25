@@ -10,7 +10,7 @@ use slog::Logger;
 
 use crate::{
     data::{
-        point_selector, Bounds, ClientStats, MobType, PixelDetection, Point, PointCloud, Target,
+        point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target,
         TargetType,
     },
     ipc::FarmingConfig,
@@ -33,7 +33,6 @@ impl Color {
 pub struct ImageAnalyzer {
     image: Option<ImageBuffer>,
     pub window_id: u64,
-    pub pixel_detections: Vec<PixelDetection>,
     pub client_stats: ClientStats,
 }
 
@@ -42,7 +41,6 @@ impl ImageAnalyzer {
         Self {
             window_id: 0,
             image: None,
-            pixel_detections: vec![],
             client_stats: ClientStats::new(),
         }
     }
