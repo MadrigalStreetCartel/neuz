@@ -29,6 +29,7 @@ impl From<Key> for enigo::Key {
             T => enigo::Key::Layout('T'),
             Left => enigo::Key::LeftArrow,
             Right => enigo::Key::RightArrow,
+            Z => enigo::Key::Layout('z'),
             _F1 => enigo::Key::F1,
             _F2 => enigo::Key::F2,
             _F3 => enigo::Key::F3,

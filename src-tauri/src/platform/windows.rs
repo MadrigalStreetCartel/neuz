@@ -31,6 +31,7 @@ impl From<Key> for Vk {
             T => Vk::T,
             Left => Vk::LeftArrow,
             Right => Vk::RightArrow,
+            Z => Vk::Z,
             _F1 => Vk::F1,
             _F2 => Vk::F2,
             _F3 => Vk::F3,

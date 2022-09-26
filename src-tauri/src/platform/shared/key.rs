@@ -31,6 +31,7 @@ pub enum Key {
     T,
     Left,
     Right,
+    Z,
     // F1-F9
     _F1,
     _F2,
