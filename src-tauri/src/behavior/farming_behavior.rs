@@ -498,7 +498,7 @@ impl<'a> FarmingBehavior<'_> {
                     // Reset timer otherwise it'll trigger every tick
                     image.client_stats.enemy_hp.reset_last_update_time();
 
-                    // Abort attack after 5 avoidance
+                    // Abort attack after 20 avoidance
                     if self.obstacle_avoidance_count == 20 {
                         return self.abort_attack();
                     }
