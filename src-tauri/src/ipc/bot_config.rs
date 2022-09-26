@@ -1,6 +1,6 @@
 use std::{fmt, fs::File, time::Instant};
 
-use rand::{prelude::IteratorRandom, Rng};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
