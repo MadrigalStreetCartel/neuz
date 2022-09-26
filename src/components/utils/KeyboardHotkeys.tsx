@@ -12,8 +12,10 @@ export const useKeyPress = (keys: string[], callback: any, node = null) => {
     (event: {[x: string]: any; key: string;}) => {
       // check if one of the key is part of the ones we want
       if (keys.some((key) =>{
-        event.preventDefault()
-        return event.key === key
+        if (event.key === key) {
+            event.preventDefault()
+            return true
+        }
        })) {
         callbackRef.current(event);
       }
