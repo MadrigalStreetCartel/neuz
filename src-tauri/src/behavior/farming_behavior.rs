@@ -1,6 +1,4 @@
-use std::{
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use libscreenshot::shared::Area;
 use rand::{prelude::SliceRandom, Rng};
@@ -8,15 +6,13 @@ use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
 use crate::{
-    data::{
-        Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType,
-    },
+    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
     platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
     play,
-    utils::{DateTime},
+    utils::DateTime,
 };
 
 use super::Behavior;
@@ -112,7 +108,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl<'a> FarmingBehavior<'_> {
-
     fn update_timestamps(&mut self, config: &FarmingConfig) {
         self.update_pickup_pet(config);
 
@@ -528,7 +523,10 @@ impl<'a> FarmingBehavior<'_> {
 
                 self.send_slot(index);
             }
-        } else if image.client_stats.enemy_hp.value == 0 && self.is_attacking && image.client_stats.is_alive() {
+        } else if image.client_stats.enemy_hp.value == 0
+            && self.is_attacking
+            && image.client_stats.is_alive()
+        {
             self.is_attacking = false;
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
@@ -571,7 +569,10 @@ impl<'a> FarmingBehavior<'_> {
         let elapsed_time_to_kill =
             format!("{}secs", DateTime::format_float(time_to_kill_as_secs, 2));
 
-        let elapsed = format!("Elapsed time : since start {} to kill {} to find {} ", started_formatted, elapsed_time_to_kill, elapsed_search_time);
+        let elapsed = format!(
+            "Elapsed time : since start {} to kill {} to find {} ",
+            started_formatted, elapsed_time_to_kill, elapsed_search_time
+        );
         slog::debug!(self.logger, "Monster was killed {}", elapsed);
 
         frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))

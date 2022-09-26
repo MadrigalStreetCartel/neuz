@@ -1,6 +1,6 @@
 use std::{
     sync::mpsc::{sync_channel, Receiver},
-    time::{Instant},
+    time::Instant,
 };
 
 use libscreenshot::shared::Area;
@@ -9,10 +9,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 
 use crate::{
-    data::{
-        point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target,
-        TargetType,
-    },
+    data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
     ipc::FarmingConfig,
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
