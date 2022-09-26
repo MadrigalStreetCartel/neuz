@@ -35,22 +35,35 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange(newConfig)
     }
     const debugModal = useModal();
-    const mobsDebugModal = useModal(debugModal);
+    const mobsColorsDebugModal = useModal(debugModal);
+    const obstacleAvoidanceDebugModal = useModal(debugModal);
 
     const [debugModeCount, setDebugModeCount] = useState(0)
 
     const [selectedMobType, setSelectedMobType] = useState(0)
     const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
 
+    const resets = [() => onChange({...config, ...defaultDetectionValues[0] }), () => onChange({...config, ...defaultDetectionValues[1] })]
     const resetColorsRefs = (both?:boolean) => {
 
-        const resets = [() => onChange({...config, ...defaultDetectionValues[0] }), () => onChange({...config, ...defaultDetectionValues[1] })]
         const resetBoth = () => onChange({...config, ... resets[0], ... resets[1]})
         if(both) {
             resetBoth()
         } else {
             resets[selectedMobType]()
         }
+    }
+
+    if(!config.passive_mobs_colors && !config.passive_tolerence) {
+        resets[0]()
+    }
+
+    if(!config.aggressive_mobs_colors && !config.aggressive_tolerence) {
+        resets[1]()
+    }
+
+    if(!config.obstacle_avoidance_cooldown && !config.obstacle_avoidance_max_try) {
+        onChange({...config, obstacle_avoidance_cooldown: 3500, obstacle_avoidance_max_try: 3})
     }
 
     let stopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false));
@@ -65,14 +78,20 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
                             setSelectedMobType(0);
-                            mobsDebugModal.open();
+                            mobsColorsDebugModal.open();
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
                             setSelectedMobType(1);
-                            mobsDebugModal.open();
+                            mobsColorsDebugModal.open();
+                        }}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Obstacle avoidance settings" helpText="" />}
+                        item={<button onClick={() => {
+                            obstacleAvoidanceDebugModal.open();
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
@@ -84,23 +103,37 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     />
                 </ConfigTable>
             }/>
-            <Modal isShowing={mobsDebugModal.isShown} hide={mobsDebugModal.close} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
+            <Modal isShowing={mobsColorsDebugModal.isShown} hide={mobsColorsDebugModal.close} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <ConfigTable>
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
-                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? defaultDetectionValues[0].passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? defaultDetectionValues[1].aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
+                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
                         />
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
-                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? defaultDetectionValues[0].passive_tolerence ?? 0 : config.aggressive_tolerence ?? defaultDetectionValues[1].aggressive_tolerence ?? 0} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
+                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                         />
                         <ConfigTableRow
-                            label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
+                            label={<ConfigLabel name="" helpText="" />}
                             item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
                         />
 
+                </ConfigTable>
+            }/>
+            <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
+                <ConfigTable>
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
+                            item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
+                        />
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Obstacle avoidance max try" helpText="After this number of try it'll abort attack and search for another target" />}
+                            item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try ?? false} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
+                        />
                 </ConfigTable>
             }/>
 

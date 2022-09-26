@@ -201,8 +201,10 @@ impl ImageAnalyzer {
         let mut mob_coords_agg: Vec<Point> = Vec::default();
 
         // Reference colors
-        let ref_color_pas: [u8; 3] = config.get_passive_mobs_colors(); // Passive mobs
-        let ref_color_agg: [u8; 3] = config.get_aggressive_mobs_colors(); // Aggro mobs
+        let ref_color_pas_wrapped: [Option<u8>; 3] = config.get_passive_mobs_colors(); // Passive mobs 234, 234, 149
+        let ref_color_agg_wrapped: [Option<u8>; 3] = config.get_aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
+        let ref_color_pas: [u8; 3] = [ref_color_pas_wrapped[0].unwrap_or(234), ref_color_pas_wrapped[1].unwrap_or(234), ref_color_pas_wrapped[2].unwrap_or(149)];
+        let ref_color_agg: [u8; 3] = [ref_color_agg_wrapped[0].unwrap_or(179), ref_color_agg_wrapped[1].unwrap_or(23), ref_color_agg_wrapped[2].unwrap_or(23)];
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);

@@ -144,27 +144,38 @@ pub struct FarmingConfig {
 
     is_stop_fighting: Option<bool>,
 
-    passive_mobs_colors: Option<[u8; 3]>,
+    passive_mobs_colors: Option<[Option<u8>; 3]>,
     passive_tolerence: Option<u8>,
-    aggressive_mobs_colors: Option<[u8; 3]>,
+    aggressive_mobs_colors: Option<[Option<u8>; 3]>,
     aggressive_tolerence: Option<u8>,
+
+    obstacle_avoidance_cooldown: Option<u64>,
+    obstacle_avoidance_max_try: Option<u32>,
 }
 
 impl FarmingConfig {
+    pub fn get_mob_avoidance_cooldown(&self) -> u128 {
+        self.obstacle_avoidance_cooldown.unwrap_or(3500).into()
+    }
+
+    pub fn get_mob_avoidance_max_try(&self) -> u32 {
+        self.obstacle_avoidance_max_try.unwrap_or(3)
+    }
+
     pub fn should_stay_in_area(&self) -> bool {
         self.stay_in_area.unwrap_or(false)
     }
 
-    pub fn get_passive_mobs_colors(&self) -> [u8; 3] {
-        self.passive_mobs_colors.unwrap_or([234, 234, 149])
+    pub fn get_passive_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.passive_mobs_colors.unwrap_or([None, None, None])
     }
 
     pub fn get_passive_tolerence(&self) -> u8 {
         self.passive_tolerence.unwrap_or(5)
     }
 
-    pub fn get_aggressive_mobs_colors(&self) -> [u8; 3] {
-        self.aggressive_mobs_colors.unwrap_or([179, 23, 23])
+    pub fn get_aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.aggressive_mobs_colors.unwrap_or([None, None, None])
     }
 
     pub fn get_aggressive_tolerence(&self) -> u8 {
