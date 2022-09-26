@@ -328,7 +328,7 @@ impl<'a> FarmingBehavior<'_> {
         } else {
             // Calculate max distance of mobs
             let max_distance = match config.should_stay_in_area() {
-                true => 425,
+                true => 325,
                 false => 1000,
             };
 
@@ -441,7 +441,6 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn abort_attack(&mut self) -> State {
-        self.is_attacking = false;
         use crate::movement::prelude::*;
         play!(self.movement => [
             PressKey(Key::Escape),
@@ -485,10 +484,6 @@ impl<'a> FarmingBehavior<'_> {
             // Try to use attack skill if at least one is selected in slot bar
             if let Some(index) = self.get_slot_for(config, None, SlotType::AttackSkill, false) {
                 // Helps avoid obstacles only works using attack slot basically try to move after 5sec
-                // Abort attack after 5 avoidance
-                if !config.is_stop_fighting() && self.obstacle_avoidance_count == config.get_obstacle_avoidance_max_count() && image.client_stats.enemy_hp.value == 100 {
-                    return self.abort_attack();
-                }
                 if !config.is_stop_fighting()
                     && image.client_stats.enemy_hp.last_update_time.is_some()
                     && image
@@ -498,12 +493,15 @@ impl<'a> FarmingBehavior<'_> {
                         .unwrap()
                         .elapsed()
                         .as_millis()
-                        > config.get_obstacle_avoidance_cooldown()
+                        > 4000
                 {
                     // Reset timer otherwise it'll trigger every tick
                     image.client_stats.enemy_hp.reset_last_update_time();
 
-
+                    // Abort attack after 20 avoidance
+                    if self.obstacle_avoidance_count == 20 {
+                        return self.abort_attack();
+                    }
                     self.last_initial_attack_time = Instant::now();
                     use crate::movement::prelude::*;
                     let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
@@ -512,18 +510,17 @@ impl<'a> FarmingBehavior<'_> {
 
                     // Move into a random direction while jumping
                     play!(self.movement => [
-                        HoldKey(Key::W),
-                        Wait(dur::Fixed(50)),
-                        HoldKey(Key::Space),
+                        HoldKeys(vec![Key::W, Key::Space]),
                         Repeat(movement_slices as u64, vec![
                             HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                            ]),
-                            HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                            Wait(dur::Fixed(25)),
-                            ReleaseKeys(vec![Key::Space, Key::W]),
-                            ]);
-                }
+                        ]),
+                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
+                        Wait(dur::Fixed(50)),
+                        ReleaseKeys(vec![Key::Space, Key::W]),
+                    ]);
                     self.obstacle_avoidance_count += 1;
+                }
+
                 self.send_slot(index);
             }
         } else if image.client_stats.enemy_hp.value == 0

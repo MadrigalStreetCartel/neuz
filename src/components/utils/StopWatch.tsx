@@ -20,4 +20,4 @@ export const StopWatch = (running: boolean) => {
     let hours = ("0" + Math.floor((time / 3600000) % 60)).slice(-2)
 
     return [hours,mins,secs]
-};
+  };

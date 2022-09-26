@@ -60,7 +60,7 @@ impl SlotBar {
     pub fn get_usable_slot_index<R>(
         &self,
         slot_type: SlotType,
-        _rng: &mut R,
+        rng: &mut R,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
         slot_bar_index: usize,
@@ -148,10 +148,6 @@ pub struct FarmingConfig {
     passive_tolerence: Option<u8>,
     aggressive_mobs_colors: Option<[u8; 3]>,
     aggressive_tolerence: Option<u8>,
-
-    obstacle_avoidance_max_count: Option<u32>,
-    obstacle_avoidance_cooldown: Option<u128>,
-
 }
 
 impl FarmingConfig {
@@ -224,14 +220,6 @@ impl FarmingConfig {
             }
         }
         None
-    }
-
-    pub fn get_obstacle_avoidance_max_count(&self) -> u32 {
-        self.obstacle_avoidance_max_count.unwrap_or(2)
-    }
-
-    pub fn get_obstacle_avoidance_cooldown(&self) -> u128 {
-        self.obstacle_avoidance_cooldown.unwrap_or(3500)
     }
 
     /// Get a random matching slot index

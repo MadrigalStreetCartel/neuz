@@ -36,7 +36,6 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
     }
     const debugModal = useModal();
     const mobsDebugModal = useModal(debugModal);
-    const mobsAvoidanceDebugModal = useModal(debugModal);
 
     const [debugModeCount, setDebugModeCount] = useState(0)
 
@@ -54,7 +53,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         }
     }
 
-    let BotStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false));
+    let stopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false));
 
     return (
         <>
@@ -74,12 +73,6 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         item={<button onClick={() => {
                             setSelectedMobType(1);
                             mobsDebugModal.open();
-                        }}>⚙️</button>}
-                    />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Obstacles avoidance" helpText="" />}
-                        item={<button onClick={() => {
-                            mobsAvoidanceDebugModal.open();
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
@@ -108,20 +101,6 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                             item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
                         />
 
-                </ConfigTable>
-            }/>
-            <Modal isShowing={mobsAvoidanceDebugModal.isShown} hide={mobsAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
-                <ConfigTable>
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Cooldown" helpText="When monster don't loose HP within this cooldown" />}
-                            item={<NumericInput unit="ms" value={config.obstacle_avoidance_cooldown ?? 3500} onChange={value => onChange?.({ ...config, obstacle_avoidance_cooldown: value })} />}
-                        />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Maximum avoidance" helpText="After this amount of try it will cancel and search for another target" />}
-                            item={<NumericInput unit="#" value={config.obstacle_avoidance_max_count ?? 2} onChange={value => onChange?.({ ...config, obstacle_avoidance_max_count: value })} />}
-                        />
                 </ConfigTable>
             }/>
 
@@ -162,7 +141,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                             <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
                         </div>
                         <div className="row">
-                            <div>Botting time : {BotStopWatch[0]}:{BotStopWatch[1]}:{BotStopWatch[2]}</div>
+                            <div>Botting time : {stopWatch[0]}:{stopWatch[1]}:{stopWatch[2]}</div>
                         </div>
 
                     </div>

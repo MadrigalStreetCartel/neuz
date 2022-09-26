@@ -67,8 +67,6 @@ export type FarmingConfigModel = Partial<{
     aggressive_tolerence: number;
     is_stop_fighting: boolean;
     prevent_already_attacked: boolean;
-    obstacle_avoidance_max_count: number;
-    obstacle_avoidance_cooldown: number;
 }>
 
 export type SupportConfigModel = Partial<{
