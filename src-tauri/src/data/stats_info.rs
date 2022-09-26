@@ -240,10 +240,10 @@ impl From<StatusBarKind> for StatusBarConfig {
                     [204, 30, 70],
                     [220, 36, 78],
                 ]);
-                target_hp_bar.min_x = 300;
+                target_hp_bar.min_x = 250;
                 target_hp_bar.min_y = 30;
 
-                target_hp_bar.max_x = 700;
+                target_hp_bar.max_x = 1000;
                 target_hp_bar.max_y = 60;
 
                 target_hp_bar
