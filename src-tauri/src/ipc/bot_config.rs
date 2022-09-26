@@ -23,10 +23,10 @@ impl fmt::Display for SlotType {
             SlotType::Pill => write!(f, "pill"),
             SlotType::MpRestorer => write!(f, "mp restorer"),
             SlotType::FpRestorer => write!(f, "fp restorer"),
-            SlotType::PickupPet => write!(f, "food"),
-            SlotType::AttackSkill => write!(f, "food"),
-            SlotType::BuffSkill => write!(f, "food"),
-            SlotType::Flying => write!(f, "food"),
+            SlotType::PickupPet => write!(f, "pickup pet"),
+            SlotType::AttackSkill => write!(f, "attack skill"),
+            SlotType::BuffSkill => write!(f, "buff skill"),
+            SlotType::Flying => write!(f, "fly"),
             _ => write!(f, "??none??"),
         }
     }
