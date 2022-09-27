@@ -36,6 +36,7 @@ Date format: `DD/MM/YYYY`
   - Add HP/FP/MP restoration based on threshold and cooldown
   - Debug options (click 3 times on stats to show, click again to hide)
     - Adds customisable mobs detection values
+    - Customisable obstacle avoidance values and behavior
     - Reset slot bars
 - Lot of various fixes
 
