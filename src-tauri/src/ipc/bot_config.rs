@@ -153,6 +153,10 @@ pub struct FarmingConfig {
     obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
     obstacle_avoidance_only_passive: Option<bool>,
+
+    min_mobs_name_width: Option<u32>,
+    max_mobs_name_width: Option<u32>,
+
 }
 
 impl FarmingConfig {
@@ -170,6 +174,14 @@ impl FarmingConfig {
 
     pub fn obstacle_avoidance_only_passive(&self) -> bool {
         self.obstacle_avoidance_only_passive.unwrap_or(true)
+    }
+
+    pub fn min_mobs_name_width(&self) -> u32 {
+        self.min_mobs_name_width.unwrap_or(15)
+    }
+
+    pub fn max_mobs_name_width(&self) -> u32 {
+        self.max_mobs_name_width.unwrap_or(180)
     }
 
     pub fn should_stay_in_area(&self) -> bool {

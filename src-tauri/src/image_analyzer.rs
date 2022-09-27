@@ -138,6 +138,7 @@ impl ImageAnalyzer {
     }
 
     fn merge_cloud_into_mobs(
+        config: &FarmingConfig,
         cloud: &PointCloud,
         mob_type: TargetType,
         ignore_size: bool,
@@ -172,9 +173,9 @@ impl ImageAnalyzer {
                     true
                 } else {
                     // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > 17
+                    mob.bounds.w > config.min_mobs_name_width()
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
-                    && mob.bounds.w < (30 * 6)
+                    && mob.bounds.w < config.max_mobs_name_width()
                 }
             })
             .collect()
@@ -254,11 +255,13 @@ impl ImageAnalyzer {
 
         // Categorize mobs
         let mobs_pas = Self::merge_cloud_into_mobs(
+            config,
             &PointCloud::new(mob_coords_pas),
             TargetType::Mob(MobType::Passive),
             false,
         );
         let mobs_agg = Self::merge_cloud_into_mobs(
+            config,
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
             false,
@@ -268,7 +271,7 @@ impl ImageAnalyzer {
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
     }
 
-    pub fn identify_target_marker(&self) -> Option<Target> {
+    pub fn identify_target_marker(&self, config: &FarmingConfig) -> Option<Target> {
         let _timer = Timer::start_new("identify_target_marker");
         let mut coords = Vec::default();
 
@@ -285,7 +288,7 @@ impl ImageAnalyzer {
 
         // Identify target marker entities
         let target_markers =
-            Self::merge_cloud_into_mobs(&PointCloud::new(coords), TargetType::TargetMarker, true);
+            Self::merge_cloud_into_mobs(config, &PointCloud::new(coords), TargetType::TargetMarker, true);
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())

@@ -35,8 +35,10 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange(newConfig)
     }
     const debugModal = useModal();
-    const mobsColorsDebugModal = useModal(debugModal);
+    const mobsNameDebugModal = useModal(debugModal);
+    const mobsColorsDebugModal = useModal(mobsNameDebugModal);
     const obstacleAvoidanceDebugModal = useModal(debugModal);
+
 
     const [debugModeCount, setDebugModeCount] = useState(0)
 
@@ -66,6 +68,10 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange({...config, obstacle_avoidance_cooldown: 3500, obstacle_avoidance_max_try: 3})
     }
 
+    if(!config.min_mobs_name_width && !config.max_mobs_name_width) {
+        onChange({...config, min_mobs_name_width: 15, max_mobs_name_width: 180})
+    }
+
     let botStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false));
 
     return (
@@ -74,18 +80,10 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             {/* DEBUG */}
             <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>DEBUG</h4>} body={
                 <ConfigTable>
-                        <ConfigTableRow
-                        label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
-                        item={<button onClick={() => {
-                            setSelectedMobType(0);
-                            mobsColorsDebugModal.open();
-                        }}>⚙️</button>}
-                    />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
+                        label={<ConfigLabel name="Mobs detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(1);
-                            mobsColorsDebugModal.open();
+                            mobsNameDebugModal.open();
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
@@ -137,6 +135,34 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                             layout="v"
                             label={<ConfigLabel name="Obstacle avoidance max try" helpText="After this number of try it'll abort attack and search for another target" />}
                             item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try ?? false} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
+                        />
+                </ConfigTable>
+            }/>
+            <Modal isShowing={mobsNameDebugModal.isShown} hide={mobsNameDebugModal.close} title={<h4>Mobs detection</h4>} body={
+                <ConfigTable>
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
+                        item={<button onClick={() => {
+                            setSelectedMobType(0);
+                            mobsColorsDebugModal.open();
+                        }}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
+                        item={<button onClick={() => {
+                            setSelectedMobType(1);
+                            mobsColorsDebugModal.open();
+                        }}>⚙️</button>}
+                    />
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Min mobs name width" helpText="" />}
+                            item={<NumericInput unit='px' value={config.min_mobs_name_width ?? false} onChange={value => onChange({...config, min_mobs_name_width: value})} />}
+                        />
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Max mobs name width" helpText="" />}
+                            item={<NumericInput unit='px' value={config.max_mobs_name_width ?? false} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
                         />
                 </ConfigTable>
             }/>

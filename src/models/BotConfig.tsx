@@ -73,6 +73,9 @@ export type FarmingConfigModel = Partial<{
     obstacle_avoidance_max_try: number,
     obstacle_avoidance_only_aggressive: boolean,
 
+    min_mobs_name_width: number,
+    max_mobs_name_width: number,
+
 }>
 
 export type SupportConfigModel = Partial<{

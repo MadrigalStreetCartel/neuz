@@ -84,7 +84,7 @@ impl ClientStats {
         self.detect_stat_tray();
 
         // Obfviously
-        if self.hp.value == 0 && self.stat_try_not_detected_count == 0 {
+        if self.hp.value == 0 {
             false
         } else {
             true
