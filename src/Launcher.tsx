@@ -55,14 +55,14 @@ type Props = {
     className?: string,
 }
 
-type NewsItem = {
+/* type NewsItem = {
     type: 'news' | 'event',
     link: string,
     title: string,
     date: string,
-}
+} */
 
-const fetchNews: () => Promise<[NewsItem[], NewsItem[]]> = async () => {
+/* const fetchNews: () => Promise<[NewsItem[], NewsItem[]]> = async () => {
     const url = `https://cors.splitty.me/https://universe.flyff.com/news`
     const resp = await fetch(url)
     const html = await resp.text()
@@ -86,16 +86,16 @@ const fetchNews: () => Promise<[NewsItem[], NewsItem[]]> = async () => {
     const news = mapItems(elNewsBase, 'news')
     const events = mapItems(elEventsBase, 'event')
     return [news, events];
-}
+} */
 
 const Launcher = ({ className }: Props) => {
     const [hasEnteredMainLoop, enterMainLoop] = useReducer(() => true, false);
     const [isLaunched, setIsLaunched] = useState(false)
-    const [recentNews, setRecentNews] = useState<NewsItem[][]>([])
+    /* const [recentNews, setRecentNews] = useState<NewsItem[][]>([]) */
     const greeting = useMemo(() => sample(Greetings), []);
 
     useEffect(() => {
-        fetchNews().then(setRecentNews)
+        /* fetchNews().then(setRecentNews) */
     }, [])
 
     const launch = () => {
@@ -131,7 +131,7 @@ const Launcher = ({ className }: Props) => {
                         <span className="greet">{greeting}</span>
                     </div>
                     <div className="news">
-                        {recentNews.map(newsBlock => (
+ {/*                        {recentNews.map(newsBlock => (
                             <>
                                 {newsBlock.map(({ type, link, title, date }) => (
                                     <div className="news-item" key={link}>
@@ -141,7 +141,7 @@ const Launcher = ({ className }: Props) => {
                                     </div>
                                 ))}
                             </>
-                        ))}
+                        ))} */}
                     </div>
                     <div className="btn" onClick={launch}>Play</div>
                 </div>
