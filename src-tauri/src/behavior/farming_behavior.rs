@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use libscreenshot::shared::Area;
-use rand::{prelude::SliceRandom, Rng};
+use rand::{prelude::SliceRandom};
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
@@ -44,6 +44,7 @@ pub struct FarmingBehavior<'a> {
     last_summon_pet_time: Option<Instant>,
     last_killed_type: MobType,
     start_time: Instant,
+    already_attack_count: u32
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -70,6 +71,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_summon_pet_time: None,
             last_killed_type: MobType::Passive,
             start_time: Instant::now(),
+            already_attack_count: 0,
         }
     }
 
@@ -302,9 +304,9 @@ impl<'a> FarmingBehavior<'_> {
         send_keystroke(Key::W, KeyMode::Hold);
         send_keystroke(Key::Space, KeyMode::Hold);
         send_keystroke(Key::D, KeyMode::Hold);
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(25));
         send_keystroke(Key::D, KeyMode::Release);
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(25));
         send_keystroke(Key::Space, KeyMode::Release);
         send_keystroke(Key::W, KeyMode::Release);
         std::thread::sleep(Duration::from_millis(50));
@@ -440,8 +442,15 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn abort_attack(&mut self) -> State {
+    fn abort_attack(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
         use crate::movement::prelude::*;
+        self.is_attacking = false;
+
+        if let Some(marker) = image.identify_target_marker(config) {
+            // Target marker found
+            self.avoided_bounds.push((marker.bounds.grow_by(self.already_attack_count * 5), Instant::now(), 2500));
+        }
+        self.already_attack_count += 1;
         play!(self.movement => [
             PressKey(Key::Escape),
         ]);
@@ -470,8 +479,9 @@ impl<'a> FarmingBehavior<'_> {
                     && image.client_stats.enemy_hp.value < 100)
                     || is_npc
                 {
-                    return self.abort_attack();
+                    return self.abort_attack(config, image);
                 }
+                self.already_attack_count = 0;
             }
         }
 
@@ -496,7 +506,8 @@ impl<'a> FarmingBehavior<'_> {
                 // Reset timer otherwise it'll trigger every tick
                 image.client_stats.enemy_hp.reset_last_update_time();
                 let mut should_abort = true;
-                if (!config.obstacle_avoidance_only_passive()) {
+
+                if !config.obstacle_avoidance_only_passive() {
                     match mob.target_type {
                         TargetType::Mob(MobType::Aggressive) => should_abort = false,
                         _ => {}
@@ -509,7 +520,7 @@ impl<'a> FarmingBehavior<'_> {
                     && image.client_stats.hp.value == 100
                 {
                     self.obstacle_avoidance_count = 0;
-                    return self.abort_attack();
+                    return self.abort_attack(config, image);
                 }
                 self.last_initial_attack_time = Instant::now();
                 use crate::movement::prelude::*;
@@ -519,7 +530,7 @@ impl<'a> FarmingBehavior<'_> {
                 play!(self.movement => [
                     HoldKeys(vec![Key::W, Key::Space]),
                     HoldKeyFor(*rotation_key, dur::Fixed(200)),
-                    //Wait(dur::Fixed(50)),
+                    Wait(dur::Fixed(800)),
                     ReleaseKeys(vec![Key::Space, Key::W]),
                 ]);
                 self.obstacle_avoidance_count += 1;
