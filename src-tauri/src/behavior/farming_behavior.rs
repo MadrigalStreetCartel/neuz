@@ -481,16 +481,17 @@ impl<'a> FarmingBehavior<'_> {
                 self.last_initial_attack_time = Instant::now();
                 self.is_attacking = true;
             }
-            if !config.is_stop_fighting() && config.obstacle_avoidance_enabled()
-            && image.client_stats.enemy_hp.last_update_time.is_some()
-            && image
-            .client_stats
-            .enemy_hp
-            .last_update_time
-            .unwrap()
-            .elapsed()
-            .as_millis()
-            > config.get_obstacle_avoidance_cooldown()
+            if !config.is_stop_fighting()
+                && config.obstacle_avoidance_enabled()
+                && image.client_stats.enemy_hp.last_update_time.is_some()
+                && image
+                    .client_stats
+                    .enemy_hp
+                    .last_update_time
+                    .unwrap()
+                    .elapsed()
+                    .as_millis()
+                    > config.get_obstacle_avoidance_cooldown()
             {
                 // Reset timer otherwise it'll trigger every tick
                 image.client_stats.enemy_hp.reset_last_update_time();
@@ -503,7 +504,10 @@ impl<'a> FarmingBehavior<'_> {
                 }
 
                 // Abort attack after x avoidance
-                if should_abort && self.obstacle_avoidance_count >= config.get_obstacle_avoidance_max_try() && image.client_stats.hp.value == 100 {
+                if should_abort
+                    && self.obstacle_avoidance_count >= config.get_obstacle_avoidance_max_try()
+                    && image.client_stats.hp.value == 100
+                {
                     self.obstacle_avoidance_count = 0;
                     return self.abort_attack();
                 }
