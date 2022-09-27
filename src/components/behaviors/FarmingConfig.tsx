@@ -66,7 +66,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange({...config, obstacle_avoidance_cooldown: 3500, obstacle_avoidance_max_try: 3})
     }
 
-    let stopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false));
+    let botStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false));
 
     return (
         <>
@@ -125,6 +125,10 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
                 <ConfigTable>
                         <ConfigTableRow
+                            label={<ConfigLabel name="Obstacle avoidance enabled" helpText="" />}
+                            item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
+                        />
+                        <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
                             item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
@@ -174,7 +178,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                             <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
                         </div>
                         <div className="row">
-                            <div>Botting time : {stopWatch[0]}:{stopWatch[1]}:{stopWatch[2]}</div>
+                            <div>Botting time : {botStopWatch[0]}:{botStopWatch[1]}:{botStopWatch[2]}</div>
                         </div>
 
                     </div>

@@ -481,45 +481,51 @@ impl<'a> FarmingBehavior<'_> {
                 self.last_initial_attack_time = Instant::now();
                 self.is_attacking = true;
             }
-            if !config.is_stop_fighting()
-                && image.client_stats.enemy_hp.last_update_time.is_some()
-                && image
-                    .client_stats
-                    .enemy_hp
-                    .last_update_time
-                    .unwrap()
-                    .elapsed()
-                    .as_millis()
-                    > config.get_mob_avoidance_cooldown()
+            if !config.is_stop_fighting() && config.obstacle_avoidance_enabled()
+            && image.client_stats.enemy_hp.last_update_time.is_some()
+            && image
+            .client_stats
+            .enemy_hp
+            .last_update_time
+            .unwrap()
+            .elapsed()
+            .as_millis()
+            > config.get_obstacle_avoidance_cooldown()
             {
                 // Reset timer otherwise it'll trigger every tick
                 image.client_stats.enemy_hp.reset_last_update_time();
+                let mut should_abort = true;
+                if (!config.obstacle_avoidance_only_passive()) {
+                    match mob.target_type {
+                        TargetType::Mob(MobType::Aggressive) => should_abort = false,
+                        _ => {}
+                    }
+                }
 
-                // Abort attack after 20 avoidance
-                if self.obstacle_avoidance_count == config.get_mob_avoidance_max_try() && image.client_stats.hp.value == 100 {
+                // Abort attack after x avoidance
+                if should_abort && self.obstacle_avoidance_count >= config.get_obstacle_avoidance_max_try() && image.client_stats.hp.value == 100 {
                     self.obstacle_avoidance_count = 0;
                     return self.abort_attack();
                 }
                 self.last_initial_attack_time = Instant::now();
                 use crate::movement::prelude::*;
                 let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
-                let rotation_duration = self.rng.gen_range(80_u64..100_u64);
-                let movement_slices = self.rng.gen_range(2..4);
 
                 // Move into a random direction while jumping
                 play!(self.movement => [
                     HoldKeys(vec![Key::W, Key::Space]),
-                    Repeat(movement_slices as u64, vec![
-                        HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                    ]),
-                    HoldKeyFor(*rotation_key, dur::Fixed(rotation_duration)),
-                    Wait(dur::Fixed(50)),
+                    HoldKeyFor(*rotation_key, dur::Fixed(200)),
+                    //Wait(dur::Fixed(50)),
                     ReleaseKeys(vec![Key::Space, Key::W]),
                 ]);
                 self.obstacle_avoidance_count += 1;
             }
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
+
+            if self.obstacle_avoidance_count == config.get_obstacle_avoidance_max_try() {
+                std::thread::sleep(Duration::from_millis(500));
+            }
         } else if image.client_stats.enemy_hp.value == 0
             && self.is_attacking
             && image.client_stats.is_alive()

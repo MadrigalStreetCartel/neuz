@@ -149,17 +149,27 @@ pub struct FarmingConfig {
     aggressive_mobs_colors: Option<[Option<u8>; 3]>,
     aggressive_tolerence: Option<u8>,
 
+    obstacle_avoidance_enabled: Option<bool>,
     obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
+    obstacle_avoidance_only_passive: Option<bool>,
 }
 
 impl FarmingConfig {
-    pub fn get_mob_avoidance_cooldown(&self) -> u128 {
-        self.obstacle_avoidance_cooldown.unwrap_or(3500).into()
+    pub fn obstacle_avoidance_enabled(&self) -> bool {
+        self.obstacle_avoidance_enabled.unwrap_or(true)
     }
 
-    pub fn get_mob_avoidance_max_try(&self) -> u32 {
+    pub fn get_obstacle_avoidance_cooldown(&self) -> u128 {
+        self.obstacle_avoidance_cooldown.unwrap_or(3000).into()
+    }
+
+    pub fn get_obstacle_avoidance_max_try(&self) -> u32 {
         self.obstacle_avoidance_max_try.unwrap_or(3)
+    }
+
+    pub fn obstacle_avoidance_only_passive(&self) -> bool {
+        self.obstacle_avoidance_only_passive.unwrap_or(true)
     }
 
     pub fn should_stay_in_area(&self) -> bool {
