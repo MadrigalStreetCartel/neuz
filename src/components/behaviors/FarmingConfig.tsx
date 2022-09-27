@@ -7,7 +7,7 @@ import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
 
 import SlotBar from '../SlotBar'
-import { FarmingConfigModel, SlotBarHolder, SlotBars, SlotModel } from '../../models/BotConfig'
+import { FarmingConfigModel, SlotBars, SlotModel } from '../../models/BotConfig'
 import NumericInput from '../config/NumericInput'
 import ColorSelector from '../config/ColorSelector'
 import Modal from '../Modal'
@@ -34,20 +34,17 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
         onChange(newConfig)
     }
-    const debugModal = useModal();
-    const mobsNameDebugModal = useModal(debugModal);
-    const mobsColorsDebugModal = useModal(mobsNameDebugModal);
-    const obstacleAvoidanceDebugModal = useModal(debugModal);
-
+    const debugModal = useModal()
+    const mobsNameDebugModal = useModal(debugModal)
+    const mobsColorsDebugModal = useModal(mobsNameDebugModal)
+    const obstacleAvoidanceDebugModal = useModal(debugModal)
 
     const [debugModeCount, setDebugModeCount] = useState(0)
-
     const [selectedMobType, setSelectedMobType] = useState(0)
-    const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
 
+    const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
     const resets = [() => onChange({...config, ...defaultDetectionValues[0] }), () => onChange({...config, ...defaultDetectionValues[1] })]
     const resetColorsRefs = (both?:boolean) => {
-
         const resetBoth = () => onChange({...config, ... resets[0], ... resets[1]})
         if(both) {
             resetBoth()
@@ -72,7 +69,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange({...config, min_mobs_name_width: 15, max_mobs_name_width: 180})
     }
 
-    let botStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false));
+    let botStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false))
 
     return (
         <>
@@ -83,13 +80,13 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     <ConfigTableRow
                         label={<ConfigLabel name="Mobs detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            mobsNameDebugModal.open();
+                            mobsNameDebugModal.open()
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Obstacle avoidance settings" helpText="" />}
                         item={<button onClick={() => {
-                            obstacleAvoidanceDebugModal.open();
+                            obstacleAvoidanceDebugModal.open()
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
@@ -103,39 +100,38 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             }/>
             <Modal isShowing={mobsColorsDebugModal.isShown} hide={mobsColorsDebugModal.close} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <ConfigTable>
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
-                            item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
-                        />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
-                            item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
-                        />
-                        <ConfigTableRow
-                            label={<ConfigLabel name="" helpText="" />}
-                            item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
-                        />
-
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
+                        item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
+                        item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="" helpText="" />}
+                        item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
+                    />
                 </ConfigTable>
             }/>
             <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
                 <ConfigTable>
-                        <ConfigTableRow
-                            label={<ConfigLabel name="Obstacle avoidance enabled" helpText="" />}
-                            item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
-                        />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
-                            item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
-                        />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Obstacle avoidance max try" helpText="After this number of try it'll abort attack and search for another target" />}
-                            item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try ?? false} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
-                        />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Obstacle avoidance enabled" helpText="" />}
+                        item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
+                        item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Obstacle avoidance max try" helpText="After this number of try it'll abort attack and search for another target" />}
+                        item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try ?? false} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
+                    />
                 </ConfigTable>
             }/>
             <Modal isShowing={mobsNameDebugModal.isShown} hide={mobsNameDebugModal.close} title={<h4>Mobs detection</h4>} body={
@@ -143,30 +139,29 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     <ConfigTableRow
                         label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(0);
-                            mobsColorsDebugModal.open();
+                            setSelectedMobType(0)
+                            mobsColorsDebugModal.open()
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(1);
-                            mobsColorsDebugModal.open();
+                            setSelectedMobType(1)
+                            mobsColorsDebugModal.open()
                         }}>⚙️</button>}
                     />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Min mobs name width" helpText="" />}
-                            item={<NumericInput unit='px' value={config.min_mobs_name_width ?? false} onChange={value => onChange({...config, min_mobs_name_width: value})} />}
-                        />
-                        <ConfigTableRow
-                            layout="v"
-                            label={<ConfigLabel name="Max mobs name width" helpText="" />}
-                            item={<NumericInput unit='px' value={config.max_mobs_name_width ?? false} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
-                        />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Min mobs name width" helpText="" />}
+                        item={<NumericInput unit='px' value={config.min_mobs_name_width ?? false} onChange={value => onChange({...config, min_mobs_name_width: value})} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Max mobs name width" helpText="" />}
+                        item={<NumericInput unit='px' value={config.max_mobs_name_width ?? false} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
+                    />
                 </ConfigTable>
             }/>
-
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -181,34 +176,30 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
                     />
-
                     {debugModeCount >= 3 &&
                         <ConfigTableRow
                             label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
                             item={<button onClick={() => {
-                                debugModal.open();
+                                debugModal.open()
                             }}>⚙️</button>}
                         />
                     }
-
-
                 </ConfigTable>
-
             </ConfigPanel>
             {info && (
-                    <div className="info" onClick={() => setDebugModeCount(debugModeCount >= 3 ? 0 : debugModeCount + 1) }>
-                        <div className="row">
-                            <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
-                        </div>
-                        <div className="row">
-                            <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
-                        </div>
-                        <div className="row">
-                            <div>Botting time : {botStopWatch[0]}:{botStopWatch[1]}:{botStopWatch[2]}</div>
-                        </div>
-
+                <div className="info" onClick={() => setDebugModeCount(debugModeCount >= 3 ? 0 : debugModeCount + 1) }>
+                    <div className="row">
+                        <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
                     </div>
-                )}
+                    <div className="row">
+                        <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
+                    </div>
+                    <div className="row">
+                        <div>Botting time : {botStopWatch[0]}:{botStopWatch[1]}:{botStopWatch[2]}</div>
+                    </div>
+
+                </div>
+            )}
         </>
     )
 }
