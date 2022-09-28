@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { FrontendInfoModel } from '../../models/FrontendInfo'
 import useModal from '../utils/UseModal'
 import { StopWatch } from '../utils/StopWatch'
+import YesNoModal from '../YesNoModal'
 
 type Props = {
     className?: string,
@@ -37,6 +38,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
     const debugModal = useModal()
     const mobsNameDebugModal = useModal(debugModal)
     const mobsColorsDebugModal = useModal(mobsNameDebugModal)
+    const resetSlotYesNo = useModal(debugModal)
     const obstacleAvoidanceDebugModal = useModal(debugModal)
 
     const [debugModeCount, setDebugModeCount] = useState(0)
@@ -75,6 +77,12 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         <>
             <SlotBar slots={config.slot_bars ?? createSlotBars()} onChange={handleSlotChange} />
             {/* DEBUG */}
+            <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
+                title={<h4>Confirm slot reset this action is irreversible</h4>}
+                onYes={() => {
+                    const newConfig = { ...config, slot_bars: createSlotBars() }
+                    onChange(newConfig)
+            }}/>
             <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>DEBUG</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
@@ -91,10 +99,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
-                        item={<button onClick={() => {
-                            const newConfig = { ...config, slot_bars: createSlotBars() }
-                            onChange(newConfig)
-                        }}>⚙️</button>}
+                        item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
                     />
                 </ConfigTable>
             }/>
