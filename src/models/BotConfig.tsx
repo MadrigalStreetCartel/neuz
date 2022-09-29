@@ -76,6 +76,8 @@ export type FarmingConfigModel = Partial<{
     min_mobs_name_width: number,
     max_mobs_name_width: number,
 
+    min_hp_attack: number,
+
 }>
 
 export type SupportConfigModel = Partial<{

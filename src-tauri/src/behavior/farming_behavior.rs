@@ -283,7 +283,7 @@ impl<'a> FarmingBehavior<'_> {
                 // Rotate in random direction for a random duration
                 Rotate(rot::Right, dur::Fixed(100)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Fixed(100)),
+                Wait(dur::Fixed(300)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -348,12 +348,14 @@ impl<'a> FarmingBehavior<'_> {
                     && mob_list.len() == 1
                     && self.last_kill_time.elapsed().as_millis() < 5500
             {
-                mob_list = mobs
+                if image.client_stats.hp.value >= config.min_hp_attack() {
+                    mob_list = mobs
                     .iter()
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
                     .cloned()
                     .collect::<Vec<_>>();
-                mob_type = "passive";
+                    mob_type = "passive";
+                }
             }
 
             // Check again
@@ -432,7 +434,7 @@ impl<'a> FarmingBehavior<'_> {
             State::Attacking(mob)
         } else {
             self.missclick_count += 1;
-            self.avoided_bounds.push((mob.bounds, Instant::now(), 1500));
+            self.avoided_bounds.push((mob.bounds, Instant::now(), 3000));
             if self.missclick_count == 30 {
                 self.missclick_count = 0;
                 State::NoEnemyFound
@@ -560,9 +562,6 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
-        self.kill_count += 1;
-        frontend_info.set_kill_count(self.kill_count);
-
         // Let's introduce some stats
         let started_elapsed = self.start_time.elapsed();
         let started_formatted = DateTime::format_time(started_elapsed);
@@ -600,6 +599,8 @@ impl<'a> FarmingBehavior<'_> {
         frontend_info: &mut FrontendInfo,
         config: &FarmingConfig,
     ) -> State {
+        self.kill_count += 1;
+        frontend_info.set_kill_count(self.kill_count);
         self.after_enemy_kill_debug(frontend_info);
 
         self.last_kill_time = Instant::now();

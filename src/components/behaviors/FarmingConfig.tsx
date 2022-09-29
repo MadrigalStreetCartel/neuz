@@ -181,6 +181,11 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
                     />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Minimum HP percent before attacking" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
+                        item={<NumericInput unit='%' value={config.min_hp_attack ?? false} onChange={value => onChange({...config, min_hp_attack: value})} />}
+                    />
                     {debugModeCount >= 3 &&
                         <ConfigTableRow
                             label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
@@ -197,7 +202,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
                     </div>
                     <div className="row">
-                        <div>Kills stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
+                        <div>Last kill stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
                     </div>
                     <div className="row">
                         <div>Botting time : {botStopWatch[0]}:{botStopWatch[1]}:{botStopWatch[2]}</div>
