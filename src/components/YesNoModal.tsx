@@ -25,7 +25,7 @@ const YesNoModal = ({className, isShowing, hide, onYes, onNo, title}: Props) => 
         hide()
     }
     return(
-        <Modal isShowing={isShowing} hide={hide} title={title ?? <h4>Confirm</h4>} body={
+        <Modal isShowing={isShowing} onHide={() => onClick(1)} hide={hide} title={title ?? <h4>Confirm</h4>} body={
 
             <ConfigTable>
                 <div style={{display: "inline-block", marginLeft: "50%", transform: "translateX(-50%)"}}>

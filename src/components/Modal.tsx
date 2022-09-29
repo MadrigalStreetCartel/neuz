@@ -9,15 +9,22 @@ type Props = {
     body?: ReactElement;
     title?: ReactElement;
     closeBtn?: boolean;
+    onHide?: () => void,
 
 }
 
-const SlotModal = ({className, isShowing, hide, body, title,closeBtn = true }: Props) => {
+const SlotModal = ({className, isShowing, hide, body, title,closeBtn = true, onHide }: Props) => {
+    const onHiding = () => {
+        if(onHide) {
+            onHide()
+        }
+        hide()
+    }
     if (isShowing) {
         return(
             <div className={className} >
                 <div className="modal-overlay">
-                    <div className="modal-wrapper" onMouseDown={event => { if (event.target === event.currentTarget)  hide()}}>
+                    <div className="modal-wrapper" onMouseDown={event => { if (event.target === event.currentTarget)  onHiding()}}>
                     <div className="modal">
                         <div className="modal-header">
                             {title &&
@@ -27,7 +34,7 @@ const SlotModal = ({className, isShowing, hide, body, title,closeBtn = true }: P
                                 <button
                                     type="button"
                                     className="modal-close-button"
-                                    onClick={hide}
+                                    onClick={onHiding}
                                 >
                                     <span style={{color:"white"}}>&times;</span>
                                 </button>
