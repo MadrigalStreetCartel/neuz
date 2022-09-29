@@ -34,11 +34,11 @@ Date format: `DD/MM/YYYY`
 - Misc
   - Adds buffs support !
   - Add HP/FP/MP restoration based on threshold and cooldown
-  - Removes games new on launcher
+  - Removes games news on launcher
   - Debug options (click 3 times on stats to show, click again to hide)
     - Adds customisable mobs detection values
     - Customisable obstacle avoidance values and behavior
-    - Reset slot bars
+    - Reset slot bars button
 - Lot of various fixes
 
 Big thanks to Moe who helped a lot to make this release perfect !
