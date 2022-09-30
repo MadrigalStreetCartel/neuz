@@ -6,8 +6,11 @@ import styled from 'styled-components'
 
 import FlyffLogo from './assets/msc_dark.png'
 import LauncherBackground from './assets/launcher_background_ice.png'
+import LauncherBackground2 from './assets/launcher_background.png'
 import MissionControl from './MissionControl'
+import { randomNumberInRange } from './components/utils/RandomInt'
 
+const launcherBackgrounds = [LauncherBackground, LauncherBackground2]
 const Greetings = [
     '😭 Real Market trading is destroying our game 😭',
     'Gala, if you see this, hire me',
@@ -160,7 +163,7 @@ export default styled(Launcher)`
     justify-content: center;
     width: 100vw;
     height: 100vh;
-    background-image: url(${LauncherBackground});
+    background-image: url(${launcherBackgrounds[randomNumberInRange(0,1)]});
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-position: center center;
@@ -248,7 +251,6 @@ export default styled(Launcher)`
 
         & .greet {
             position: absolute;
-            width: 100%;
             white-space: nowrap;
             text-align: center;
             font-size: 1.25rem;
