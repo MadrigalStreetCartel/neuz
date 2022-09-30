@@ -62,7 +62,7 @@ pub fn send_slot(slot_bar_index: usize, k: Key) {
 
     winput::send(slot_bar_vk);
     winput::send(k);
-    std::thread::sleep(Duration::from_millis(200));
+    std::thread::sleep(Duration::from_millis(100));
 }
 
 pub fn send_message(s: &str) {
