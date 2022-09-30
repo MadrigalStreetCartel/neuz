@@ -51,6 +51,7 @@ const Greetings = [
     'Madrigal Street Cocaine',
     'Madrigal Skooma Cartel',
     'Do you remember CFlyff',
+    'Sly was here',
     '夢想飛飛',
 ]
 
