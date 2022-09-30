@@ -128,6 +128,10 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
                     />
                     <ConfigTableRow
+                        label={<ConfigLabel name="Abort attack only for passive" helpText="" />}
+                        item={<BooleanSlider value={config.obstacle_avoidance_only_passive ?? false} onChange={value => onChange?.({ ...config, obstacle_avoidance_only_passive: value })} />}
+                    />
+                    <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
                         item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
