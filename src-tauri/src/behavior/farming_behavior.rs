@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use libscreenshot::shared::Area;
-use rand::{prelude::SliceRandom};
+use rand::prelude::SliceRandom;
 use slog::Logger;
 use tauri::{PhysicalPosition, Position};
 
@@ -44,7 +44,7 @@ pub struct FarmingBehavior<'a> {
     last_summon_pet_time: Option<Instant>,
     last_killed_type: MobType,
     start_time: Instant,
-    already_attack_count: u32
+    already_attack_count: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -350,10 +350,10 @@ impl<'a> FarmingBehavior<'_> {
             {
                 if image.client_stats.hp.value >= config.min_hp_attack() {
                     mob_list = mobs
-                    .iter()
-                    .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
-                    .cloned()
-                    .collect::<Vec<_>>();
+                        .iter()
+                        .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
+                        .cloned()
+                        .collect::<Vec<_>>();
                     mob_type = "passive";
                 }
             }
@@ -450,7 +450,11 @@ impl<'a> FarmingBehavior<'_> {
 
         if let Some(marker) = image.identify_target_marker(config) {
             // Target marker found
-            self.avoided_bounds.push((marker.bounds.grow_by(self.already_attack_count * 5), Instant::now(), 2500));
+            self.avoided_bounds.push((
+                marker.bounds.grow_by(self.already_attack_count * 5),
+                Instant::now(),
+                2500,
+            ));
         }
         self.already_attack_count += 1;
         play!(self.movement => [
@@ -495,6 +499,8 @@ impl<'a> FarmingBehavior<'_> {
             }
             if !config.is_stop_fighting()
                 && config.obstacle_avoidance_enabled()
+                && (image.client_stats.enemy_hp.value > 75
+                    || image.client_stats.enemy_hp.value < 25)
                 && image.client_stats.enemy_hp.last_update_time.is_some()
                 && image
                     .client_stats
@@ -507,22 +513,23 @@ impl<'a> FarmingBehavior<'_> {
             {
                 // Reset timer otherwise it'll trigger every tick
                 image.client_stats.enemy_hp.reset_last_update_time();
-                let mut should_abort = true;
 
+                let mut avoid_max_try = config.get_obstacle_avoidance_max_try();
                 if !config.obstacle_avoidance_only_passive() {
                     match mob.target_type {
-                        TargetType::Mob(MobType::Aggressive) => should_abort = false,
+                        TargetType::Mob(MobType::Aggressive) => avoid_max_try = avoid_max_try * 5,
                         _ => {}
                     }
                 }
 
                 // Abort attack after x avoidance
-                if should_abort
-                    && self.obstacle_avoidance_count >= config.get_obstacle_avoidance_max_try()
+                if self.obstacle_avoidance_count >= avoid_max_try
                     && image.client_stats.hp.value == 100
                 {
                     self.obstacle_avoidance_count = 0;
-                    return self.abort_attack(config, image);
+                    let state = self.abort_attack(config, image);
+                    std::thread::sleep(Duration::from_millis(500));
+                    return state;
                 }
                 self.last_initial_attack_time = Instant::now();
                 use crate::movement::prelude::*;
@@ -539,10 +546,6 @@ impl<'a> FarmingBehavior<'_> {
             }
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
-
-            if self.obstacle_avoidance_count == config.get_obstacle_avoidance_max_try() {
-                std::thread::sleep(Duration::from_millis(500));
-            }
         } else if image.client_stats.enemy_hp.value == 0
             && self.is_attacking
             && image.client_stats.is_alive()
