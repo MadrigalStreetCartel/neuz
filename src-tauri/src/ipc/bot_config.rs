@@ -158,7 +158,6 @@ pub struct FarmingConfig {
     max_mobs_name_width: Option<u32>,
 
     min_hp_attack: Option<u32>,
-
 }
 
 impl FarmingConfig {

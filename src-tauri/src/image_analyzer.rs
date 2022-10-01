@@ -287,8 +287,12 @@ impl ImageAnalyzer {
         }
 
         // Identify target marker entities
-        let target_markers =
-            Self::merge_cloud_into_mobs(config, &PointCloud::new(coords), TargetType::TargetMarker, true);
+        let target_markers = Self::merge_cloud_into_mobs(
+            config,
+            &PointCloud::new(coords),
+            TargetType::TargetMarker,
+            true,
+        );
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
