@@ -68,7 +68,8 @@ const Launcher = ({ className }: Props) => {
         const webview = new WebviewWindow(`client`, {
             title: 'Flyff Universe',
             url: 'https://universe.flyff.com/play',
-            center:true,
+            center: true,
+            resizable: false,
         })
 
         webview.once('tauri://created', function () {
@@ -102,6 +103,7 @@ const Launcher = ({ className }: Props) => {
             {isLaunched && (
                 <MissionControl />
             )}
+
         </div>
     )
 }
