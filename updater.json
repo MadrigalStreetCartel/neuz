@@ -1,0 +1,23 @@
+{
+  "version": "v0.13.0",
+  "notes": "",
+  "pub_date": "2022-10-05T00:00:00Z",
+  "platforms": {
+    "darwin-x86_64": {
+      "signature": "",
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/appimage/Neuz_0.9.0_x64_en-US.Appimage"
+    },
+    "darwin-aarch64": {
+      "signature": "",
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/appimage/Neuz_0.9.0_x64_en-US.Appimage"
+    },
+    "linux-x86_64": {
+      "signature": "",
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/deb/Neuz_0.13.0_x64_en-US.deb"
+    },
+    "windows-x86_64": {
+      "signature": "",
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/msi/Neuz_0.13.0_x64_en-US.msi"
+    }
+  }
+}
