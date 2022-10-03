@@ -13,11 +13,11 @@
     },
     "linux-x86_64": {
       "signature": "",
-      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/deb/Neuz_0.13.0_x64_en-US.deb"
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/deb/Neuz_0.9.0_x64_en-US.deb"
     },
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/msi/Neuz_0.13.0_x64_en-US.msi"
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/main/src-tauri/target/release/bundle/msi/Neuz_0.13.1_x64_en-US.msi"
     }
   }
 }
