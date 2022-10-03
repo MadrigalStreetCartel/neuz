@@ -17,7 +17,7 @@
     },
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/clean-local-testing/src-tauri/target/release/bundle/msi/Neuz_0.13.1_x64_en-US.msi?raw=true"
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/clean-local-testing/src-tauri/target/release/bundle/msi/Neuz_0.13.1_x64_en-US.msi.zip?raw=true"
     }
   }
 }
