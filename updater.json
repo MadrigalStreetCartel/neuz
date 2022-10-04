@@ -17,7 +17,7 @@
     },
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSMGk3d3hycUVoTzNEbEZxKzl3UlN2cE5sZ1pjUi9EWkJ0OUczWGhxblppNDRvR2l4aTByZTF4MndKVmplcEFqV3JBNXVZYXJJWFc2alltTXRjZGJsUWZVRjg4SkxvOGdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNjY0ODQxNTE1CWZpbGU6TmV1el8wLjEzLjFfeDY0X2VuLVVTLm1zaS56aXAKRmpPR3N0djRKanBab3pjS3gyVjd4SUR5L2xML3JWU2tIek9wTGEreHArOEpleGVxZFA5MTJ2Z1hDU0NHYUpMTDA5TDhPc1RiYU5KT1k3Tm44a3JzREE9PQo=",
-      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/clean-local-testing/src-tauri/target/release/bundle/msi/Neuz_0.13.1_x64_en-US.msi.zip?raw=true"
+      "url": "https://github.com/MadrigalStreetCartel/neuz/blob/clean-local-testing/src-tauri/target/release/bundle/msi/Neuz_0.13.1_x64_en-US.msi?raw=true"
     }
   }
 }
