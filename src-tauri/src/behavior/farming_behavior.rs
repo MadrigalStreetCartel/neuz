@@ -456,7 +456,7 @@ impl<'a> FarmingBehavior<'_> {
         if let Some(marker) = image.identify_target_marker(config) {
             // Target marker found
             self.avoided_bounds.push((
-                marker.bounds.grow_by(self.already_attack_count * 5),
+                marker.bounds.grow_by(self.already_attack_count * 10 ),
                 Instant::now(),
                 2500,
             ));
@@ -527,17 +527,9 @@ impl<'a> FarmingBehavior<'_> {
                     }
                 }
 
-                // Abort attack after x avoidance or after 30 sec without loosing HP
-                if (self.obstacle_avoidance_count >= avoid_max_try
-                    && image.client_stats.hp.value == 100)
-                    || image
-                    .client_stats
-                    .enemy_hp
-                    .last_update_time
-                    .unwrap()
-                    .elapsed()
-                    .as_millis()
-                    > 30000
+                // Abort attack after x avoidance
+                if self.obstacle_avoidance_count >= avoid_max_try
+                    && image.client_stats.hp.value == 100
                 {
                     self.obstacle_avoidance_count = 0;
                     let state = self.abort_attack(config, image);
