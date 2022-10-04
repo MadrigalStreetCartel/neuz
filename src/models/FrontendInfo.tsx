@@ -7,4 +7,5 @@ export type FrontendInfoModel = {
     is_alive: boolean,
     kill_min_avg: number,
     kill_hour_avg: number,
+    version: number[],
 }

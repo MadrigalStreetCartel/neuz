@@ -65,7 +65,26 @@ const MissionControl = ({ className }: Props) => {
         const newConfig = { ...config, [key]: patchedConfig }
         emit('bot_config_c2s', newConfig)
     }
-
+    const getData=()=>{
+        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/clean-local-testing/updater.json'
+        ,{
+          headers : {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+           }
+        }
+        )
+          .then(function(response){
+            console.log(response)
+            return response.json();
+          })
+          .then(function(myJson) {
+            console.log(myJson);
+          });
+      }
+      useEffect(()=>{
+        getData()
+      },[])
     return (
         <div className={className}>
             <div className="vstack">
@@ -100,7 +119,7 @@ const MissionControl = ({ className }: Props) => {
                 ))}
             </div> */}
 
-            <Footer />
+            <Footer version={info?.version} />
         </div>
     )
 }

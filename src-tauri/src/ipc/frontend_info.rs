@@ -12,6 +12,7 @@ pub struct FrontendInfo {
     is_attacking: bool,
     is_running: bool,
     is_alive: bool,
+    version: Option<[u8; 3]>
 }
 
 impl FrontendInfo {
@@ -19,6 +20,7 @@ impl FrontendInfo {
         Self {
             /* enemy_bounds: None,
             active_enemy_bounds: None, */
+            version: None,
             enemy_kill_count: 0,
             kill_min_avg: 0.0,
             kill_hour_avg: 0.0,
@@ -36,6 +38,9 @@ impl FrontendInfo {
            self.active_enemy_bounds = Some(active_enemy_bounds);
        }
     */
+    pub fn set_version(&mut self, version: Option<[u8; 3]>) {
+        self.version = version;
+    }
     pub fn set_kill_count(&mut self, enemy_kill_count: u32) {
         self.enemy_kill_count = enemy_kill_count;
     }
