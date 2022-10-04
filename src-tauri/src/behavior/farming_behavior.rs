@@ -117,6 +117,7 @@ impl<'a> FarmingBehavior<'_> {
 
         self.update_avoid_bounds();
     }
+
     fn update_avoid_bounds(&mut self) {
         // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
@@ -144,6 +145,7 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
     }
+
     fn update_slots(&mut self, config: &FarmingConfig) {
         // Update slots cooldown timers
         let mut slotbar_index = 0;
@@ -152,7 +154,7 @@ impl<'a> FarmingBehavior<'_> {
             for last_time in slot_bars {
                 let cooldown = config
                     .get_slot_cooldown(slotbar_index, slot_index)
-                    .unwrap()
+                    .unwrap_or(100)
                     .try_into();
                 if last_time.is_some() && cooldown.is_ok() {
                     let slot_last_time = last_time.unwrap().elapsed().as_millis();
@@ -283,7 +285,7 @@ impl<'a> FarmingBehavior<'_> {
                 // Rotate in random direction for a random duration
                 Rotate(rot::Right, dur::Fixed(100)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Fixed(300)),
+                Wait(dur::Fixed(200)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -294,25 +296,28 @@ impl<'a> FarmingBehavior<'_> {
         // Check whether bot should stay in area
         if config.should_stay_in_area() {
             // Reset rotation movement tries to keep rotating
-            self.rotation_movement_tries = 0;
-
+            //self.rotation_movement_tries = 0;
+            self.move_circle_pattern(150);
             // Stay in state
-            return self.state;
+            //return self.state;
+        } else {
+            self.move_circle_pattern(30);
         }
-
-        // Move in a circle pattern
-        send_keystroke(Key::W, KeyMode::Hold);
-        send_keystroke(Key::Space, KeyMode::Hold);
-        send_keystroke(Key::D, KeyMode::Hold);
-        std::thread::sleep(Duration::from_millis(25));
-        send_keystroke(Key::D, KeyMode::Release);
-        std::thread::sleep(Duration::from_millis(25));
-        send_keystroke(Key::Space, KeyMode::Release);
-        send_keystroke(Key::W, KeyMode::Release);
-        std::thread::sleep(Duration::from_millis(50));
-
         // Transition to next state
         State::SearchingForEnemy
+    }
+
+    fn move_circle_pattern(&self, rotation_duration: u64) {
+        // low rotation duration means big circle, high means little circle
+        use crate::movement::prelude::*;
+        play!(self.movement => [
+            HoldKeys(vec![Key::W, Key::Space, Key::D]),
+            Wait(dur::Fixed(rotation_duration)),
+            ReleaseKey(Key::D),
+            Wait(dur::Fixed(20)),
+            ReleaseKeys(vec![Key::Space, Key::W]),
+            HoldKeyFor(Key::S, dur::Fixed(50)),
+        ]);
     }
 
     fn on_searching_for_enemy(
@@ -522,9 +527,17 @@ impl<'a> FarmingBehavior<'_> {
                     }
                 }
 
-                // Abort attack after x avoidance
-                if self.obstacle_avoidance_count >= avoid_max_try
-                    && image.client_stats.hp.value == 100
+                // Abort attack after x avoidance or after 30 sec without loosing HP
+                if (self.obstacle_avoidance_count >= avoid_max_try
+                    && image.client_stats.hp.value == 100)
+                    || image
+                    .client_stats
+                    .enemy_hp
+                    .last_update_time
+                    .unwrap()
+                    .elapsed()
+                    .as_millis()
+                    > 30000
                 {
                     self.obstacle_avoidance_count = 0;
                     let state = self.abort_attack(config, image);
@@ -597,6 +610,7 @@ impl<'a> FarmingBehavior<'_> {
 
         frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))
     }
+
     fn after_enemy_kill(
         &mut self,
         frontend_info: &mut FrontendInfo,
