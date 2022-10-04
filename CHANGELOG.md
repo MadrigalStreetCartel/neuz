@@ -29,12 +29,14 @@ Date format: `DD/MM/YYYY`
   - New mob search movements pattern, moves in circle
   - PickupPet waiting time is now non blocking and can be changed
   - Adds stop mobs detection feature, it disable the mob detection but keeps slots usage
+  - Adds a minimum HP % to attack only for passive (will wait until this value is reached)
 - AutoShout behaviour
   - Fixes an AutoShout behavior bug where spaces were automatically deleted
 - Misc
   - Adds buffs support !
   - Add HP/FP/MP restoration based on threshold and cooldown
   - Removes games news on launcher
+  - Adds version + update display
   - Debug options (click 3 times on stats to show, click again to hide)
     - Adds customisable mobs detection values
     - Customisable obstacle avoidance values and behavior
