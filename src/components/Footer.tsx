@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { BsDiscord, BsGithub } from 'react-icons/bs'
 
@@ -10,7 +10,6 @@ type Props = {
 }
 
 const Footer = ({ className, version }: Props) => {
-    const [newVersion, setNewVersion] = useState("0.0.0")
     const [currentVersion, setCurrentVersion] = useState("NaN")
     const [updateAvailible, setUpdateAvailible] = useState(false)
     const getData=()=>{
@@ -19,21 +18,18 @@ const Footer = ({ className, version }: Props) => {
             return response.json();
         })
         .then(function(myJson) {
-            if(myJson.version !== "0.0.0") {
-                setNewVersion(myJson.version)
-                console.log(newVersion)
-                if(currentVersion !== "NaN" && newVersion !== currentVersion) {
-                    setUpdateAvailible(true)
-                }
+            if(currentVersion !== "NaN" && myJson.version !== currentVersion) {
+                setUpdateAvailible(true)
             }
         });
     }
     if (version && currentVersion === "NaN") {
         setCurrentVersion(`${version[0]}.${version[1]}.${version[2]}`)
     }
-    useEffect(()=>{
+    useEffect(() => {
         getData()
     },[])
+
 
     return (
         <footer className={className}>
@@ -65,7 +61,7 @@ export default styled(Footer)`
     & .badge {
         text-decoration:none;
         background-color:#000;
-        color:#fff;
+        color: yellow;
         display:inline-block;
         padding-left:8px;
         padding-right:8px;
