@@ -92,8 +92,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
         .expect("error while running tauri application");
-/*     let window = app_handle.get_window("main").unwrap();
-    window.emit("tauri://update".to_string(), None); */
 }
 
 #[tauri::command]
