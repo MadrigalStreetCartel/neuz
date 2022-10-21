@@ -35,13 +35,13 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
         onChange(newConfig)
     }
+    const statsModal = useModal()
     const debugModal = useModal()
     const mobsNameDebugModal = useModal(debugModal)
     const mobsColorsDebugModal = useModal(mobsNameDebugModal)
     const resetSlotYesNo = useModal(debugModal)
     const obstacleAvoidanceDebugModal = useModal(debugModal)
 
-    const [debugModeCount, setDebugModeCount] = useState(0)
     const [selectedMobType, setSelectedMobType] = useState(0)
 
     const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
@@ -71,7 +71,26 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange({...config, min_mobs_name_width: 15, max_mobs_name_width: 180})
     }
 
-    let botStopWatch = StopWatch((info?.is_running ?? false) && (info?.is_alive ?? false) && (!config.is_stop_fighting ?? false))
+    // StopWatchs
+    let botStopWatch = StopWatch(), searchMobStopWatch = StopWatch(), fightStopWatch = StopWatch()
+
+    if(info?.is_running && info?.is_alive && !config.is_stop_fighting) {
+        botStopWatch.start()
+    }else {
+        botStopWatch.stop()
+    }
+
+    if(info?.is_running && info?.is_alive && !config.is_stop_fighting && !info?.is_attacking) {
+        searchMobStopWatch.start(true)
+    }else {
+        searchMobStopWatch.stop()
+    }
+
+    if(info?.is_running && info?.is_alive && !config.is_stop_fighting && info?.is_attacking) {
+        fightStopWatch.start(true)
+    }else {
+        fightStopWatch.stop()
+    }
 
     return (
         <>
@@ -190,28 +209,31 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                         label={<ConfigLabel name="Minimum HP percent before attacking" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
                         item={<NumericInput unit='%' value={config.min_hp_attack ?? false} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
-                    {debugModeCount >= 3 &&
-                        <ConfigTableRow
-                            label={<ConfigLabel name="Debug settings" helpText="Change only if you know what you're doing !" />}
-                            item={<button onClick={() => {
-                                debugModal.open()
-                            }}>⚙️</button>}
-                        />
-                    }
                 </ConfigTable>
             </ConfigPanel>
+            <Modal isShowing={statsModal.isShown} hide={statsModal.close} title={<h4>Stats</h4>} body={
+                <div className="stats">
+                    <div className="row">
+                        <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour | total : {info?.enemy_kill_count}</div>
+                    </div>
+                    <div className="row">
+                        <div>Botting time: {botStopWatch.watch.hours}:{botStopWatch.watch.mins}:{botStopWatch.watch.secs}:{botStopWatch.watch.ms}</div>
+                    </div>
+                    <div className="row">
+                        <div>Search time: {searchMobStopWatch.watch.hours}:{searchMobStopWatch.watch.mins}:{searchMobStopWatch.watch.secs}:{searchMobStopWatch.watch.ms}</div>
+                    </div>
+                    <div className="row">
+                        <div>Fight time: {fightStopWatch.watch.hours}:{fightStopWatch.watch.mins}:{fightStopWatch.watch.secs}:{fightStopWatch.watch.ms}</div>
+                    </div>
+                </div>
+            }/>
             {info && (
-                <div className="info" onClick={() => setDebugModeCount(debugModeCount >= 3 ? 0 : debugModeCount + 1) }>
+                <div className="info">
                     <div className="row">
                         <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
                     </div>
-                    <div className="row">
-                        <div>Last kill stats(approx): {info.kill_min_avg}/min | {info.kill_hour_avg}/hour | total : {info.enemy_kill_count}</div>
-                    </div>
-                    <div className="row">
-                        <div>Botting time : {botStopWatch[0]}:{botStopWatch[1]}:{botStopWatch[2]}</div>
-                    </div>
-
+                    <button className="btn sm" onClick={statsModal.open}>Stats</button>
+                    <button className="btn sm" onClick={debugModal.open}>Debug</button>
                 </div>
             )}
         </>

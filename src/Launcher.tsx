@@ -197,4 +197,11 @@ export default styled(Launcher)`
             box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1), 0 .5rem 2rem 0 hsla(0,0%,0%,.25), 0 2rem 2rem 0 hsla(0,0%,0%,.25);
         }
     }
+
+    & .sm {
+        padding: 0.25rem 0.25rem;
+        align-self: center;
+        width: 60%;
+        font-size: 1.25rem;
+    }
 `

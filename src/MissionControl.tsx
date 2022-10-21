@@ -155,12 +155,24 @@ export default styled(MissionControl)`
         box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1);
         border: 1px solid hsl(0,0%,10%);
         z-index: 0;
+        width: calc(min(500px, max(250px, 50vw)));
+
 
         &--slotbar {
             width: auto;
         }
 
         & .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 3rem;
+        }
+    }
+
+    & .stats {
+        & .row {
+            color: white;
             display: flex;
             align-items: center;
             justify-content: space-around;
