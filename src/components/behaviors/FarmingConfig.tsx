@@ -54,7 +54,11 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             resets[selectedMobType]()
         }
     }
-
+    let initial_circle_pattern_rotation_duration = false;
+    if(!config.circle_pattern_rotation_duration && initial_circle_pattern_rotation_duration) {
+        onChange({...config, circle_pattern_rotation_duration: 30})
+        initial_circle_pattern_rotation_duration = true;
+    }
     if(!config.passive_mobs_colors && !config.passive_tolerence) {
         resets[0]()
     }
@@ -64,7 +68,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
     }
 
     if(!config.obstacle_avoidance_cooldown && !config.obstacle_avoidance_max_try) {
-        onChange({...config, obstacle_avoidance_cooldown: 3500, obstacle_avoidance_max_try: 3})
+        onChange({...config, obstacle_avoidance_cooldown: 5500, obstacle_avoidance_max_try: 3})
     }
 
     if(!config.min_mobs_name_width && !config.max_mobs_name_width) {
@@ -193,21 +197,20 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
-                        label={<ConfigLabel name="Avoid already attacked monster (experimental)" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
+                        label={<ConfigLabel name="Avoid attacked monster" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
                         item={<BooleanSlider value={config.prevent_already_attacked ?? false} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
                     />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Stay in Area" helpText="The bot will try to wait in the area and not move around too much." />}
-                        item={<BooleanSlider value={config.stay_in_area ?? false} onChange={value => onChange?.({ ...config, stay_in_area: value })} />}
+                        label={<ConfigLabel name="Circle pattern duration" helpText="The bot will try to move in a circle pattern to find target. Value of 0 will stay in place. Lower value to increase circle. Default : 30" />}
+                        item={<NumericInput value={config.circle_pattern_rotation_duration ?? false} onChange={value => onChange?.({ ...config, circle_pattern_rotation_duration: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Min HP percent to attack" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
+                        item={<NumericInput unit='%' value={config.min_hp_attack ?? false} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
                         item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Minimum HP percent before attacking" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
-                        item={<NumericInput unit='%' value={config.min_hp_attack ?? false} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
                 </ConfigTable>
             </ConfigPanel>

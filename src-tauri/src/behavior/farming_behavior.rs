@@ -294,14 +294,12 @@ impl<'a> FarmingBehavior<'_> {
         }
 
         // Check whether bot should stay in area
-        if config.should_stay_in_area() {
-            // Reset rotation movement tries to keep rotating
-            //self.rotation_movement_tries = 0;
-            self.move_circle_pattern(150);
-            // Stay in state
-            //return self.state;
+        let circle_pattern_rotation_duration = config.circle_pattern_rotation_duration();
+        if circle_pattern_rotation_duration > 0 {
+            self.move_circle_pattern(circle_pattern_rotation_duration);
         } else {
-            self.move_circle_pattern(30);
+            self.rotation_movement_tries = 0;
+            return self.state;
         }
         // Transition to next state
         State::SearchingForEnemy
@@ -504,8 +502,6 @@ impl<'a> FarmingBehavior<'_> {
             }
             if !config.is_stop_fighting()
                 && config.obstacle_avoidance_enabled()
-                && (image.client_stats.enemy_hp.value > 75
-                    || image.client_stats.enemy_hp.value < 25)
                 && image.client_stats.enemy_hp.last_update_time.is_some()
                 && image
                     .client_stats

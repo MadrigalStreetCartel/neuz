@@ -61,6 +61,7 @@ export type FarmingConfigModel = Partial<{
     use_attack_skills: boolean,
     stay_in_area: boolean,
     slot_bars: SlotBars,
+    circle_pattern_rotation_duration: number,
     passive_mobs_colors: number[];
     passive_tolerence: number;
     aggressive_mobs_colors: number[];

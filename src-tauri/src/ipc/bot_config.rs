@@ -137,6 +137,9 @@ pub struct FarmingConfig {
     /// Slot configuration
     slot_bars: Option<[SlotBar; 9]>,
 
+    /// Search for mob circle pattern
+    circle_pattern_rotation_duration: Option<u64>,
+
     /// Disable farming
     farming_enabled: Option<bool>,
 
@@ -161,12 +164,17 @@ pub struct FarmingConfig {
 }
 
 impl FarmingConfig {
+
+    pub fn circle_pattern_rotation_duration(&self) -> u64 {
+        self.circle_pattern_rotation_duration.unwrap_or(30)
+    }
+
     pub fn obstacle_avoidance_enabled(&self) -> bool {
         self.obstacle_avoidance_enabled.unwrap_or(true)
     }
 
     pub fn get_obstacle_avoidance_cooldown(&self) -> u128 {
-        self.obstacle_avoidance_cooldown.unwrap_or(3000).into()
+        self.obstacle_avoidance_cooldown.unwrap_or(5500).into()
     }
 
     pub fn get_obstacle_avoidance_max_try(&self) -> u32 {
