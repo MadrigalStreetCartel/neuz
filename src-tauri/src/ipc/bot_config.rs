@@ -132,8 +132,6 @@ impl ToString for BotMode {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FarmingConfig {
-    /// Whether the bot will try to stay in the area it started in
-    stay_in_area: Option<bool>,
     /// Slot configuration
     slot_bars: Option<[SlotBar; 9]>,
 
@@ -195,10 +193,6 @@ impl FarmingConfig {
 
     pub fn min_hp_attack(&self) -> u32 {
         self.min_hp_attack.unwrap_or(0)
-    }
-
-    pub fn should_stay_in_area(&self) -> bool {
-        self.stay_in_area.unwrap_or(false)
     }
 
     pub fn get_passive_mobs_colors(&self) -> [Option<u8>; 3] {
