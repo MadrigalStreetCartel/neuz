@@ -214,7 +214,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     />
                 </ConfigTable>
             </ConfigPanel>
-            <Modal isShowing={statsModal.isShown} hide={statsModal.close} title={<h4>Stats</h4>} body={
+            <Modal isShowing={statsModal.isShown} hide={statsModal.close} title={<h4>Stats - State: {running? info?.is_running? !info?.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</h4>} body={
                 <div className="stats">
                     <div className="row">
                         <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour | total : {info?.enemy_kill_count}</div>
