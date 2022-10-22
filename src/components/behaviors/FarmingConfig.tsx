@@ -235,8 +235,8 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
                     <div className="row">
                         <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
                     </div>
-                    <button className="btn sm" onClick={statsModal.open}>Stats</button>
-                    <button className="btn sm" onClick={debugModal.open}>Debug</button>
+                    <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
+                    <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>
             )}
         </>

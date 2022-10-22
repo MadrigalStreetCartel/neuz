@@ -30,6 +30,7 @@ Date format: `DD/MM/YYYY`
   - PickupPet waiting time is now non blocking and can be changed
   - Adds stop mobs detection feature, it disable the mob detection but keeps slots usage
   - Adds a minimum HP % to attack only for passive (will wait until this value is reached)
+  - Adds circle pattern duration selection, and removes Stay in area feature (replaced by duration 0)
 - AutoShout behaviour
   - Fixes an AutoShout behavior bug where spaces were automatically deleted
 - Misc

@@ -32,10 +32,6 @@ const ShoutConfig = ({ config, onChange }: Props) => {
                         item={<NumericInput unit="ms" value={config.shout_interval ?? false} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
                     />
                 </ConfigTable>
-                {/* <ConfigRow>
-                    <BooleanSlider value={config.shout_enabled ?? false} onChange={value => onChange?.({ ...config, shout_enabled: value })} />
-                    <ConfigLabel name="Enable shouting" helpText="" />
-                </ConfigRow> */}
             </ConfigPanel>
         </>
     )

@@ -10,7 +10,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{send_keystroke, send_slot, Key, KeyMode, PlatformAccessor},
+    platform::{send_slot, Key, PlatformAccessor},
     play,
     utils::DateTime,
 };
@@ -332,7 +332,7 @@ impl<'a> FarmingBehavior<'_> {
             State::NoEnemyFound
         } else {
             // Calculate max distance of mobs
-            let max_distance = match config.should_stay_in_area() {
+            let max_distance = match config.circle_pattern_rotation_duration() == 0 {
                 true => 325,
                 false => 1000,
             };
