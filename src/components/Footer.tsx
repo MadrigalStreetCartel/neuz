@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { BsDiscord, BsGithub } from 'react-icons/bs'
 
@@ -6,12 +6,37 @@ import SocialButton from './SocialButton'
 
 type Props = {
     className?: string,
+    version?: number[],
 }
 
-const Footer = ({ className }: Props) => {
+const Footer = ({ className, version }: Props) => {
+    const [currentVersion, setCurrentVersion] = useState("NaN")
+    const [updateAvailible, setUpdateAvailible] = useState(false)
+    const getData=()=>{
+        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/clean-local-testing/updater.json')
+        .then(function(response){
+            return response.json();
+        })
+        .then(function(myJson) {
+            if(currentVersion !== "NaN" && myJson.version !== currentVersion) {
+                setUpdateAvailible(true)
+            }
+        });
+    }
+    if (version && currentVersion === "NaN") {
+        setCurrentVersion(`${version[0]}.${version[1]}.${version[2]}`)
+    }
+    useEffect(() => {
+        getData()
+    },[])
+
+
     return (
         <footer className={className}>
             <SocialButton icon={BsDiscord} label="Join our Discord" href="https://discord.gg/cZr3X3mCnq" />
+            {version && (<p id="versionNumber">V{currentVersion}
+                {updateAvailible && (<a target="_blank" href="https://github.com/MadrigalStreetCartel/neuz" className="badge">NEW UPDATE</a>)}</p>)
+            }
             <SocialButton icon={BsGithub} label="Star us on GitHub" href="https://github.com/MadrigalStreetCartel/neuz" />
         </footer>
     )
@@ -28,4 +53,23 @@ export default styled(Footer)`
     margin-top: 1rem;
     gap: 1rem;
     padding: .25rem;
+
+    & #versionNumber {
+        color: white;
+    }
+
+    & .badge {
+        text-decoration:none;
+        background-color:#000;
+        color: yellow;
+        display:inline-block;
+        padding-left:8px;
+        padding-right:8px;
+        text-align:center;
+        border-radius:50%;
+        margin-top:-15px;
+        font-size: 12px;
+        margin-left:-70px;
+        position: fixed;
+    }
 `

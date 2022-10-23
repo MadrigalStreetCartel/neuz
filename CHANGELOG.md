@@ -5,6 +5,56 @@ Date format: `DD/MM/YYYY`
 [@genoxalmighty]: https://github.com/genoxalmighty
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
+**0.13.0**
+> Released on XX.09.2022
+
+- image detection
+  - Improves mob detection and attack by detecting cursor
+  - Changes min & max name's length detection (Mias, Bang, Master Mage Prankster  and others were not detected)
+  - Adds PNJ/FP/MP detection
+  - IGNORE_AREA_BOTTOM decreased to 110px instead of 150px
+- UI enhancements
+  - Removes settings 'Use skill to attack', 'Use pickup pet' (functionnalities still implemented)
+  - Displays stats
+  - Slot
+    - Adds the F1 to F9 slot bars (90 slots availible) - use shortcut like in game to navigate
+    - Reworked to fit with new threshold and cooldown restoration
+    - Can be disabled instead of removed
+- Changes rotation keys so only the camera rotate
+- Removes unsupervised mode
+- Farming behavior
+  - Avoid obstacles (experimental) you'll need at least one attack slot to make it works (advice: add attack motion with a low cooldown like 500)
+  - Avoid already attacked monster (disable if you play in party)
+  - Avoid npc/pets selection (rare)
+  - New mob search movements pattern, moves in circle
+  - PickupPet waiting time is now non blocking and can be changed
+  - Adds stop mobs detection feature, it disable the mob detection but keeps slots usage
+  - Adds a minimum HP % to attack only for passive (will wait until this value is reached)
+  - Adds circle pattern duration selection, and removes Stay in area feature (replaced by duration 0)
+- AutoShout behaviour
+  - Fixes an AutoShout behavior bug where spaces were automatically deleted
+- Misc
+  - Adds buffs support !
+  - Add HP/FP/MP restoration based on threshold and cooldown
+  - Removes games news on launcher
+  - Adds version + update display
+  - Debug options (click 3 times on stats to show, click again to hide)
+    - Adds customisable mobs detection values
+    - Customisable obstacle avoidance values and behavior
+    - Reset slot bars button
+- Lot of various fixes
+
+Big thanks to Moe who helped a lot to make this release perfect !
+
+**0.12.1**
+> Released on 23.08.2022
+
+**INFO**:<br>
+This is the last release supported by the founders.<br>
+Project lead has been given to [@slyker].
+
+- Fixes occasional clicks outside of window area
+- Updates default window layout
 
 **0.12.1**
 > Released on 23.08.2022

@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Neuz",
-    "version": "0.12.1"
+    "version": "0.13.0"
   },
   "tauri": {
     "allowlist": {
@@ -55,11 +55,12 @@
     },
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "resizable": true,
         "title": "Neuz | MadrigalStreetCartel",
         "width": 550,
-        "height": 600,
+        "height": 750,
         "x": 0,
         "y": 0
       }

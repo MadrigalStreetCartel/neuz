@@ -26,6 +26,19 @@ impl From<Key> for char {
             Space => ' ',
             Esc => todo!(),
             Enter => todo!(),
+            T => todo!(),
+            Left => todo!(),
+            Right => todo!(),
+            Z => 'z',
+            _F1 => todo!(),
+            _F2 => todo!(),
+            _F3 => todo!(),
+            _F4 => todo!(),
+            _F5 => todo!(),
+            _F6 => todo!(),
+            _F7 => todo!(),
+            _F8 => todo!(),
+            _F9 => todo!(),
         }
     }
 }
@@ -40,6 +53,14 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => ctx.ascii_char_up(k),
     }
     .unwrap();
+}
+
+pub fn send_slot(k: Key) {
+    let k: char = k.into();
+    let k = k as u8;
+    let mut ctx = tfc::Context::new().unwrap();
+    ctx.ascii_char(k);
+    std::thread::sleep(Duration::from_millis(500));
 }
 
 pub fn send_message(text: &str) {

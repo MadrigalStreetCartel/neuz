@@ -28,6 +28,20 @@ pub enum Key {
     Space,
     Escape,
     Enter,
+    T,
+    Left,
+    Right,
+    Z,
+    // F1-F9
+    _F1,
+    _F2,
+    _F3,
+    _F4,
+    _F5,
+    _F6,
+    _F7,
+    _F8,
+    _F9,
 }
 
 impl From<usize> for Key {
@@ -44,6 +58,24 @@ impl From<usize> for Key {
             7 => _7,
             8 => _8,
             9 => _9,
+            _ => unreachable!("Invalid Index (expected 0-9)"),
+        }
+    }
+}
+
+impl From<&str> for Key {
+    fn from(index: &str) -> Self {
+        use Key::*;
+        match index {
+            "F1" => _F1,
+            "F2" => _F2,
+            "F3" => _F3,
+            "F4" => _F4,
+            "F5" => _F5,
+            "F6" => _F6,
+            "F7" => _F7,
+            "F8" => _F8,
+            "F9" => _F9,
             _ => unreachable!("Invalid Index (expected 0-9)"),
         }
     }

@@ -18,12 +18,9 @@
 Take a look at the [changelog][changelog]!
 
 # Community
-
 **v0.12.1 is the last maintained and published release from the initial founders. Further versions are solely community developed**
 
 Planned Features for now (as of v0.12.1):
-- Auto buff for any class every n seconds
-- Auto fp/mp detection for potion usage
 - FS mode for assist/rm with auto-buff, auto-heal, auto-follow and auto-mount
 - Giant detection and avoidance
 - Scripting support (realized through a DSL) for custom movement and other behaviors
@@ -61,13 +58,10 @@ No settings have to be changed by default.
 
 For optimal performance (optional and not necessarily needed):
 
-1. Enable right-click player menu (disabled by default)
-2. Disable single-click to attack (disabled by default)
-3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. You can press `T` to bring the player stats up again, as those don't interfere with automation.
+1. Disable weather effects
+3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. 
 
 ### Slot Configuration
-
-If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Skills to Attack`, make sure to configure the slot bar in Neuz accordingly.
 
 | Slot Symbol | Flyff Equivalent |
 | ----------- | ---------------- |
@@ -75,12 +69,16 @@ If you're using slot-dependent actions such as `On-Demand Pickup Pet` or `Use Sk
 | 💊         | Pill             |
 | 🐶         | Pickup Pet       |
 | ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
+| ![](./src/assets/icon_refresher_16x16.png) | MP restorer   |
+| ![](./src/assets/icon_vitaldrink_16x16.png) | FP restorer   |
 | 🗡️         | Attack Skill     |
 | 🪄         | Buff Skill       |
 | ✈️         | Board/Mount      |
 
+## AutoShout
+TODO
 
-## Support Automation / AutoShout
+## Support Automation
 Not yet implemented. Keep your eyes peeled for an update.
 
 # FAQ
@@ -93,7 +91,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.12.1_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.13.0_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->

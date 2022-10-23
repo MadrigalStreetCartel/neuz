@@ -26,6 +26,19 @@ impl From<Key> for enigo::Key {
             Space => enigo::Key::Space,
             Esc => enigo::Key::Escape,
             Enter => enigo::Key::Return,
+            T => enigo::Key::Layout('T'),
+            Left => enigo::Key::LeftArrow,
+            Right => enigo::Key::RightArrow,
+            Z => enigo::Key::Layout('z'),
+            _F1 => enigo::Key::F1,
+            _F2 => enigo::Key::F2,
+            _F3 => enigo::Key::F3,
+            _F4 => enigo::Key::F4,
+            _F5 => enigo::Key::F5,
+            _F6 => enigo::Key::F6,
+            _F7 => enigo::Key::F7,
+            _F8 => enigo::Key::F8,
+            _F9 => enigo::Key::F9,
         }
     }
 }
@@ -39,6 +52,14 @@ pub fn send_keystroke(k: Key, mode: KeyMode) {
         KeyMode::Release => enigo.key_up(k),
     }
 }
+
+pub fn send_slot(k: Key) {
+    let k: enigo::Key = k.into();
+    let mut enigo = Enigo::new();
+    enigo.key_click(k);
+    std::thread::sleep(Duration::from_millis(500));
+}
+
 pub fn send_message(text: &str) {
     let mut enigo = Enigo::new();
     enigo.key_sequence(text);

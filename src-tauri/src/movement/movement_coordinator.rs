@@ -2,7 +2,10 @@ use std::{ops::Range, thread, time::Duration};
 
 use rand::Rng;
 
-use crate::platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor};
+use crate::platform::{
+    send_keystroke, send_message, send_slot, /* , PlatformAccessor*/
+    Key, KeyMode,
+};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -42,6 +45,7 @@ pub enum Movement {
     Jump,
     Move(MovementDirection, ActionDuration),
     Rotate(RotationDirection, ActionDuration),
+    SendSlot(usize, Key),
     PressKey(Key),
     HoldKeyFor(Key, ActionDuration),
     HoldKey(Key),
@@ -53,16 +57,17 @@ pub enum Movement {
     Wait(ActionDuration),
 }
 
-pub struct MovementCoordinator<'a> {
+pub struct MovementCoordinator {
     rng: rand::rngs::ThreadRng,
-    platform: &'a PlatformAccessor<'a>,
 }
 
-impl<'a> MovementCoordinator<'a> {
-    pub fn new(platform: &'a PlatformAccessor<'_>) -> Self {
+impl<'a> MovementCoordinator {
+    pub fn new() -> Self {
         let rng = rand::thread_rng();
 
-        Self { rng, platform }
+        Self {
+            rng, /*, platform */
+        }
     }
 
     // Wrapper functions
@@ -110,13 +115,13 @@ impl<'a> MovementCoordinator<'a> {
             }
             Movement::Rotate(direction, duration) => {
                 let key = match direction {
-                    RotationDirection::Left => Key::A,
-                    RotationDirection::Right => Key::D,
+                    RotationDirection::Left => Key::Left,
+                    RotationDirection::Right => Key::Right,
                     RotationDirection::Random => {
                         if self.rng.gen() {
-                            Key::A
+                            Key::Left
                         } else {
-                            Key::D
+                            Key::Right
                         }
                     }
                 };
@@ -127,6 +132,9 @@ impl<'a> MovementCoordinator<'a> {
             Movement::Wait(duration) => thread::sleep(duration.to_duration(&mut self.rng)),
             Movement::Type(text) => {
                 send_message(&text);
+            }
+            Movement::SendSlot(slot_bar_index, key) => {
+                send_slot(slot_bar_index, key);
             }
             Movement::PressKey(key) => {
                 send_keystroke(key, KeyMode::Press);

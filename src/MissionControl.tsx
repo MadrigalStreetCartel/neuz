@@ -13,19 +13,12 @@ import ImageSupport from './assets/btn_full_support.png'
 import ImageShout from './assets/btn_shout.png'
 
 import { BotConfigModel, ModeModel } from './models/BotConfig'
-import FarmingConfig from "./components/config/FarmingConfig"
-import ShoutConfig from "./components/config/ShoutConfig"
+import FarmingConfig from "./components/behaviors/FarmingConfig"
+import ShoutConfig from "./components/behaviors/ShoutConfig"
 import Footer from "./components/Footer"
+import { FrontendInfoModel } from "./models/FrontendInfo"
 
 type Bounds = {x: number, y: number, w: number, h: number}
-
-type FrontendInfoModel = {
-    enemy_bounds?: Bounds[],
-    active_enemy_bounds?: Bounds,
-    enemy_kill_count: number,
-    is_attacking: boolean,
-    is_running: boolean,
-}
 
 type Props = {
     className?: string,
@@ -72,17 +65,29 @@ const MissionControl = ({ className }: Props) => {
         const newConfig = { ...config, [key]: patchedConfig }
         emit('bot_config_c2s', newConfig)
     }
-
+    const getData=()=>{
+        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/clean-local-testing/updater.json'
+        ,{
+          headers : {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+           }
+        }
+        )
+          .then(function(response){
+            console.log(response)
+            return response.json();
+          })
+          .then(function(myJson) {
+            console.log(myJson);
+          });
+      }
+      useEffect(()=>{
+        getData()
+      },[])
     return (
         <div className={className}>
             <div className="vstack">
-                {info && (
-                    <div className="info">
-                        <div className="row">
-                            <div>Kills: {info.enemy_kill_count}</div>
-                        </div>
-                    </div>
-                )}
                 {config && (
                     <>
                         <TabControl activeMode={config.mode} onSelect={handleTabSelect}>
@@ -91,7 +96,7 @@ const MissionControl = ({ className }: Props) => {
                             <Tab mode="AutoShout" image={ImageShout} />
                         </TabControl>
                         <div className="config-container">
-                            {config?.mode === 'Farming' && (<FarmingConfig config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
+                            {config?.mode === 'Farming' && (<FarmingConfig running={config.is_running} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
                             {config?.mode === 'Support' && (<ConfigPanel>Not yet implemented. Heal yourself manually for now.</ConfigPanel>)}
                             {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
                         </div>
@@ -114,7 +119,7 @@ const MissionControl = ({ className }: Props) => {
                 ))}
             </div> */}
 
-            <Footer />
+            <Footer version={info?.version} />
         </div>
     )
 }
@@ -149,13 +154,25 @@ export default styled(MissionControl)`
         border-radius: 0.25rem;
         box-shadow: 0 .1rem .1rem 0 hsla(0,0%,0%,1);
         border: 1px solid hsl(0,0%,10%);
-        z-index: 9999;
+        z-index: 0;
+        width: calc(min(500px, max(250px, 50vw)));
+
 
         &--slotbar {
             width: auto;
         }
 
         & .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 3rem;
+        }
+    }
+
+    & .stats {
+        & .row {
+            color: white;
             display: flex;
             align-items: center;
             justify-content: space-around;

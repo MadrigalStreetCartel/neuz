@@ -4,13 +4,15 @@ type Props = {
     className?: string,
     value: number | false,
     unit?: string,
-    onChange: (value: number) => void,
+    onChange: (value: any) => void,
+    max?: number;
+    min?: number;
 }
 
-const NumericInput = ({ className, value, unit, onChange }: Props) => {
+const NumericInput = ({ className, value, unit, min, max, onChange }: Props) => {
     return (
         <div className={className}>
-            <input type="number" value={value.toString()} onChange={(e)=>onChange(parseInt(e.target.value))} />
+            <input min={min} max={max} type="number" value={value.toString()} onChange={(e)=>onChange(e.target.value ? parseInt(e.target.value) : null)} />
             {unit && <span className="unit">{unit}</span>}
         </div>
     )
@@ -26,6 +28,7 @@ export default styled(NumericInput)`
     position: relative;
     border: 2px solid hsla(0,0%,0%,.75);
     padding: .1rem .25rem;
+    color: white;
 
     & input {
         all: unset;

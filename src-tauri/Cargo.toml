@@ -36,7 +36,7 @@ sentry-slog = "0.27.0"
 # Platform access
 mouse-rs = "0.4"
 raw-window-handle = "0.4.3"
-libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot" }
+libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot", branch = "area-capture" }
 
 [target.'cfg(target_os="windows")'.dependencies]
 winapi = "0.3"

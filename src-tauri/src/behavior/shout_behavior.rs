@@ -1,14 +1,13 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use guard::guard;
-use rand::Rng;
 use slog::Logger;
 
 use crate::{
     image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, ShoutConfig},
+    ipc::{BotConfig, FrontendInfo, ShoutConfig},
     movement::MovementAccessor,
-    platform::{send_keystroke, send_message, Key, KeyMode, PlatformAccessor},
+    platform::{Key, PlatformAccessor},
     play,
 };
 
@@ -19,7 +18,7 @@ pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
-    movement: &'a MovementAccessor<'a>,
+    movement: &'a MovementAccessor, /*<'a>*/
     last_shout_time: Instant,
     shown_messages: Vec<String>,
     shout_interval: u64,
@@ -30,7 +29,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
     fn new(
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement: &'a MovementAccessor<'a>,
+        movement: &'a MovementAccessor, /*<'a>*/
     ) -> Self {
         Self {
             logger,
@@ -59,7 +58,12 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         self.message_iter = None;
     }
 
-    fn run_iteration(&mut self, config: &BotConfig, _analyzer: &ImageAnalyzer) {
+    fn run_iteration(
+        &mut self,
+        frontend_info: &mut FrontendInfo,
+        config: &BotConfig,
+        _analyzer: &mut ImageAnalyzer,
+    ) {
         let config = config.shout_config();
         self.shout(config);
     }
