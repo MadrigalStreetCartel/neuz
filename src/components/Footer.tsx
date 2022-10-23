@@ -13,7 +13,7 @@ const Footer = ({ className, version }: Props) => {
     const [currentVersion, setCurrentVersion] = useState("NaN")
     const [updateAvailible, setUpdateAvailible] = useState(false)
     const getData=()=>{
-        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/updater.json')
+        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/main/updater.json')
         .then(function(response){
             return response.json();
         })
