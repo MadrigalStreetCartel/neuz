@@ -26,7 +26,6 @@ impl fmt::Display for StatusBarKind {
             StatusBarKind::Fp => write!(f, "FP"),
             StatusBarKind::TargetHP => write!(f, "enemy HP"),
             StatusBarKind::TargetMP => write!(f, "enemy MP"), // Used to be sure mob's died
-
         }
     }
 }
@@ -237,7 +236,7 @@ impl From<StatusBarKind> for StatusBarConfig {
             ]),
             Fp => {
                 StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
-            },
+            }
 
             TargetHP => {
                 let mut target_hp_bar = StatusBarConfig::new([
@@ -253,7 +252,7 @@ impl From<StatusBarKind> for StatusBarConfig {
                 target_hp_bar.max_y = 60;
 
                 target_hp_bar
-            },
+            }
 
             TargetMP => {
                 let mut target_mp_bar = StatusBarConfig::new([

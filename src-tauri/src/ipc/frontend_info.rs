@@ -12,7 +12,7 @@ pub struct FrontendInfo {
     is_attacking: bool,
     is_running: bool,
     is_alive: bool,
-    version: Option<[u8; 3]>
+    version: Option<[u8; 3]>,
 }
 
 impl FrontendInfo {

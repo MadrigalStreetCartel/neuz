@@ -162,7 +162,6 @@ pub struct FarmingConfig {
 }
 
 impl FarmingConfig {
-
     pub fn circle_pattern_rotation_duration(&self) -> u64 {
         self.circle_pattern_rotation_duration.unwrap_or(30)
     }

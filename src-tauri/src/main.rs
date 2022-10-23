@@ -76,7 +76,7 @@ fn main() {
             result[2] = splitted[2].parse::<u8>().unwrap();
             if result[0] == 0 && result[1] == 0 && result[2] == 0 {
                 None
-            }else {
+            } else {
                 Some(result)
             }
         }
