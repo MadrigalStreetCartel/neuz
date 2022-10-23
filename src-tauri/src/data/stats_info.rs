@@ -240,10 +240,10 @@ impl From<StatusBarKind> for StatusBarConfig {
                     [204, 30, 70],
                     [220, 36, 78],
                 ]);
-                target_hp_bar.min_x = 230;
+                target_hp_bar.min_x = 300;
                 target_hp_bar.min_y = 30;
 
-                target_hp_bar.max_x = 1000;
+                target_hp_bar.max_x = 550;
                 target_hp_bar.max_y = 60;
 
                 target_hp_bar
@@ -255,7 +255,7 @@ impl From<StatusBarKind> for StatusBarConfig {
 impl Default for StatusBarConfig {
     fn default() -> Self {
         Self {
-            max_x: 250,
+            max_x: 225,
             max_y: 110,
             min_x: 105,
             min_y: 30,
