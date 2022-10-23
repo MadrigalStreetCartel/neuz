@@ -16,6 +16,7 @@ pub enum StatusBarKind {
     Mp,
     Fp,
     TargetHP,
+    TargetMP,
 }
 impl fmt::Display for StatusBarKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -24,6 +25,8 @@ impl fmt::Display for StatusBarKind {
             StatusBarKind::Mp => write!(f, "MP"),
             StatusBarKind::Fp => write!(f, "FP"),
             StatusBarKind::TargetHP => write!(f, "enemy HP"),
+            StatusBarKind::TargetMP => write!(f, "enemy MP"), // Used to be sure mob's died
+
         }
     }
 }
@@ -34,6 +37,7 @@ pub struct ClientStats {
     pub mp: StatInfo,
     pub fp: StatInfo,
     pub enemy_hp: StatInfo,
+    pub enemy_mp: StatInfo,
 
     pub stat_try_not_detected_count: i32,
 }
@@ -44,6 +48,7 @@ impl ClientStats {
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
             enemy_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
+            enemy_mp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
 
             stat_try_not_detected_count: 0,
         }
@@ -56,6 +61,7 @@ impl ClientStats {
             self.mp.update_value(image),
             self.fp.update_value(image),
             self.enemy_hp.update_value(image),
+            self.enemy_mp.update_value(image),
         ];
         if should_debug.contains(&true) {
             //self.debug_print(logger);
@@ -231,7 +237,7 @@ impl From<StatusBarKind> for StatusBarConfig {
             ]),
             Fp => {
                 StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
-            }
+            },
 
             TargetHP => {
                 let mut target_hp_bar = StatusBarConfig::new([
@@ -247,6 +253,22 @@ impl From<StatusBarKind> for StatusBarConfig {
                 target_hp_bar.max_y = 60;
 
                 target_hp_bar
+            },
+
+            TargetMP => {
+                let mut target_mp_bar = StatusBarConfig::new([
+                    [20, 84, 196],
+                    [36, 132, 220],
+                    [44, 164, 228],
+                    [56, 188, 232],
+                ]);
+                target_mp_bar.min_x = 300;
+                target_mp_bar.min_y = 50;
+
+                target_mp_bar.max_x = 550;
+                target_mp_bar.max_y = 60;
+
+                target_mp_bar
             }
         }
     }

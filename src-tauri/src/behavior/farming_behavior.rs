@@ -494,7 +494,7 @@ impl<'a> FarmingBehavior<'_> {
             }
         }
 
-        if !is_npc && image.client_stats.enemy_hp.value > 0 {
+        if !is_npc && (image.client_stats.enemy_hp.value > 0 || image.client_stats.enemy_mp.value > 0) {
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
                 self.last_initial_attack_time = Instant::now();
@@ -548,6 +548,7 @@ impl<'a> FarmingBehavior<'_> {
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
         } else if image.client_stats.enemy_hp.value == 0
+            && image.client_stats.enemy_mp.value == 0
             && self.is_attacking
             && image.client_stats.is_alive()
         {
