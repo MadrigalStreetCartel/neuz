@@ -113,7 +113,7 @@ impl<'a> FarmingBehavior<'_> {
     fn update_timestamps(&mut self, config: &FarmingConfig) {
         self.update_pickup_pet(config);
 
-        self.update_slots(config);
+        self.update_slots_usage(config);
 
         self.update_avoid_bounds();
     }
@@ -146,7 +146,7 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn update_slots(&mut self, config: &FarmingConfig) {
+    fn update_slots_usage(&mut self, config: &FarmingConfig) {
         // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
