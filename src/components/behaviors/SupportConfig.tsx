@@ -29,7 +29,6 @@ const SupportConfig = ({ className, info, config, onChange, running }: Props) =>
         onChange(newConfig)
     }
 
-    const statsModal = useModal()
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
 
@@ -58,19 +57,15 @@ const SupportConfig = ({ className, info, config, onChange, running }: Props) =>
                     />
                 </ConfigTable>
             }/>
-            <Modal isShowing={statsModal.isShown} hide={statsModal.close} title={<h4>Stats - State: {running? info?.is_running? !info?.is_alive? "dead" : "ready" : "idle" : "healing"}</h4>} body={
-                <div className="stats">
-                    <div className="row">
-                        <div>Botting time: {botStopWatch.watch.hours}:{botStopWatch.watch.mins}:{botStopWatch.watch.secs}:{botStopWatch.watch.ms}</div>
-                    </div>
-                </div>
-            }/>
+
             {info && (
                 <div className="info">
                     <div className="row">
                         <div>State: {running? info.is_running? !info.is_alive? "dead" : "healing" : "ready" : "idle"}</div>
                     </div>
-                    <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
+                    <div className="row">
+                        <div>Botting time: {botStopWatch.watch.hours}:{botStopWatch.watch.mins}:{botStopWatch.watch.secs}:{botStopWatch.watch.ms}</div>
+                    </div>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>
             )}
