@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { cooldownSlotTypes, SlotModel, SlotType, thresholdSlotTypes } from '../models/BotConfig'
+import { cooldownSlotTypes, SlotModel, SlotType, slotTypes, thresholdSlotTypes, translateDesc } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
@@ -21,18 +21,9 @@ type Props = {
 }
 
 const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName }: Props) => {
-    const options = [
-        { value: 'Unused', label: 'None' },
-        { value: 'Food', label: 'Food' },
-        { value: 'Pill', label: 'Pill' },
-        { value: 'MpRestorer', label: 'MP' },
-        { value: 'FpRestorer', label: 'FP' },
-        { value: 'PickupPet', label: 'PickupPet' },
-        { value: 'PickupMotion', label:'PickupMotion'},
-        { value: 'AttackSkill', label: 'AttackSkill' },
-        { value: 'BuffSkill', label: 'BuffSkill' },
-        { value: 'Flying', label: 'Flying' },
-    ]
+
+    const options = slotTypes.map((type)=> ({value: type, label: translateDesc(type,"None") }) )
+
     //const [selectedOption, setSelectedOption] = useState('None')
     if (slot) {
         //const symbolOrIcon = translateType(slot.slot_type)

@@ -5,17 +5,17 @@ import ConfigLabel from '../config/ConfigLabel'
 import ConfigPanel from '../config/ConfigPanel'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
-
-import SlotBar from '../SlotBar'
-import { FarmingConfigModel, SlotBars, SlotModel } from '../../models/BotConfig'
 import NumericInput from '../config/NumericInput'
 import ColorSelector from '../config/ColorSelector'
-import Modal from '../Modal'
+
+import SlotBar from '../SlotBar'
+import { createSlotBars, FarmingConfigModel, SlotModel } from '../../models/BotConfig'
 import { useState } from 'react'
 import { FrontendInfoModel } from '../../models/FrontendInfo'
+import Modal from '../Modal'
 import useModal from '../utils/UseModal'
-import { StopWatch } from '../utils/StopWatch'
 import YesNoModal from '../YesNoModal'
+import { StopWatch } from '../utils/StopWatch'
 
 type Props = {
     className?: string,
@@ -24,10 +24,6 @@ type Props = {
     onChange: (config: FarmingConfigModel) => void,
     running: boolean,
 }
-
-const createSlotBars = () => (
-    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_enabled: false } as SlotModel))})) as SlotBars
-)
 
 const FarmingConfig = ({ className, info, config, onChange, running }: Props) => {
     const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
@@ -98,7 +94,7 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
 
     return (
         <>
-            <SlotBar slots={config.slot_bars ?? createSlotBars()} onChange={handleSlotChange} />
+            <SlotBar config={config} onChange={handleSlotChange} />
             {/* DEBUG */}
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}

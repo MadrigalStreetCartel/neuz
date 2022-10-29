@@ -1,14 +1,18 @@
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import IconVitalDrink from '../assets/icon_vitaldrink.png'
 import IconRefresher from '../assets/icon_refresher.png'
+import HealSkill from '../assets/heal_spell.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export const slotTypes = ["Unused", "Food", "Pill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
-export const thresholdSlotTypes = ["Food", "Pill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "AttackSkill", "BuffSkill", "Pill", "MpRestorer", "FpRestorer", "PickupPet"];
+export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
+export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
+export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
 export type SlotType = typeof slotTypes[number];
 
+export const createSlotBars = () => (
+    [...new Array(9)].map(_ => ({slots:[...new Array(10)].map(_ => ({ slot_type: 'Unused', slot_enabled: false } as SlotModel))})) as SlotBars
+)
 
 export const SLOT_SIZE_PX = 40;
 
@@ -17,6 +21,7 @@ export const translateType = (type: SlotType) => {
         case 'Unused': return ''
         case 'Food': return '🍔'
         case 'Pill': return '💊'
+        case 'HealSkill': return HealSkill
         case 'MpRestorer': return IconRefresher
         case 'FpRestorer': return IconVitalDrink
         case 'PickupPet': return '🐶'
@@ -27,11 +32,12 @@ export const translateType = (type: SlotType) => {
     }
 }
 
-export const translateDesc = (type: SlotType) => {
+export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
     switch (type) {
-        case 'Unused': return ''
+        case 'Unused': return defaultUnused
         case 'Food': return 'Food'
         case 'Pill': return 'Pill'
+        case 'HealSkill': return "Heal"
         case 'MpRestorer': return 'MP'
         case 'FpRestorer': return 'FP'
         case 'PickupPet': return 'Pet'
@@ -82,7 +88,7 @@ export type FarmingConfigModel = Partial<{
 }>
 
 export type SupportConfigModel = Partial<{
-    slots: SlotBarModel,
+    slot_bars: SlotBars,
 }>
 
 export type ShoutConfigModel = Partial<{

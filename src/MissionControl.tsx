@@ -14,6 +14,7 @@ import ImageShout from './assets/btn_shout.png'
 
 import { BotConfigModel, ModeModel } from './models/BotConfig'
 import FarmingConfig from "./components/behaviors/FarmingConfig"
+import SupportConfig from "./components/behaviors/SupportConfig"
 import ShoutConfig from "./components/behaviors/ShoutConfig"
 import Footer from "./components/Footer"
 import { FrontendInfoModel } from "./models/FrontendInfo"
@@ -65,26 +66,7 @@ const MissionControl = ({ className }: Props) => {
         const newConfig = { ...config, [key]: patchedConfig }
         emit('bot_config_c2s', newConfig)
     }
-    const getData=()=>{
-        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/clean-local-testing/updater.json'
-        ,{
-          headers : {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-           }
-        }
-        )
-          .then(function(response){
-            console.log(response)
-            return response.json();
-          })
-          .then(function(myJson) {
-            console.log(myJson);
-          });
-      }
-      useEffect(()=>{
-        getData()
-      },[])
+
     return (
         <div className={className}>
             <div className="vstack">
@@ -97,7 +79,7 @@ const MissionControl = ({ className }: Props) => {
                         </TabControl>
                         <div className="config-container">
                             {config?.mode === 'Farming' && (<FarmingConfig running={config.is_running} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
-                            {config?.mode === 'Support' && (<ConfigPanel>Not yet implemented. Heal yourself manually for now.</ConfigPanel>)}
+                            {config?.mode === 'Support' && (<SupportConfig running={config.is_running} info={info} config={config.support_config} onChange={makeConfigUpdater('support_config')} />)}
                             {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
                         </div>
                     </>
