@@ -35,8 +35,8 @@ pub struct ClientStats {
     pub hp: StatInfo,
     pub mp: StatInfo,
     pub fp: StatInfo,
-    pub enemy_hp: StatInfo,
-    pub enemy_mp: StatInfo,
+    pub target_hp: StatInfo,
+    pub target_mp: StatInfo,
 
     pub stat_try_not_detected_count: i32,
 }
@@ -46,8 +46,8 @@ impl ClientStats {
             hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
-            enemy_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
-            enemy_mp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
+            target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
+            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
 
             stat_try_not_detected_count: 0,
         }
@@ -59,8 +59,8 @@ impl ClientStats {
             self.hp.update_value(image),
             self.mp.update_value(image),
             self.fp.update_value(image),
-            self.enemy_hp.update_value(image),
-            self.enemy_mp.update_value(image),
+            self.target_hp.update_value(image),
+            self.target_mp.update_value(image),
         ];
         if should_debug.contains(&true) {
             //self.debug_print(logger);
@@ -105,7 +105,7 @@ impl ClientStats {
                 "dead"
             }
         };
-        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.enemy_hp.value, "Character is" => alive_str);
+        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.target_hp.value, "Character is" => alive_str);
     }
 }
 
