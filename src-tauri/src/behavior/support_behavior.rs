@@ -23,6 +23,7 @@ pub struct SupportBehavior<'a> {
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
+    is_on_flight: bool,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
@@ -37,6 +38,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             platform,
             movement,
             slots_usage_last_time: [[None; 10]; 9],
+            is_on_flight: false,
         }
     }
 
@@ -52,15 +54,21 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
     ) {
         let config = config.support_config();
 
-       /*  // Update all needed timestamps
-        self.update_timestamps(config);
-
-        // Check whether something should be restored
-        self.check_restorations(config, image);
-
-        // Use buffs Yiha
-        self.check_buffs(config); */
         self.update_slots_usage(config);
+
+        self.check_restorations(config, image);
+        if image.client_stats.target_hp.value > 0 {
+            self.check_buffs(config);
+
+            use crate::movement::prelude::*;
+
+            play!(self.movement => [
+                PressKey(Key::Z),
+                Wait(dur::Fixed(100)),
+                Jump,
+            ]);
+        }
+
     }
 
 
@@ -120,6 +128,41 @@ impl<'a> SupportBehavior<'_> {
 
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
+    }
+
+    fn check_buffs(&mut self, config: &SupportConfig) {
+        self.get_slot_for(config, None, SlotType::BuffSkill, true);
+    }
+
+    fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
+        // Check HP
+        let stat = Some(image.client_stats.hp.value);
+        if image.client_stats.hp.value > 0 {
+            if self
+                .get_slot_for(config, stat, SlotType::Pill, true)
+                .is_none()
+            {
+                self.get_slot_for(config, stat, SlotType::Food, true);
+            }
+        }
+
+        //Check target HP
+        let stat = Some(image.client_stats.target_hp.value);
+        if image.client_stats.target_hp.value > 0 {
+            self.get_slot_for(config, stat, SlotType::HealSkill, true);
+        }
+
+        // Check MP
+        let stat = Some(image.client_stats.mp.value);
+        if image.client_stats.mp.value > 0 {
+            self.get_slot_for(config, stat, SlotType::MpRestorer, true);
+        }
+
+        // Check FP
+        let stat = Some(image.client_stats.fp.value);
+        if image.client_stats.fp.value > 0 {
+            self.get_slot_for(config, stat, SlotType::FpRestorer, true);
+        }
     }
 
 }
