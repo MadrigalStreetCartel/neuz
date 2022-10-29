@@ -20,7 +20,7 @@ use slog::{Drain, Level, Logger};
 use tauri::Manager;
 
 use crate::{
-    behavior::{Behavior, FarmingBehavior, ShoutBehavior},
+    behavior::{Behavior, FarmingBehavior, SupportBehavior, ShoutBehavior},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
@@ -158,6 +158,8 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement);
         let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement);
+        let mut support_behavior = SupportBehavior::new(&accessor, &logger, &movement);
+
         let mut last_mode: Option<BotMode> = None;
 
         let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.005)";
@@ -191,6 +193,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 // Update behaviors
                 farming_behavior.update(config);
                 shout_behavior.update(config);
+                support_behavior.update(config);
             }
 
             // Continue early if the bot is not engaged
@@ -226,11 +229,13 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
                     // Stop all behaviors
                     farming_behavior.stop(&config);
+                    support_behavior.stop(&config);
                     shout_behavior.stop(&config);
 
                     // Start the current behavior
                     match mode {
                         BotMode::Farming => farming_behavior.start(&config),
+                        BotMode::Support => support_behavior.start(&config),
                         BotMode::AutoShout => shout_behavior.start(&config),
                         _ => (),
                     }
@@ -271,6 +276,13 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                     }
                     BotMode::AutoShout => {
                         shout_behavior.run_iteration(
+                            &mut frontend_info_mut,
+                            config,
+                            &mut image_analyzer,
+                        );
+                    }
+                    BotMode::Support => {
+                        support_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
                             &mut image_analyzer,
