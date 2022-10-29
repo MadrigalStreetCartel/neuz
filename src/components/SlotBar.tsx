@@ -12,9 +12,10 @@ type Props = {
     className?: string,
     config: FarmingConfigModel | SupportConfigModel,
     onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
+    botMode: string
 }
 
-const SlotBar = ({ className, config, /* slots, */ onChange }: Props) => {
+const SlotBar = ({ className, config, botMode, onChange }: Props) => {
     const { isShown, toggle } = useModal();
     const [currentSlotId, setCurrentSlotId] = useState(-1)
     const [currentBarIndex, setCurrentBarIndex] = useState(0)
@@ -31,7 +32,7 @@ const SlotBar = ({ className, config, /* slots, */ onChange }: Props) => {
 
     return (
         <>
-            <SlotModal isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
+            <SlotModal botMode={botMode} isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
             <div className={className}>
 
                 <div className="slots">

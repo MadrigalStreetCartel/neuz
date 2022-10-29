@@ -8,6 +8,9 @@ export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { 
 export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
 export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
 export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
+export const farmingSlotsBlacklist = ["HealSkill", "Flying"]
+export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill"]
+
 export type SlotType = typeof slotTypes[number];
 
 export const createSlotBars = () => (
@@ -34,17 +37,17 @@ export const translateType = (type: SlotType) => {
 
 export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
     switch (type) {
-        case 'Unused': return defaultUnused
-        case 'Food': return 'Food'
-        case 'Pill': return 'Pill'
-        case 'HealSkill': return "Heal"
-        case 'MpRestorer': return 'MP'
-        case 'FpRestorer': return 'FP'
-        case 'PickupPet': return 'Pet'
-        case 'PickupMotion': return 'Pickup'
-        case 'AttackSkill': return 'Attack'
-        case 'BuffSkill': return 'Buff'
-        case 'Flying': return 'Board'
+        case 'Unused': return [defaultUnused, defaultUnused]
+        case 'Food': return ['Food','Food']
+        case 'Pill': return ['Pill','Pill']
+        case 'HealSkill': return ["Heal",'Heal skill']
+        case 'MpRestorer': return ['MP', 'MP restorer']
+        case 'FpRestorer': return ['FP', 'FP restorer']
+        case 'PickupPet': return ['Pet', 'Pickup pet']
+        case 'PickupMotion': return ['Pickup', 'Pickup motion']
+        case 'AttackSkill': return ['Attack', 'Attack skill']
+        case 'BuffSkill': return ['Buff', 'Buff skill']
+        case 'Flying': return ['Board', 'Board']
     }
 }
 export type SlotModel = {

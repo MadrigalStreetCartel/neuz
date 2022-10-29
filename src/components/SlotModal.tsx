@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { cooldownSlotTypes, SlotModel, SlotType, slotTypes, thresholdSlotTypes, translateDesc } from '../models/BotConfig'
+import { cooldownSlotTypes, farmingSlotsBlacklist, SlotModel, SlotType, slotTypes, supportSlotsBlacklist, thresholdSlotTypes, translateDesc } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
@@ -16,17 +16,23 @@ type Props = {
     slot?: SlotModel,
     onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
     barIndex: number,
-    indexName: string
+    indexName: string,
+    botMode: string,
 
 }
 
-const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName }: Props) => {
+const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName, botMode}: Props) => {
+    const blackList = botMode == "farming"? farmingSlotsBlacklist : supportSlotsBlacklist
+    const options = slotTypes.map((type)=>{
+        if (!blackList.includes(type))
+        {
+             return {value: type, label: translateDesc(type,"None")[1] }
+        }
+        return {}
 
-    const options = slotTypes.map((type)=> ({value: type, label: translateDesc(type,"None") }) )
+    }).filter((item) => item.value != null )
 
-    //const [selectedOption, setSelectedOption] = useState('None')
     if (slot) {
-        //const symbolOrIcon = translateType(slot.slot_type)
         return(
 
             <Modal isShowing={isShowing} hide={hide} title={<h4>Slot F{barIndex + 1}-{indexName} - {slot.slot_type}</h4>} body={

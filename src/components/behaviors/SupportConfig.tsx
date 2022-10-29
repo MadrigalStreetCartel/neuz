@@ -43,7 +43,7 @@ const SupportConfig = ({ className, info, config, onChange, running }: Props) =>
 
     return (
         <>
-            <SlotBar config={config} onChange={handleSlotChange} />
+            <SlotBar botMode="support" config={config} onChange={handleSlotChange} />
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}
                 onYes={() => {

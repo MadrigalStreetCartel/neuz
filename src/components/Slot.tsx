@@ -28,9 +28,9 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, in
                     <img className="type" src={symbolOrIcon} alt="Slot icon" />
                 )}
                 {!useIcon && (
-                    <div className="type">{translateType(type)}</div>
+                    <div className="type">{translateType(type)[0]}</div>
                 )}
-                <div className="desc">{translateDesc(type)}</div>
+                <div className="desc">{translateDesc(type)[0]}</div>
             </div>
         </div>
     )
