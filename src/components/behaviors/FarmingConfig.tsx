@@ -10,7 +10,7 @@ import ColorSelector from '../config/ColorSelector'
 
 import SlotBar from '../SlotBar'
 import { createSlotBars, FarmingConfigModel, SlotModel } from '../../models/BotConfig'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { FrontendInfoModel } from '../../models/FrontendInfo'
 import Modal from '../Modal'
 import useModal from '../utils/UseModal'
@@ -23,14 +23,10 @@ type Props = {
     config: FarmingConfigModel,
     onChange: (config: FarmingConfigModel) => void,
     running: boolean,
+    isCurrentMode: boolean,
 }
 
-const FarmingConfig = ({ className, info, config, onChange, running }: Props) => {
-    const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
-        const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
-        newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
-        onChange(newConfig)
-    }
+const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMode }: Props) => {
     const statsModal = useModal()
     const debugModal = useModal()
     const mobsNameDebugModal = useModal(debugModal)
@@ -50,11 +46,22 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
             resets[selectedMobType]()
         }
     }
-    let initial_circle_pattern_rotation_duration = false;
+    let circle_pattern_default = useRef(false)
+    const defaultValueHandler = (propName: string, isInit: boolean) => {
+        if(!config[propName] && !isInit) {
+            let newConfig = {...config}
+            newConfig[propName] = 30
+            onChange(newConfig)
+            isInit = true;
+        }
+        return isInit
+    }
+    //circle_pattern_default.current = defaultValueHandler('circle_pattern_rotation_duration',circle_pattern_default.current)
+/*     let initial_circle_pattern_rotation_duration = false;
     if(!config.circle_pattern_rotation_duration && initial_circle_pattern_rotation_duration) {
         onChange({...config, circle_pattern_rotation_duration: 30})
         initial_circle_pattern_rotation_duration = true;
-    }
+    } */
     if(!config.passive_mobs_colors && !config.passive_tolerence) {
         resets[0]()
     }
@@ -73,28 +80,16 @@ const FarmingConfig = ({ className, info, config, onChange, running }: Props) =>
 
     // StopWatchs
     let botStopWatch = StopWatch(), searchMobStopWatch = StopWatch(), fightStopWatch = StopWatch()
-
-    if(info?.is_running && info?.is_alive && !config.is_stop_fighting) {
-        botStopWatch.start()
-    }else {
-        botStopWatch.stop()
-    }
-
-    if(info?.is_running && info?.is_alive && !config.is_stop_fighting && !info?.is_attacking) {
-        searchMobStopWatch.start(true)
-    }else {
-        searchMobStopWatch.stop()
-    }
-
-    if(info?.is_running && info?.is_alive && !config.is_stop_fighting && info?.is_attacking) {
-        fightStopWatch.start(true)
-    }else {
-        fightStopWatch.stop()
+    if(info && isCurrentMode) {
+        console.log(isCurrentMode)
+        botStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting)
+        searchMobStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && !info?.is_attacking, true)
+        fightStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && info?.is_attacking, true)
     }
 
     return (
         <>
-            <SlotBar botMode="farming" config={config} onChange={handleSlotChange} />
+            <SlotBar botMode="farming" config={config} onChange={onChange} />
             {/* DEBUG */}
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}

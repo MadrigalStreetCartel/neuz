@@ -11,7 +11,7 @@ import { useKeyPress } from './utils/KeyboardHotkeys'
 type Props = {
     className?: string,
     config: FarmingConfigModel | SupportConfigModel,
-    onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
+    onChange: (config: SupportConfigModel | FarmingConfigModel) => void,
     botMode: string
 }
 
@@ -30,9 +30,15 @@ const SlotBar = ({ className, config, botMode, onChange }: Props) => {
         setCurrentBarIndex(parseInt(event.key.replace("F","")) - 1)
     })
 
+    const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
+        const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
+        newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
+        onChange(newConfig)
+    }
+
     return (
         <>
-            <SlotModal botMode={botMode} isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
+            <SlotModal botMode={botMode} isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={handleSlotChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
             <div className={className}>
 
                 <div className="slots">

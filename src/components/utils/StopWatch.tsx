@@ -27,10 +27,12 @@ export const StopWatch = () => {
         time.current = 0;
     }
 
-    function start(shouldReset = false) {
-        if(!started) {
+    function start(startCondition: boolean,shouldReset = false) {
+        if(!started && startCondition) {
             shouldReset && reset()
             setStarted(true);
+        }if(started && !startCondition) {
+            stop()
         }
     }
 

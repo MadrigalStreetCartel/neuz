@@ -20,29 +20,22 @@ type Props = {
     config: SupportConfigModel,
     onChange: (config: SupportConfigModel) => void,
     running: boolean,
+    isCurrentMode: boolean,
 }
 
-const SupportConfig = ({ className, info, config, onChange, running }: Props) => {
-    const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
-        const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
-        newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
-        onChange(newConfig)
-    }
-
+const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode }: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
 
     let botStopWatch = StopWatch()
 
-    if(info?.is_running && info?.is_alive) {
-        botStopWatch.start()
-    }else {
-        botStopWatch.stop()
+    if(info) {
+        botStopWatch.start(info?.is_running && info?.is_alive && isCurrentMode)
     }
 
     return (
         <>
-            <SlotBar botMode="support" config={config} onChange={handleSlotChange} />
+            <SlotBar botMode="support" config={config} onChange={onChange} />
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}
                 onYes={() => {
@@ -69,9 +62,8 @@ const SupportConfig = ({ className, info, config, onChange, running }: Props) =>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>
             )}
-        </>)
-
-
+        </>
+    )
 }
 
 export default styled(SupportConfig)`
