@@ -113,7 +113,7 @@ impl<'a> FarmingBehavior<'_> {
     fn update_timestamps(&mut self, config: &FarmingConfig) {
         self.update_pickup_pet(config);
 
-        self.update_slots(config);
+        self.update_slots_usage(config);
 
         self.update_avoid_bounds();
     }
@@ -146,7 +146,7 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn update_slots(&mut self, config: &FarmingConfig) {
+    fn update_slots_usage(&mut self, config: &FarmingConfig) {
         // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
@@ -475,17 +475,17 @@ impl<'a> FarmingBehavior<'_> {
         // Engagin combat
         let is_npc = PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value;
         if !self.is_attacking && !config.is_stop_fighting() {
-            if image.client_stats.enemy_hp.value == 0 {
+            if image.client_stats.target_hp.value == 0 {
                 use crate::movement::prelude::*;
                 play!(self.movement => [
                     HoldKeyFor(Key::S, dur::Fixed(50)),
                 ]);
                 return State::SearchingForEnemy;
             }
-            if image.client_stats.enemy_hp.value > 0 {
+            if image.client_stats.target_hp.value > 0 {
                 // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
                 if (config.get_prevent_already_attacked()
-                    && image.client_stats.enemy_hp.value < 100)
+                    && image.client_stats.target_hp.value < 100)
                     || is_npc
                 {
                     return self.abort_attack(config, image);
@@ -495,7 +495,7 @@ impl<'a> FarmingBehavior<'_> {
         }
 
         if !is_npc
-            && (image.client_stats.enemy_hp.value > 0 || image.client_stats.enemy_mp.value > 0)
+            && (image.client_stats.target_hp.value > 0 || image.client_stats.target_mp.value > 0)
         {
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
@@ -504,10 +504,10 @@ impl<'a> FarmingBehavior<'_> {
             }
             if !config.is_stop_fighting()
                 && config.obstacle_avoidance_enabled()
-                && image.client_stats.enemy_hp.last_update_time.is_some()
+                && image.client_stats.target_hp.last_update_time.is_some()
                 && image
                     .client_stats
-                    .enemy_hp
+                    .target_hp
                     .last_update_time
                     .unwrap()
                     .elapsed()
@@ -515,7 +515,7 @@ impl<'a> FarmingBehavior<'_> {
                     > config.get_obstacle_avoidance_cooldown()
             {
                 // Reset timer otherwise it'll trigger every tick
-                image.client_stats.enemy_hp.reset_last_update_time();
+                image.client_stats.target_hp.reset_last_update_time();
 
                 let mut avoid_max_try = config.get_obstacle_avoidance_max_try();
                 if !config.obstacle_avoidance_only_passive() {
@@ -549,8 +549,8 @@ impl<'a> FarmingBehavior<'_> {
             }
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
-        } else if image.client_stats.enemy_hp.value == 0
-            && image.client_stats.enemy_mp.value == 0
+        } else if image.client_stats.target_hp.value == 0
+            && image.client_stats.target_mp.value == 0
             && self.is_attacking
             && image.client_stats.is_alive()
         {

@@ -9,13 +9,14 @@ import { message } from '@tauri-apps/api/dialog'
 type Props = {
     className?: string,
     isShowing: boolean,
-    title? : ReactElement,
+    title?: ReactElement,
+    body?: ReactElement,
     hide: () => void,
     onYes: () => void,
     onNo?: () => void,
 }
 
-const YesNoModal = ({className, isShowing, hide, onYes, onNo, title}: Props) => {
+const YesNoModal = ({className, isShowing, hide, onYes, onNo, title, body}: Props) => {
     const onClick = (kind: number) => {
         if(kind === 0) {
             onYes()
@@ -28,6 +29,9 @@ const YesNoModal = ({className, isShowing, hide, onYes, onNo, title}: Props) => 
         <Modal isShowing={isShowing} onHide={() => onClick(1)} hide={hide} title={title ?? <h4>Confirm</h4>} body={
 
             <ConfigTable>
+
+                    {body && <div> {body} </div>}
+
                 <div style={{display: "inline-block", marginLeft: "50%", transform: "translateX(-50%)"}}>
                     <button onClick={() => onClick(0)}>Yes</button>
                     <button style={{width:"25px", backgroundColor: "transparent"}}></button>

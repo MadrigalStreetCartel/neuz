@@ -2,7 +2,7 @@ import styled from 'styled-components'
 
 import Slot from './Slot'
 
-import { SlotBarHolder, SlotBars, SlotModel } from '../models/BotConfig'
+import { createSlotBars, FarmingConfigModel, SlotModel, SupportConfigModel } from '../models/BotConfig'
 import SlotModal from './SlotModal'
 import useModal from './utils/UseModal'
 import { useState } from 'react'
@@ -10,11 +10,12 @@ import { useKeyPress } from './utils/KeyboardHotkeys'
 
 type Props = {
     className?: string,
-    slots: SlotBars,
-    onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
+    config: FarmingConfigModel | SupportConfigModel,
+    onChange: (config: SupportConfigModel | FarmingConfigModel) => void,
+    botMode: string
 }
 
-const SlotBar = ({ className, slots, onChange }: Props) => {
+const SlotBar = ({ className, config, botMode, onChange }: Props) => {
     const { isShown, toggle } = useModal();
     const [currentSlotId, setCurrentSlotId] = useState(-1)
     const [currentBarIndex, setCurrentBarIndex] = useState(0)
@@ -22,17 +23,22 @@ const SlotBar = ({ className, slots, onChange }: Props) => {
         setCurrentSlotId(id)
         toggle()
     }
+    let slots = config.slot_bars ?? createSlotBars()
 
     // Bind Neuz slotbars with F1-F9 just like in game
     useKeyPress(["F1","F2","F3","F4","F5","F6","F7","F8","F9",], (event: { key: string }) => {
-        //alert(event.key + " was pressed")
         setCurrentBarIndex(parseInt(event.key.replace("F","")) - 1)
-
     })
+
+    const handleSlotChange = (slot_bar_index:number, slot_index:number, slot: SlotModel) => {
+        const newConfig = { ...config, slot_bars: config.slot_bars ?? createSlotBars() }
+        newConfig.slot_bars[slot_bar_index].slots[slot_index] = slot
+        onChange(newConfig)
+    }
 
     return (
         <>
-            <SlotModal isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={onChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
+            <SlotModal botMode={botMode} isShowing={isShown} hide={toggle} index={currentSlotId} slot={slots[currentBarIndex].slots[currentSlotId]} onChange={handleSlotChange} barIndex={currentBarIndex} indexName={currentSlotId +""}/>
             <div className={className}>
 
                 <div className="slots">

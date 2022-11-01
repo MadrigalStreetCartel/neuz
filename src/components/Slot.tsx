@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 
-import { SlotType, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
+import { SlotType, slotTypes, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 
 type Props = {
     className?: string,
@@ -11,12 +11,9 @@ type Props = {
     toggleSlotModal: () => void,
 }
 
-const types: SlotType[] = ['Unused', 'Food', 'Pill', 'PickupPet', 'PickupMotion', 'AttackSkill', 'BuffSkill', 'Flying']
-
-
 const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName }: Props) => {
     const handleChange = () => {
-        const nextType: SlotType = types[(types.indexOf(type) + 1) % types.length];
+        const nextType: SlotType = slotTypes[(slotTypes.indexOf(type) + 1) % slotTypes.length];
         onChange?.(nextType)
     }
     const symbolOrIcon = translateType(type)
@@ -31,9 +28,9 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, in
                     <img className="type" src={symbolOrIcon} alt="Slot icon" />
                 )}
                 {!useIcon && (
-                    <div className="type">{translateType(type)}</div>
+                    <div className="type">{translateType(type)[0]}</div>
                 )}
-                <div className="desc">{translateDesc(type)}</div>
+                <div className="desc">{translateDesc(type)[0]}</div>
             </div>
         </div>
     )

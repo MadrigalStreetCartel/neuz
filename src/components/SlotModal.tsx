@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { cooldownSlotTypes, SlotModel, SlotType, thresholdSlotTypes } from '../models/BotConfig'
+import { cooldownSlotTypes, farmingSlotsBlacklist, SlotModel, SlotType, slotTypes, supportSlotsBlacklist, thresholdSlotTypes, translateDesc } from '../models/BotConfig'
 import ConfigLabel from './config/ConfigLabel'
 import ConfigTableRow from './config/ConfigTableRow'
 import NumericInput from './config/NumericInput'
@@ -16,26 +16,23 @@ type Props = {
     slot?: SlotModel,
     onChange: (slot_bar_index:number, slot_index:number, slot:SlotModel) => void,
     barIndex: number,
-    indexName: string
+    indexName: string,
+    botMode: string,
 
 }
 
-const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName }: Props) => {
-    const options = [
-        { value: 'Unused', label: 'None' },
-        { value: 'Food', label: 'Food' },
-        { value: 'Pill', label: 'Pill' },
-        { value: 'MpRestorer', label: 'MP' },
-        { value: 'FpRestorer', label: 'FP' },
-        { value: 'PickupPet', label: 'PickupPet' },
-        { value: 'PickupMotion', label:'PickupMotion'},
-        { value: 'AttackSkill', label: 'AttackSkill' },
-        { value: 'BuffSkill', label: 'BuffSkill' },
-        { value: 'Flying', label: 'Flying' },
-    ]
-    //const [selectedOption, setSelectedOption] = useState('None')
+const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex, indexName, botMode}: Props) => {
+    const blackList = botMode == "farming"? farmingSlotsBlacklist : supportSlotsBlacklist
+    const options = slotTypes.map((type)=>{
+        if (!blackList.includes(type))
+        {
+             return {value: type, label: translateDesc(type,"None")[1] }
+        }
+        return {}
+
+    }).filter((item) => item.value != null )
+
     if (slot) {
-        //const symbolOrIcon = translateType(slot.slot_type)
         return(
 
             <Modal isShowing={isShowing} hide={hide} title={<h4>Slot F{barIndex + 1}-{indexName} - {slot.slot_type}</h4>} body={
@@ -50,7 +47,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
-                            item={<NumericInput unit="ms" value={slot.slot_cooldown ?? false} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
+                            item={<NumericInput unit="ms" value={slot.slot_cooldown} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 
@@ -58,7 +55,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Threshold" helpText="Limit trigger value." />}
-                            item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
+                            item={<NumericInput unit='%' value={slot.slot_threshold} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 
