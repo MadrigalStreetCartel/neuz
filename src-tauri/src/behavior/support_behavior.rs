@@ -8,7 +8,7 @@ use tauri::{PhysicalPosition, Position};
 use crate::{
     data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, SupportConfig, FrontendInfo, SlotType},
+    ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
     movement::MovementAccessor,
     platform::{send_slot, Key, PlatformAccessor},
     play,
@@ -68,10 +68,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 Jump,
             ]);
         }
-
     }
-
-
 }
 
 impl<'a> SupportBehavior<'_> {
@@ -164,5 +161,4 @@ impl<'a> SupportBehavior<'_> {
             self.get_slot_for(config, stat, SlotType::FpRestorer, true);
         }
     }
-
 }

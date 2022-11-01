@@ -20,7 +20,7 @@ use slog::{Drain, Level, Logger};
 use tauri::Manager;
 
 use crate::{
-    behavior::{Behavior, FarmingBehavior, SupportBehavior, ShoutBehavior},
+    behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
