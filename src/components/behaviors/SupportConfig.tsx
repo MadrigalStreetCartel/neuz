@@ -27,10 +27,12 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
 
+    let botState = running? info?.is_running? !info?.is_alive? "dead" : "healing" : "ready" : "idle"
+
     let botStopWatch = useStopWatch()
 
-    if(info) {
-        botStopWatch.start(info?.is_running && info?.is_alive && isCurrentMode)
+    if(isCurrentMode) {
+        botStopWatch.start(botState == "healing")
     }
 
     return (
@@ -54,10 +56,10 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
             {info && (
                 <div className="info">
                     <div className="row">
-                        <div>State: {running? info.is_running? !info.is_alive? "dead" : "healing" : "ready" : "idle"}</div>
+                        <div>State: {botState}</div>
                     </div>
                     <div className="row">
-                        <div>Botting time: {botStopWatch.watch.hours}:{botStopWatch.watch.mins}:{botStopWatch.watch.secs}:{botStopWatch.watch.ms}</div>
+                        <div>Botting time: {botStopWatch.watch.toString()}</div>
                     </div>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>

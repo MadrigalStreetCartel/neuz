@@ -57,12 +57,14 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
         () => onChange({...config, ...{aggressive_mobs_colors: defaultValues['aggressive_mobs_colors'], aggressive_tolerence: defaultValues['aggressive_tolerence']} })
     ]
 
+    let botState = running? info?.is_running? !info?.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle"
+
     // StopWatchs
     let botStopWatch = useStopWatch(), searchMobStopWatch = useStopWatch(), fightStopWatch = useStopWatch()
-    if(info && isCurrentMode) {
-        botStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting)
-        searchMobStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && !info?.is_attacking, true)
-        fightStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && info?.is_attacking, true)
+    if(isCurrentMode) {
+        botStopWatch.start(botState === "searching" || botState === "fighting")
+        searchMobStopWatch.start(botState === "searching", true)
+        fightStopWatch.start(botState === "fighting", true)
     }
 
     return (
@@ -177,26 +179,27 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             </ConfigPanel>
-            <Modal isShowing={statsModal.isShown} hide={statsModal.close} title={<h4>Stats - State: {running? info?.is_running? !info?.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</h4>} body={
+            <Modal isShowing={statsModal.isShown} hide={statsModal.close}
+            title={<h4>Stats - State: { botState }</h4>} body={
                 <div className="stats">
                     <div className="row">
                         <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour | total : {info?.enemy_kill_count}</div>
                     </div>
                     <div className="row">
-                        <div>Botting time: {botStopWatch.watch.hours}:{botStopWatch.watch.mins}:{botStopWatch.watch.secs}:{botStopWatch.watch.ms}</div>
+                        <div>Botting time: {botStopWatch.watch.toString()}</div>
                     </div>
                     <div className="row">
-                        <div>Search time: {searchMobStopWatch.watch.hours}:{searchMobStopWatch.watch.mins}:{searchMobStopWatch.watch.secs}:{searchMobStopWatch.watch.ms}</div>
+                        <div>Search time: {searchMobStopWatch.watch.toString()}</div>
                     </div>
                     <div className="row">
-                        <div>Fight time: {fightStopWatch.watch.hours}:{fightStopWatch.watch.mins}:{fightStopWatch.watch.secs}:{fightStopWatch.watch.ms}</div>
+                        <div>Fight time: {fightStopWatch.watch.toString()}</div>
                     </div>
                 </div>
             }/>
             {info && (
                 <div className="info">
                     <div className="row">
-                        <div>State: {running? info.is_running? !info.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle" }</div>
+                        <div>State: { botState }</div>
                     </div>
                     <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
