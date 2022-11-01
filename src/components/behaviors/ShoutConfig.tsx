@@ -7,7 +7,7 @@ import ConfigPanel from '../config/ConfigPanel'
 import NumericInput from '../config/NumericInput'
 import StringList from '../config/StringList'
 
-import { ShoutConfigModel, SlotModel, SlotType } from '../../models/BotConfig'
+import { ShoutConfigModel } from '../../models/BotConfig'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
 import { defaultValuesChecker } from '../utils/DefaultValuesChecker'

@@ -1,17 +1,17 @@
-import { createSlotBars, SlotModel, SupportConfigModel } from "../../models/BotConfig"
+import { createSlotBars, SupportConfigModel } from "../../models/BotConfig"
 import { FrontendInfoModel } from "../../models/FrontendInfo"
 
 import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import SlotBar from "../SlotBar"
+import { useStopWatch } from "../utils/StopWatch"
 
 import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
 import ConfigPanel from '../config/ConfigPanel'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
-import { useStopWatch } from "../utils/StopWatch"
 import styled from "styled-components"
 
 type Props = {
