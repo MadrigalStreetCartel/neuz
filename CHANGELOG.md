@@ -5,8 +5,20 @@ Date format: `DD/MM/YYYY`
 [@genoxalmighty]: https://github.com/genoxalmighty
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
+**0.14.0**
+> Released on XX.10.2022
+- Support mode released
+  - Implements Heal Spell slots used to heal target, you can still use Food/Pills to heal yourself
+  - Follows target by using Z key (make sure it's binded to follow)
+- Update checker system
+  - Fixes a bug, update checker was not working properly
+  - Adds a popup when a new version is available
+- Misc
+  - Client stats enemy now called target
+  - Refactores code, improves maintainability
+
 **0.13.0**
-> Released on XX.09.2022
+> Released on 23.10.2022
 
 - image detection
   - Improves mob detection and attack by detecting cursor
