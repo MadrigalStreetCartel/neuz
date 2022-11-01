@@ -61,12 +61,18 @@ For optimal performance (optional and not necessarily needed):
 1. Disable weather effects
 3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. 
 
-### Slot Configuration
+## Support Automation
+- Fill the slots as desired (Heal spell for the target you wanna heal, Food/Pills for yourself).
+- Target the character you want to follow in game.
+- Engage
+
+## Slot Configuration
 
 | Slot Symbol | Flyff Equivalent |
 | ----------- | ---------------- |
 | 🍔         | Food             |
 | 💊         | Pill             |
+| ![](./src/assets/heal_spell_16x16.png) | Heal Spell |
 | 🐶         | Pickup Pet       |
 | ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
 | ![](./src/assets/icon_refresher_16x16.png) | MP restorer   |
@@ -79,11 +85,6 @@ For optimal performance (optional and not necessarily needed):
 - Write your messages (1 per line press enter to return line).
 - Enter wanted interval.
 - Engage and flood chat!
-
-## Support Automation
-- Fill the slots as desired (Heal spell for the target you wanna heal, Food/Pills for yourself).
-- Target the character you want to follow in game.
-- Engage
 
 # FAQ
 
