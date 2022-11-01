@@ -2,7 +2,7 @@ import styled from "styled-components"
 
 type Props = {
     className?: string,
-    value: number | false,
+    value: number | undefined,
     unit?: string,
     onChange: (value: any) => void,
     max?: number;
@@ -12,7 +12,7 @@ type Props = {
 const NumericInput = ({ className, value, unit, min, max, onChange }: Props) => {
     return (
         <div className={className}>
-            <input min={min} max={max} type="number" value={value.toString()} onChange={(e)=>onChange(e.target.value ? parseInt(e.target.value) : null)} />
+            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.value ? parseInt(e.target.value) : null)} />
             {unit && <span className="unit">{unit}</span>}
         </div>
     )

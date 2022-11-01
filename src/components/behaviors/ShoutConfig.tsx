@@ -7,16 +7,24 @@ import ConfigPanel from '../config/ConfigPanel'
 import NumericInput from '../config/NumericInput'
 import StringList from '../config/StringList'
 
-import { ShoutConfigModel, SlotModel, SlotType } from '../../models/BotConfig'
+import { ShoutConfigModel } from '../../models/BotConfig'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
+import { DefaultValuesChecker } from '../utils/DefaultValuesChecker'
+
 
 type Props = {
     config: ShoutConfigModel,
-    onChange?: (config: ShoutConfigModel) => void,
+    onChange: (config: ShoutConfigModel) => void,
 }
 
 const ShoutConfig = ({ config, onChange }: Props) => {
+    const defaultValues = {
+        'shout_interval': 30000,
+    }
+
+    DefaultValuesChecker(config, defaultValues, onChange)
+
     return (
         <>
             <ConfigPanel>
@@ -29,7 +37,7 @@ const ShoutConfig = ({ config, onChange }: Props) => {
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Interval" helpText="Interval between shouts in milliseconds." />}
-                        item={<NumericInput unit="ms" value={config.shout_interval ?? false} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
+                        item={<NumericInput unit="ms" value={config.shout_interval} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
                     />
                 </ConfigTable>
             </ConfigPanel>
@@ -38,3 +46,5 @@ const ShoutConfig = ({ config, onChange }: Props) => {
 }
 
 export default ShoutConfig;
+
+

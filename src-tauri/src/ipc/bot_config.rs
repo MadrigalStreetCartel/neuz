@@ -8,6 +8,7 @@ pub enum SlotType {
     Unused,
     Food,
     Pill,
+    HealSkill,
     MpRestorer,
     FpRestorer,
     PickupPet,

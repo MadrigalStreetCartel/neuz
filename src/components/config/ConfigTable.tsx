@@ -18,4 +18,5 @@ const ConfigTable = ({ className, children }: Props) => {
 export default styled(ConfigTable)`
     width: 100%;
     border: none;
+    color: white;
 `
