@@ -16,7 +16,7 @@ import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import { useStopWatch } from '../utils/StopWatch'
-import { defaultValuesChecker } from '../utils/DefaultValuesChecker'
+import { DefaultValuesChecker } from '../utils/DefaultValuesChecker'
 
 type Props = {
     className?: string,
@@ -50,7 +50,7 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
         'min_hp_attack': 30,
     }
 
-    defaultValuesChecker(config, defaultValues, onChange)
+    DefaultValuesChecker(config, defaultValues, onChange)
 
     const colorsRefResetter = [
         () => onChange({...config, ...{passive_mobs_colors: defaultValues['passive_mobs_colors'], passive_tolerence: defaultValues['passive_tolerence']} }),
