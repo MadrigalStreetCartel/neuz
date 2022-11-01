@@ -15,7 +15,8 @@ import { FrontendInfoModel } from '../../models/FrontendInfo'
 import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
-import { StopWatch } from '../utils/StopWatch'
+import { useStopWatch } from '../utils/StopWatch'
+import { useDefaultValuesChecker as defaultValuesChecker } from '../utils/DefaultValuesChecker'
 
 type Props = {
     className?: string,
@@ -34,54 +35,31 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
     const resetSlotYesNo = useModal(debugModal)
     const obstacleAvoidanceDebugModal = useModal(debugModal)
 
-    const [selectedMobType, setSelectedMobType] = useState(0)
+    const selectedMobType = useRef(0)
 
-    const defaultDetectionValues = [{passive_mobs_colors: [234, 234, 149], passive_tolerence: 5}, {aggressive_mobs_colors: [179, 23, 23], aggressive_tolerence: 10}]
-    const resets = [() => onChange({...config, ...defaultDetectionValues[0] }), () => onChange({...config, ...defaultDetectionValues[1] })]
-    const resetColorsRefs = (both?:boolean) => {
-        const resetBoth = () => onChange({...config, ... resets[0], ... resets[1]})
-        if(both) {
-            resetBoth()
-        } else {
-            resets[selectedMobType]()
-        }
-    }
-    let circle_pattern_default = useRef(false)
-    const defaultValueHandler = (propName: string, isInit: boolean) => {
-        if(!config[propName] && !isInit) {
-            let newConfig = {...config}
-            newConfig[propName] = 30
-            onChange(newConfig)
-            isInit = true;
-        }
-        return isInit
-    }
-    //circle_pattern_default.current = defaultValueHandler('circle_pattern_rotation_duration',circle_pattern_default.current)
-/*     let initial_circle_pattern_rotation_duration = false;
-    if(!config.circle_pattern_rotation_duration && initial_circle_pattern_rotation_duration) {
-        onChange({...config, circle_pattern_rotation_duration: 30})
-        initial_circle_pattern_rotation_duration = true;
-    } */
-    if(!config.passive_mobs_colors && !config.passive_tolerence) {
-        resets[0]()
+    const defaultValues = {
+        'passive_mobs_colors': [234, 234, 149],
+        'passive_tolerence': 5,
+        'aggressive_mobs_colors': [179, 23, 23],
+        'aggressive_tolerence': 10,
+        'obstacle_avoidance_cooldown': 6000,
+        'obstacle_avoidance_max_try': 3,
+        'min_mobs_name_width': 15,
+        'max_mobs_name_width': 180,
+        'circle_pattern_rotation_duration': 30,
+        'min_hp_attack': 30,
     }
 
-    if(!config.aggressive_mobs_colors && !config.aggressive_tolerence) {
-        resets[1]()
-    }
+    defaultValuesChecker(config, defaultValues, onChange)
 
-    if(!config.obstacle_avoidance_cooldown && !config.obstacle_avoidance_max_try) {
-        onChange({...config, obstacle_avoidance_cooldown: 5500, obstacle_avoidance_max_try: 3})
-    }
-
-    if(!config.min_mobs_name_width && !config.max_mobs_name_width) {
-        onChange({...config, min_mobs_name_width: 15, max_mobs_name_width: 180})
-    }
+    const colorsRefResetter = [
+        () => onChange({...config, ...{passive_mobs_colors: defaultValues['passive_mobs_colors'], passive_tolerence: defaultValues['passive_tolerence']} }),
+        () => onChange({...config, ...{aggressive_mobs_colors: defaultValues['aggressive_mobs_colors'], aggressive_tolerence: defaultValues['aggressive_tolerence']} })
+    ]
 
     // StopWatchs
-    let botStopWatch = StopWatch(), searchMobStopWatch = StopWatch(), fightStopWatch = StopWatch()
+    let botStopWatch = useStopWatch(), searchMobStopWatch = useStopWatch(), fightStopWatch = useStopWatch()
     if(info && isCurrentMode) {
-        console.log(isCurrentMode)
         botStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting)
         searchMobStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && !info?.is_attacking, true)
         fightStopWatch.start(info?.is_running && info?.is_alive && !config.is_stop_fighting && info?.is_attacking, true)
@@ -93,45 +71,38 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
             {/* DEBUG */}
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}
-                onYes={() => {
-                    const newConfig = { ...config, slot_bars: createSlotBars() }
-                    onChange(newConfig)
-            }}/>
+                onYes={() => {onChange({ ...config, slot_bars: createSlotBars() })}}/>
             <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>DEBUG</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
                         label={<ConfigLabel name="Mobs detection settings" helpText="" />}
-                        item={<button onClick={() => {
-                            mobsNameDebugModal.open()
-                        }}>⚙️</button>}
+                        item={<button onClick={mobsNameDebugModal.open}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Obstacle avoidance settings" helpText="" />}
-                        item={<button onClick={() => {
-                            obstacleAvoidanceDebugModal.open()
-                        }}>⚙️</button>}
+                        item={<button onClick={obstacleAvoidanceDebugModal.open}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
-                        item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
+                        item={<button onClick={resetSlotYesNo.open}>⚙️</button>}
                     />
                 </ConfigTable>
             }/>
-            <Modal isShowing={mobsColorsDebugModal.isShown} hide={mobsColorsDebugModal.close} title={(selectedMobType === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
+            <Modal isShowing={mobsColorsDebugModal.isShown} hide={mobsColorsDebugModal.close} title={(selectedMobType.current === 0)? <h4>Passive mob detection settings</h4> : <h4>Aggressive mob detection settings</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
-                        item={<ColorSelector value={(selectedMobType === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
+                        item={<ColorSelector value={(selectedMobType.current === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType.current === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
                     />
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
-                        item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType === 0)? config.passive_tolerence ?? false : config.aggressive_tolerence ?? false} onChange={value => onChange?.((selectedMobType === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
+                        item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType.current === 0)? config.passive_tolerence : config.aggressive_tolerence} onChange={value => onChange?.((selectedMobType.current === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="" helpText="" />}
-                        item={<button onClick={()=>resetColorsRefs()}>Reset</button>}
+                        item={<button onClick={()=>colorsRefResetter[selectedMobType.current]()}>Reset</button>}
                     />
                 </ConfigTable>
             }/>
@@ -148,12 +119,12 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
-                        item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown ?? false} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
+                        item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
                     />
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Obstacle avoidance max try" helpText="After this number of try it'll abort attack and search for another target" />}
-                        item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try ?? false} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
+                        item={<NumericInput unit='#' value={config.obstacle_avoidance_max_try} onChange={value => onChange({...config, obstacle_avoidance_max_try: value})} />}
                     />
                 </ConfigTable>
             }/>
@@ -162,29 +133,30 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <ConfigTableRow
                         label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(0)
+                            selectedMobType.current = 0
                             mobsColorsDebugModal.open()
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
-                            setSelectedMobType(1)
+                            selectedMobType.current = 1
                             mobsColorsDebugModal.open()
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Min mobs name width" helpText="" />}
-                        item={<NumericInput unit='px' value={config.min_mobs_name_width ?? false} onChange={value => onChange({...config, min_mobs_name_width: value})} />}
+                        item={<NumericInput unit='px' value={config.min_mobs_name_width} onChange={value => onChange({...config, min_mobs_name_width: value})} />}
                     />
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Max mobs name width" helpText="" />}
-                        item={<NumericInput unit='px' value={config.max_mobs_name_width ?? false} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
+                        item={<NumericInput unit='px' value={config.max_mobs_name_width} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
                     />
                 </ConfigTable>
             }/>
+            {/* DEBUG END */}
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -193,11 +165,11 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Circle pattern duration" helpText="The bot will try to move in a circle pattern to find target. Value of 0 will stay in place. Lower value to increase circle. Default : 30" />}
-                        item={<NumericInput value={config.circle_pattern_rotation_duration ?? false} onChange={value => onChange?.({ ...config, circle_pattern_rotation_duration: value })} />}
+                        item={<NumericInput value={config.circle_pattern_rotation_duration} onChange={value => onChange?.({ ...config, circle_pattern_rotation_duration: value })} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Min HP percent to attack" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
-                        item={<NumericInput unit='%' value={config.min_hp_attack ?? false} onChange={value => onChange({...config, min_hp_attack: value})} />}
+                        item={<NumericInput unit='%' value={config.min_hp_attack} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}

@@ -11,7 +11,7 @@ import ConfigLabel from '../config/ConfigLabel'
 import ConfigPanel from '../config/ConfigPanel'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
-import { StopWatch } from "../utils/StopWatch"
+import { useStopWatch } from "../utils/StopWatch"
 import styled from "styled-components"
 
 type Props = {
@@ -27,7 +27,7 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
 
-    let botStopWatch = StopWatch()
+    let botStopWatch = useStopWatch()
 
     if(info) {
         botStopWatch.start(info?.is_running && info?.is_alive && isCurrentMode)

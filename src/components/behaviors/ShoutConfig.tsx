@@ -29,7 +29,7 @@ const ShoutConfig = ({ config, onChange }: Props) => {
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Interval" helpText="Interval between shouts in milliseconds." />}
-                        item={<NumericInput unit="ms" value={config.shout_interval ?? false} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
+                        item={<NumericInput unit="ms" value={config.shout_interval} onChange={value => onChange?.({ ...config, shout_interval: value })} />}
                     />
                 </ConfigTable>
             </ConfigPanel>

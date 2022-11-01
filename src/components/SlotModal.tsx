@@ -47,7 +47,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
-                            item={<NumericInput unit="ms" value={slot.slot_cooldown ?? false} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
+                            item={<NumericInput unit="ms" value={slot.slot_cooldown} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 
@@ -55,7 +55,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                         <ConfigTableRow
                             layout="v"
                             label={<ConfigLabel name="Threshold" helpText="Limit trigger value." />}
-                            item={<NumericInput unit='%' value={slot.slot_threshold ?? false} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
+                            item={<NumericInput unit='%' value={slot.slot_threshold} onChange={value => {slot.slot_threshold = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 

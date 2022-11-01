@@ -66,15 +66,18 @@ export type SlotBars = FixedArray<SlotBarHolder, 9>
 export type ModeModel = "Farming" | "Support" | "AutoShout"
 
 export type FarmingConfigModel = Partial<{
+    [key: string]: any;
     on_demand_pet: boolean,
     use_attack_skills: boolean,
     stay_in_area: boolean,
     slot_bars: SlotBars,
     circle_pattern_rotation_duration: number,
+
     passive_mobs_colors: number[];
     passive_tolerence: number;
     aggressive_mobs_colors: number[];
     aggressive_tolerence: number;
+
     is_stop_fighting: boolean;
     prevent_already_attacked: boolean;
 
@@ -87,15 +90,17 @@ export type FarmingConfigModel = Partial<{
     max_mobs_name_width: number,
 
     min_hp_attack: number,
-    [key: string]: any;
+
 
 }>
 
 export type SupportConfigModel = Partial<{
+    [key: string]: any;
     slot_bars: SlotBars,
 }>
 
 export type ShoutConfigModel = Partial<{
+    [key: string]: any;
     shout_interval: number,
     shout_messages: string[],
 }>
@@ -108,3 +113,5 @@ export type BotConfigModel = {
     support_config: SupportConfigModel,
     shout_config: ShoutConfigModel,
 }
+
+export type AnyConfig = FarmingConfigModel | SupportConfigModel | ShoutConfigModel

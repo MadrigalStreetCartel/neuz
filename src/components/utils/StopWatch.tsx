@@ -19,7 +19,7 @@ class StopWatchValues {
         return new StopWatchValues(this.timer + watch.timer)
     }
 }
-export const StopWatch = () => {
+export const useStopWatch = () => {
     const time = useRef(0);
     const [started, setStarted] = useState(false);
 
