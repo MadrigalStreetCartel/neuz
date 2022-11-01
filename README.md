@@ -76,10 +76,14 @@ For optimal performance (optional and not necessarily needed):
 | ✈️         | Board/Mount      |
 
 ## AutoShout
-TODO
+Write your messages (1 per line press enter to return line).
+Enter wanted interval.
+Engage and flood chat!
 
 ## Support Automation
-Not yet implemented. Keep your eyes peeled for an update.
+Fill the slots as desired (Heal spell for the target you wanna heal, Food/Pills for yourself).
+Target the character you want to follow in game.
+Engage
 
 # FAQ
 
