@@ -10,13 +10,21 @@ import StringList from '../config/StringList'
 import { ShoutConfigModel, SlotModel, SlotType } from '../../models/BotConfig'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
+import { defaultValuesChecker } from '../utils/DefaultValuesChecker'
+
 
 type Props = {
     config: ShoutConfigModel,
-    onChange?: (config: ShoutConfigModel) => void,
+    onChange: (config: ShoutConfigModel) => void,
 }
 
 const ShoutConfig = ({ config, onChange }: Props) => {
+    const defaultValues = {
+        'shout_interval': 30000,
+    }
+
+    defaultValuesChecker(config, defaultValues, onChange)
+
     return (
         <>
             <ConfigPanel>
@@ -38,3 +46,5 @@ const ShoutConfig = ({ config, onChange }: Props) => {
 }
 
 export default ShoutConfig;
+
+

@@ -16,7 +16,7 @@ import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import { useStopWatch } from '../utils/StopWatch'
-import { useDefaultValuesChecker as defaultValuesChecker } from '../utils/DefaultValuesChecker'
+import { defaultValuesChecker } from '../utils/DefaultValuesChecker'
 
 type Props = {
     className?: string,

@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { AnyConfig } from "../../models/BotConfig";
 
-export const useDefaultValuesChecker = ( config: AnyConfig, defaultValues: any, onChange: (updatedConfig: AnyConfig) => void ) => {
+export const defaultValuesChecker = ( config: AnyConfig, defaultValues: any, onChange: (updatedConfig: AnyConfig) => void ) => {
     let default_values_checked = useRef(false)
     if(!default_values_checked.current) {
         let newConfig = {...config}
