@@ -93,7 +93,7 @@ const Launcher = ({ className }: Props) => {
     }
 
     const [currentVersion, setCurrentVersion] = useState("NaN")
-    const newVersion = useRef("NaN")
+    const lastVersion = useRef("NaN")
     const updateModal = useModal()
 
     const getData=()=>{
@@ -103,7 +103,7 @@ const Launcher = ({ className }: Props) => {
         })
         .then(function(myJson) {
             if(currentVersion !== "NaN" && myJson.version !== currentVersion) {
-                newVersion.current = myJson.version
+                lastVersion.current = myJson.version
                 updateModal.open()
             }
         });
@@ -124,7 +124,7 @@ const Launcher = ({ className }: Props) => {
                 title={<h4>Update available!</h4>}
                 body={
                     <div>
-                        <p>Version V{newVersion.current} is available! </p>
+                        <p>Version V{lastVersion.current} is available! </p>
                         <p>You're currently using V{currentVersion}.</p>
                         <p>Do you want to open download page ?</p>
                     </div>
@@ -142,7 +142,7 @@ const Launcher = ({ className }: Props) => {
                     </div>
                 )}
                 {isLaunched && (
-                    <MissionControl currentVersion={currentVersion} lastVersion={newVersion.current} />
+                    <MissionControl currentVersion={currentVersion} lastVersion={lastVersion.current} />
                 )}
 
             </div>
