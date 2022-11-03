@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::data::Bounds;
-
 #[derive(Debug, Default, Serialize, Deserialize, Copy, Clone)]
 pub struct FrontendInfo {
     /* enemy_bounds: Option<Vec<Bounds>>,

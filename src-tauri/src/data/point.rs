@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 /// A point in 2D space.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct Point {
     pub x: u32,
     pub y: u32,

@@ -1,4 +1,5 @@
 use slog::Logger;
+use tauri::Window;
 
 use crate::{
     image_analyzer::ImageAnalyzer,
@@ -12,7 +13,8 @@ pub trait Behavior<'a> {
     fn new(
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement_accessor: &'a MovementAccessor, /*<'a>*/
+        movement_accessor: &'a MovementAccessor,
+        window: &'a Window
     ) -> Self;
 
     /// Runs on activation

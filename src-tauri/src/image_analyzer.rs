@@ -7,6 +7,7 @@ use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
+use tauri::Window;
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
@@ -34,11 +35,11 @@ pub struct ImageAnalyzer {
 }
 
 impl ImageAnalyzer {
-    pub fn new() -> Self {
+    pub fn new(window: &Window) -> Self {
         Self {
             window_id: 0,
             image: None,
-            client_stats: ClientStats::new(),
+            client_stats: ClientStats::new(window.to_owned()),
         }
     }
 

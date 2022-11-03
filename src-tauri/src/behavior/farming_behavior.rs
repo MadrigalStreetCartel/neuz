@@ -3,14 +3,14 @@ use std::time::{Duration, Instant};
 use libscreenshot::shared::Area;
 use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::{PhysicalPosition, Position};
+use tauri::Window;
 
 use crate::{
     data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{send_slot, Key, PlatformAccessor},
+    platform::{PlatformAccessor, send_slot_eval, eval_mouse_move, eval_mouse_click_at_point},
     play,
     utils::DateTime,
 };
@@ -31,6 +31,7 @@ pub struct FarmingBehavior<'a> {
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
+    window: &'a Window,
     state: State,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
@@ -52,11 +53,13 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement: &'a MovementAccessor,
+        window: &'a Window,
     ) -> Self {
         Self {
             logger,
             platform,
             movement,
+            window,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
             slots_usage_last_time: [[None; 10]; 9],
@@ -141,7 +144,7 @@ impl<'a> FarmingBehavior<'_> {
                         .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
                         .unwrap_or(3000) as u128
                 {
-                    send_slot(pickup_pet_slot_index.0, pickup_pet_slot_index.1.into());
+                    send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
                     self.last_summon_pet_time = None;
                 }
             }
@@ -197,8 +200,7 @@ impl<'a> FarmingBehavior<'_> {
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot(slot_index.0, slot_index.1.into());
-
+        send_slot_eval(self.window, slot_index.0 , slot_index.1);
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }
@@ -227,7 +229,7 @@ impl<'a> FarmingBehavior<'_> {
             // Pickup using pet
             (Some(index), true) => {
                 if self.last_summon_pet_time.is_none() {
-                    send_slot(index.0, index.1.into());
+                    send_slot_eval(self.window, index.0, index.1);
                     self.last_summon_pet_time = Some(Instant::now());
                 } else {
                     // if pet is already out, just reset it's timer
@@ -236,12 +238,9 @@ impl<'a> FarmingBehavior<'_> {
             }
             // Pickup using motion
             (Some(index), false) => {
-                play!(self.movement => [
-                    Repeat(7, vec![
-                        // Press the motion key
-                        SendSlot(index.0,index.1.into()),
-                    ]),
-                ]);
+                for i in 1..7 {
+                    send_slot_eval(self.window, index.0, index.1);
+                }
             }
             _ => {
                 // Do nothing, we have no way to pickup items
@@ -311,12 +310,12 @@ impl<'a> FarmingBehavior<'_> {
         // low rotation duration means big circle, high means little circle
         use crate::movement::prelude::*;
         play!(self.movement => [
-            HoldKeys(vec![Key::W, Key::Space, Key::D]),
+            HoldKeys(vec!["W", "Space", "D"]),
             Wait(dur::Fixed(rotation_duration)),
-            ReleaseKey(Key::D),
+            ReleaseKey("D"),
             Wait(dur::Fixed(20)),
-            ReleaseKeys(vec![Key::Space, Key::W]),
-            HoldKeyFor(Key::S, dur::Fixed(50)),
+            ReleaseKeys(vec!["Space", "W"]),
+            HoldKeyFor("S", dur::Fixed(50)),
         ]);
     }
 
@@ -416,22 +415,14 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-        let target_cursor_pos = Position::Physical(PhysicalPosition {
-            x: point.x as i32,
-            y: point.y as i32,
-        });
 
         // Set cursor position and simulate a click
-        drop(self.platform.window.set_cursor_position(target_cursor_pos));
+        eval_mouse_move(self.window, point);
         std::thread::sleep(Duration::from_millis(100));
         image.capture_window_area(self.logger, config, Area::new(0, 0, 2, 2));
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
-            drop(
-                self.platform
-                    .mouse
-                    .click(&mouse_rs::types::keys::Keys::LEFT),
-            );
+            eval_mouse_click_at_point(self.window, point);
             self.missclick_count = 0;
 
             // Wait a few ms before transitioning state
@@ -463,7 +454,7 @@ impl<'a> FarmingBehavior<'_> {
         }
         self.already_attack_count += 1;
         play!(self.movement => [
-            PressKey(Key::Escape),
+            PressKey("Escape"),
         ]);
         return State::SearchingForEnemy;
     }
@@ -480,7 +471,7 @@ impl<'a> FarmingBehavior<'_> {
             if image.client_stats.target_hp.value == 0 {
                 use crate::movement::prelude::*;
                 play!(self.movement => [
-                    HoldKeyFor(Key::S, dur::Fixed(50)),
+                    HoldKeyFor("S", dur::Fixed(50)),
                 ]);
                 return State::SearchingForEnemy;
             }
@@ -538,14 +529,14 @@ impl<'a> FarmingBehavior<'_> {
                 }
                 self.last_initial_attack_time = Instant::now();
                 use crate::movement::prelude::*;
-                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+                let rotation_key = ["A", "D"].choose(&mut self.rng).unwrap_or(&"A");
 
                 // Move into a random direction while jumping
                 play!(self.movement => [
-                    HoldKeys(vec![Key::W, Key::Space]),
+                    HoldKeys(vec!["W", "Space"]),
                     HoldKeyFor(*rotation_key, dur::Fixed(200)),
                     Wait(dur::Fixed(800)),
-                    ReleaseKeys(vec![Key::Space, Key::W]),
+                    ReleaseKeys(vec!["Space", "W"]),
                 ]);
                 self.obstacle_avoidance_count += 1;
             }

@@ -1,18 +1,14 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use libscreenshot::shared::Area;
-use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::{PhysicalPosition, Position};
+use tauri::Window;
 
 use crate::{
-    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
     movement::MovementAccessor,
-    platform::{send_slot, Key, PlatformAccessor},
+    platform::{PlatformAccessor, send_slot_eval},
     play,
-    utils::DateTime,
 };
 
 use super::Behavior;
@@ -22,6 +18,7 @@ pub struct SupportBehavior<'a> {
     logger: &'a Logger,
     platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
+    window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     is_on_flight: bool,
 }
@@ -31,12 +28,14 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement: &'a MovementAccessor,
+        window: &'a Window
     ) -> Self {
         Self {
             rng: rand::thread_rng(),
             logger,
             platform,
             movement,
+            window,
             slots_usage_last_time: [[None; 10]; 9],
             is_on_flight: false,
         }
@@ -65,7 +64,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             use crate::movement::prelude::*;
 
             play!(self.movement => [
-                PressKey(Key::Z),
+                PressKey("Z"),
                 Wait(dur::Fixed(100)),
                 Jump,
             ]);
@@ -123,8 +122,7 @@ impl<'a> SupportBehavior<'_> {
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot(slot_index.0, slot_index.1.into());
-
+        send_slot_eval(self.window, slot_index.0, slot_index.1);
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }

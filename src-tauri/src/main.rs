@@ -30,7 +30,7 @@ use crate::{
 
 struct AppState {
     logger: Logger,
-    image_analyzer: ImageAnalyzer,
+    image_analyzer: Option<ImageAnalyzer>,
     neuz_version: Option<[u8; 3]>,
 }
 
@@ -86,7 +86,7 @@ fn main() {
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState {
             logger,
-            image_analyzer: ImageAnalyzer::new(),
+            image_analyzer: None,
             neuz_version: neuz_version,
         })
         .invoke_handler(tauri::generate_handler![start_bot,])
@@ -98,8 +98,8 @@ fn main() {
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
-
-    let mut image_analyzer: ImageAnalyzer = state.image_analyzer.clone();
+    //state.image_analyzer = Some(ImageAnalyzer::new(&window));
+    let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
 
     image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
     let neuz_version = state.neuz_version;
@@ -149,16 +149,15 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         // Create platform accessor
         let accessor = PlatformAccessor {
             window: &window,
-            mouse: mouse_rs::Mouse::new(),
         };
 
         // Create movement accessor
-        let movement = MovementAccessor::new(/*&accessor*/);
+        let movement = MovementAccessor::new(window.clone()/*&accessor*/);
 
         // Instantiate behaviors
-        let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement);
-        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement);
-        let mut support_behavior = SupportBehavior::new(&accessor, &logger, &movement);
+        let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement, &window);
+        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement, &window);
+        let mut support_behavior = SupportBehavior::new(&accessor, &logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
 
@@ -204,7 +203,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             }
 
             // Try again a bit later if the window is not focused
-            if !platform::get_window_focused(&window) {
+   /*          if !platform::get_window_focused(&window) {
                 frontend_info_mut.set_is_running(false);
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend
@@ -212,7 +211,7 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 timer.silence();
                 continue;
-            }
+            } */
             frontend_info_mut.set_is_running(true);
 
             // Make sure an operation mode is set

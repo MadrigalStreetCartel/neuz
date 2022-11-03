@@ -1,10 +1,11 @@
 use std::{fmt, time::Instant};
 
 use slog::Logger;
+use tauri::Window;
 
 use crate::{
     image_analyzer::{Color, ImageAnalyzer},
-    platform::{send_keystroke, Key, KeyMode},
+    platform::{KeyMode, eval_send_key},
 };
 
 use super::PointCloud;
@@ -30,7 +31,7 @@ impl fmt::Display for StatusBarKind {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ClientStats {
     pub hp: StatInfo,
     pub mp: StatInfo,
@@ -39,9 +40,10 @@ pub struct ClientStats {
     pub target_mp: StatInfo,
 
     pub stat_try_not_detected_count: i32,
+    window: Window,
 }
 impl ClientStats {
-    pub fn new() -> Self {
+    pub fn new(window: Window) -> Self {
         Self {
             hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
@@ -50,6 +52,7 @@ impl ClientStats {
             target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
 
             stat_try_not_detected_count: 0,
+            window
         }
     }
 
@@ -76,7 +79,7 @@ impl ClientStats {
                 self.stat_try_not_detected_count = 0;
 
                 // Try to open char stat tray
-                send_keystroke(Key::T, KeyMode::Press);
+                eval_send_key(&self.window, "T", KeyMode::Press);
             }
         } else {
             self.stat_try_not_detected_count = 0;
