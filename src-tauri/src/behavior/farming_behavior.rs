@@ -77,7 +77,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn start(&mut self, _config: &BotConfig) {}
     fn update(&mut self, _config: &BotConfig) {}
-    fn stop(&mut self, _config: &BotConfig) {}
+    fn stop(&mut self, _config: &BotConfig) {
+        self.slots_usage_last_time = [[None; 10]; 9];
+    }
 
     fn run_iteration(
         &mut self,
