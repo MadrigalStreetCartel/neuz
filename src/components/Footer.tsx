@@ -15,14 +15,6 @@ type Props = {
 
 const Footer = ({ className, lastVersion: newVersion = "NaN", currentVersion = "NaN" }: Props) => {
 
-    //const [currentVersion, setCurrentVersion] = useState("NaN")
-
-   /*  if (currentVersion === "NaN") {
-        getVersion().then((value) => {
-            setCurrentVersion(value)
-        })
-    } */
-
     return (
         <>
             <footer className={className}>
