@@ -47,7 +47,7 @@ impl ClientStats {
             mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
             target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
-            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
+            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
 
             stat_try_not_detected_count: 0,
         }
