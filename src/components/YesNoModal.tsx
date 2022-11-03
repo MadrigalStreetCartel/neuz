@@ -26,24 +26,33 @@ const YesNoModal = ({className, isShowing, hide, onYes, onNo, title, body}: Prop
         hide()
     }
     return(
-        <Modal isShowing={isShowing} onHide={() => onClick(1)} hide={hide} title={title ?? <h4>Confirm</h4>} body={
+        <div className={className}>
+            <Modal isShowing={isShowing} onHide={() => onClick(1)} hide={hide} title={title ?? <h4>Confirm</h4>} body={
+                <>
+                    {body && <div className='modalBody'> {body} </div>}
+                    <div className="buttonHolder">
+                        <button className='btn sm' onClick={() => onClick(0)}>Yes</button>
+                        <button className='btn sm' onClick={() => onClick(1)}>No</button>
+                    </div>
+                </>
+            }/>
+        </div>
 
-            <ConfigTable>
-
-                    {body && <div> {body} </div>}
-
-                <div style={{display: "inline-block", marginLeft: "50%", transform: "translateX(-50%)"}}>
-                    <button onClick={() => onClick(0)}>Yes</button>
-                    <button style={{width:"25px", backgroundColor: "transparent"}}></button>
-                    <button onClick={() => onClick(1)}>No</button>
-                </div>
-            </ConfigTable>
-        }/>
     )
 }
 
 
 export default styled(YesNoModal)`
+    & .modalBody {
+        text-align: center;
+    }
+
+    & .buttonHolder {
+        display: flex;
+        gap: 32px;
+        margin-left: 50%;
+        transform: translateX(-50%)
+    }
 `
 
 
