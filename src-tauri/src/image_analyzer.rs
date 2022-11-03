@@ -305,7 +305,7 @@ impl ImageAnalyzer {
         //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
-        logger: &Logger,
+        _logger: &Logger,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
         let image = self.image.as_ref().unwrap();
@@ -335,7 +335,7 @@ impl ImageAnalyzer {
 
         if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if let Some((mob, _distance)) = distances.iter().find(|(mob, distance)| {
+            if let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
                 //*distance > 55
                 let mut coords = mob.get_attack_coords();
                 coords.y -= 10;

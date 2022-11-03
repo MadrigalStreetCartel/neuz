@@ -65,12 +65,12 @@ impl FrontendInfo {
         self.is_alive
     }
     /// Serialize config to disk
-    pub fn serialize(&self) {
+    /* pub fn serialize(&self) {
         let config = {
-            let mut config = self.clone();
+            let config = self.clone();
             config
         };
-    }
+    } */
 
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {

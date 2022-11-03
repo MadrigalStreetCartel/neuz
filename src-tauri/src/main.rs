@@ -237,7 +237,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                         BotMode::Farming => farming_behavior.start(&config),
                         BotMode::Support => support_behavior.start(&config),
                         BotMode::AutoShout => shout_behavior.start(&config),
-                        _ => (),
                     }
                 }
             }
@@ -288,7 +287,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                             &mut image_analyzer,
                         );
                     }
-                    _ => (),
                 }
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend

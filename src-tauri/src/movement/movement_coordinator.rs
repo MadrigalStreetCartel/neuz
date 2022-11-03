@@ -167,8 +167,4 @@ impl<'a> MovementCoordinator {
             }
         }
     }
-
-    pub fn jump(&self) {
-        send_keystroke(Key::Space, KeyMode::Press);
-    }
 }
