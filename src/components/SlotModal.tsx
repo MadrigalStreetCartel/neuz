@@ -40,7 +40,7 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Type" helpText="Select action binded to current slot." />}
-                        item={<div style={{width:'100%'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(barIndex, index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
+                        item={<div style={{width:'100%', color: 'black'}}><Select options={options} onChange={value => {slot.slot_type =  value?.value as SlotType || 'Unused';onChange(barIndex, index, slot)}} defaultValue={options.find(x => x.value == slot.slot_type)}/></div>}
                     />
 
                     {cooldownSlotTypes.includes(slot.slot_type) &&
