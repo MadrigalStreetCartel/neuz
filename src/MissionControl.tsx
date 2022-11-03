@@ -23,9 +23,11 @@ type Bounds = {x: number, y: number, w: number, h: number}
 
 type Props = {
     className?: string,
+    currentVersion?: string,
+    lastVersion?: string,
 }
 
-const MissionControl = ({ className }: Props) => {
+const MissionControl = ({ className, lastVersion: newVersion, currentVersion }: Props) => {
     const [imageData, setImageData] = useState({ data: '', width: 0, height: 0 })
     const [info, setInfo] = useState<FrontendInfoModel | null>(null);
     const [config, setConfig] = useState<BotConfigModel | null>(null);
@@ -101,7 +103,7 @@ const MissionControl = ({ className }: Props) => {
                 ))}
             </div> */}
 
-            <Footer version={info?.version} />
+            <Footer currentVersion={currentVersion} lastVersion={newVersion} />
         </div>
     )
 }

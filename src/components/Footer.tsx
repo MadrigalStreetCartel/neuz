@@ -5,56 +5,30 @@ import { BsDiscord, BsGithub } from 'react-icons/bs'
 import SocialButton from './SocialButton'
 import useModal from './utils/UseModal'
 import YesNoModal from './YesNoModal'
+import { getVersion } from '@tauri-apps/api/app'
 
 type Props = {
     className?: string,
-    version?: number[],
+    lastVersion?: string,
+    currentVersion?: string,
 }
 
-const Footer = ({ className, version }: Props) => {
+const Footer = ({ className, lastVersion: newVersion = "NaN", currentVersion = "NaN" }: Props) => {
 
-    const [currentVersion, setCurrentVersion] = useState("NaN")
-    const newVersion = useRef("NaN")
-    const updateModal = useModal()
+    //const [currentVersion, setCurrentVersion] = useState("NaN")
 
-    const getData=()=>{
-        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/main/updater.json')
-        .then(function(response){
-            return response.json();
+   /*  if (currentVersion === "NaN") {
+        getVersion().then((value) => {
+            setCurrentVersion(value)
         })
-        .then(function(myJson) {
-            if(currentVersion !== "NaN" && myJson.version !== currentVersion) {
-                newVersion.current = myJson.version
-                updateModal.open()
-            }
-        });
-    }
-    if (version && currentVersion === "NaN") {
-        setCurrentVersion(`${version[0]}.${version[1]}.${version[2]}`)
-    }
-    useEffect(() => {
-        getData()
-    },[currentVersion])
-
+    } */
 
     return (
         <>
-            <YesNoModal isShowing={updateModal.isShown} hide={updateModal.close}
-            title={<h4>Update available!</h4>}
-            body={
-                <div>
-                    <p>Version V{newVersion.current} is available! </p>
-                    <p>You're currently using V{currentVersion}.</p>
-                    <p>Do you want to open download page ?</p>
-                </div>
-            }
-            onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}/>
-
-
             <footer className={className}>
                 <SocialButton icon={BsDiscord} label="Join our Discord" href="https://discord.gg/cZr3X3mCnq" />
-                {version && (<p id="versionNumber">V{currentVersion}
-                    {(newVersion.current !== "NaN" && newVersion.current !== currentVersion) && (<a target="_blank" href="https://github.com/MadrigalStreetCartel/neuz" className="badge">NEW UPDATE</a>)}</p>)
+                {currentVersion !== "NaN" && (<p id="versionNumber">V{currentVersion}
+                    {(newVersion !== "NaN" && newVersion !== currentVersion) && (<a target="_blank" href="https://github.com/MadrigalStreetCartel/neuz" className="badge">NEW UPDATE</a>)}</p>)
                 }
                 <SocialButton icon={BsGithub} label="Star us on GitHub" href="https://github.com/MadrigalStreetCartel/neuz" />
             </footer>

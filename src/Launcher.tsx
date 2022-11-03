@@ -1,4 +1,4 @@
-import { useReducer, useState, useMemo } from 'react'
+import { useReducer, useState, useMemo, useRef, useEffect } from 'react'
 import { invoke, process as TauriProcess } from '@tauri-apps/api'
 import { sample } from 'lodash'
 import { WebviewWindow } from '@tauri-apps/api/window'
@@ -9,6 +9,9 @@ import LauncherBackground from './assets/launcher_background_ice.png'
 import LauncherBackground2 from './assets/launcher_background.png'
 import MissionControl from './MissionControl'
 import { randomNumberInRange } from './components/utils/RandomInt'
+import useModal from './components/utils/UseModal'
+import { getVersion } from '@tauri-apps/api/app'
+import YesNoModal from './components/YesNoModal'
 
 const launcherBackgrounds = [LauncherBackground, LauncherBackground2]
 const Greetings = [
@@ -89,22 +92,61 @@ const Launcher = ({ className }: Props) => {
         })
     }
 
-    return (
-        <div className={className}>
-            {!isLaunched && (
-                <div className="container">
-                    <div className="logo-container">
-                        <img className="logo" alt="Flyff Universe Logo" src={FlyffLogo} />
-                        <span className="greet">{greeting}</span>
-                    </div>
-                    <div className="btn" onClick={launch}>Play</div>
-                </div>
-            )}
-            {isLaunched && (
-                <MissionControl />
-            )}
+    const [currentVersion, setCurrentVersion] = useState("NaN")
+    const newVersion = useRef("NaN")
+    const updateModal = useModal()
 
-        </div>
+    const getData=()=>{
+        fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/main/updater.json')
+        .then(function(response){
+            return response.json();
+        })
+        .then(function(myJson) {
+            if(currentVersion !== "NaN" && myJson.version !== currentVersion) {
+                newVersion.current = myJson.version
+                updateModal.open()
+            }
+        });
+    }
+    if (currentVersion === "NaN") {
+        getVersion().then((value) => {
+            setCurrentVersion(value)
+        })
+
+    }
+    useEffect(() => {
+        getData()
+    },[currentVersion])
+
+    return (
+        <>
+            <YesNoModal isShowing={updateModal.isShown} hide={updateModal.close}
+                title={<h4>Update available!</h4>}
+                body={
+                    <div>
+                        <p>Version V{newVersion.current} is available! </p>
+                        <p>You're currently using V{currentVersion}.</p>
+                        <p>Do you want to open download page ?</p>
+                    </div>
+                }
+                onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}
+            />
+            <div className={className}>
+                {!isLaunched && (
+                    <div className="container">
+                        <div className="logo-container">
+                            <img className="logo" alt="Flyff Universe Logo" src={FlyffLogo} />
+                            <span className="greet">{greeting}</span>
+                        </div>
+                        <div className="btn" onClick={launch}>Play</div>
+                    </div>
+                )}
+                {isLaunched && (
+                    <MissionControl currentVersion={currentVersion} lastVersion={newVersion.current} />
+                )}
+
+            </div>
+        </>
     )
 }
 
