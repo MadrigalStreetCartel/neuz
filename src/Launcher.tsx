@@ -119,19 +119,18 @@ const Launcher = ({ className }: Props) => {
     },[currentVersion])
 
     return (
-        <>
-            <YesNoModal isShowing={updateModal.isShown} hide={updateModal.close}
-                title={<h4>Update available!</h4>}
-                body={
-                    <div>
-                        <p>Version V{lastVersion.current} is available! </p>
-                        <p>You're currently using V{currentVersion}.</p>
-                        <p>Do you want to open download page ?</p>
-                    </div>
-                }
-                onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}
-            />
             <div className={className}>
+                <YesNoModal isShowing={updateModal.isShown} hide={updateModal.close}
+                    title={<h4>Update available!</h4>}
+                    body={
+                        <>
+                            <p>Version V{lastVersion.current} is available! </p>
+                            <p>You're currently using V{currentVersion}.</p>
+                            <p>Do you want to open download page ?</p>
+                        </>
+                    }
+                    onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}
+                />
                 {!isLaunched && (
                     <div className="container">
                         <div className="logo-container">
@@ -146,7 +145,6 @@ const Launcher = ({ className }: Props) => {
                 )}
 
             </div>
-        </>
     )
 }
 
