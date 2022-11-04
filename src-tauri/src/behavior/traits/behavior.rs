@@ -5,13 +5,11 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo},
     movement::MovementAccessor,
-    platform::PlatformAccessor,
 };
 
 pub trait Behavior<'a> {
     /// Runs on initialization
     fn new(
-        platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement_accessor: &'a MovementAccessor,
         window: &'a Window

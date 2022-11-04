@@ -65,8 +65,8 @@ impl ClientStats {
             self.target_hp.update_value(image),
             self.target_mp.update_value(image),
         ];
-        if should_debug.contains(&true) {
-            //self.debug_print(logger);
+        if should_debug.contains(&true) && false {
+            self.debug_print(logger);
         }
     }
 

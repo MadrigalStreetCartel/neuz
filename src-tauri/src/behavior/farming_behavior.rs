@@ -10,7 +10,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{PlatformAccessor, send_slot_eval, eval_mouse_move, eval_mouse_click_at_point},
+    platform::{send_slot_eval, eval_mouse_move, eval_mouse_click_at_point},
     play,
     utils::DateTime,
 };
@@ -29,7 +29,6 @@ enum State {
 pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
     window: &'a Window,
     state: State,
@@ -50,14 +49,12 @@ pub struct FarmingBehavior<'a> {
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement: &'a MovementAccessor,
         window: &'a Window,
     ) -> Self {
         Self {
             logger,
-            platform,
             movement,
             window,
             rng: rand::thread_rng(),
@@ -184,7 +181,6 @@ impl<'a> FarmingBehavior<'_> {
     ) -> Option<(usize, usize)> {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
-            &mut self.rng,
             threshold,
             self.slots_usage_last_time,
         ) {
@@ -221,7 +217,7 @@ impl<'a> FarmingBehavior<'_> {
             let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
             if slot.is_some() {
                 let index = slot.unwrap();
-                for i in 1..7 {
+                for _i in 1..7 {
                     send_slot_eval(self.window, index.0, index.1);
                 }
             }

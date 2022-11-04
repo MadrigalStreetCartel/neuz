@@ -24,13 +24,11 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    platform::PlatformAccessor,
     utils::Timer,
 };
 
 struct AppState {
     logger: Logger,
-    neuz_version: Option<[u8; 3]>,
 }
 
 fn main() {
@@ -64,28 +62,11 @@ fn main() {
     let drain = sentry_slog::SentryDrain::new(drain).fuse();
     let logger = Logger::root(drain.fuse(), slog::o!());
 
-    let neuz_version = {
-        if neuz_version == "unknown" {
-            None
-        } else {
-            let splitted = neuz_version.split(".").collect::<Vec<&str>>();
-            let mut result: [u8; 3] = [0, 0, 0];
-            result[0] = splitted[0].parse::<u8>().unwrap();
-            result[1] = splitted[1].parse::<u8>().unwrap();
-            result[2] = splitted[2].parse::<u8>().unwrap();
-            if result[0] == 0 && result[1] == 0 && result[2] == 0 {
-                None
-            } else {
-                Some(result)
-            }
-        }
-    };
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState {
             logger,
-            neuz_version: neuz_version,
         })
         .invoke_handler(tauri::generate_handler![start_bot,])
         .run(context)
@@ -99,7 +80,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
 
     image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
-    let neuz_version = state.neuz_version;
     std::thread::spawn(move || {
         let logger = logger.clone();
         let mut last_config_change_id = 0;
@@ -143,18 +123,13 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         // Send initial config to frontend
         send_config(&*config.read());
 
-        // Create platform accessor
-        let accessor = PlatformAccessor {
-            window: &window,
-        };
-
         // Create movement accessor
         let movement = MovementAccessor::new(window.clone()/*&accessor*/);
 
         // Instantiate behaviors
-        let mut farming_behavior = FarmingBehavior::new(&accessor, &logger, &movement, &window);
-        let mut shout_behavior = ShoutBehavior::new(&accessor, &logger, &movement, &window);
-        let mut support_behavior = SupportBehavior::new(&accessor, &logger, &movement, &window);
+        let mut farming_behavior = FarmingBehavior::new(&logger, &movement, &window);
+        let mut shout_behavior = ShoutBehavior::new(&logger, &movement, &window);
+        let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
 

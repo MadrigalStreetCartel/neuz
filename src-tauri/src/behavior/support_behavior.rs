@@ -7,37 +7,30 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
     movement::MovementAccessor,
-    platform::{PlatformAccessor, send_slot_eval},
+    platform::send_slot_eval,
     play,
 };
 
 use super::Behavior;
 
 pub struct SupportBehavior<'a> {
-    rng: rand::rngs::ThreadRng,
-    logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
     window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
-    is_on_flight: bool,
+    //is_on_flight: bool,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
-        logger: &'a Logger,
+        _logger: &'a Logger,
         movement: &'a MovementAccessor,
         window: &'a Window
     ) -> Self {
         Self {
-            rng: rand::thread_rng(),
-            logger,
-            platform,
             movement,
             window,
             slots_usage_last_time: [[None; 10]; 9],
-            is_on_flight: false,
+            //is_on_flight: false,
         }
     }
 
@@ -49,7 +42,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
     fn run_iteration(
         &mut self,
-        frontend_info: &mut FrontendInfo,
+        _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
         image: &mut ImageAnalyzer,
     ) {
@@ -106,7 +99,6 @@ impl<'a> SupportBehavior<'_> {
     ) -> Option<(usize, usize)> {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
-            &mut self.rng,
             threshold,
             self.slots_usage_last_time,
         ) {

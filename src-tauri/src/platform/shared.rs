@@ -1,9 +1,5 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tauri::Window;
-
-mod platform_accessor;
-
-pub use platform_accessor::PlatformAccessor;
 use std::time::Duration;
 
 use crate::data::Point;

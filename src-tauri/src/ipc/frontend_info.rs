@@ -13,19 +13,6 @@ pub struct FrontendInfo {
 }
 
 impl FrontendInfo {
-    pub fn new() -> Self {
-        Self {
-            /* enemy_bounds: None,
-            active_enemy_bounds: None, */
-            enemy_kill_count: 0,
-            kill_min_avg: 0.0,
-            kill_hour_avg: 0.0,
-            is_attacking: false,
-            is_running: false,
-            is_alive: false,
-        }
-    }
-
     /*  pub fn set_enemy_bounds(&mut self, enemy_bounds: Vec<Bounds>) {
            self.enemy_bounds = Some(enemy_bounds);
        }

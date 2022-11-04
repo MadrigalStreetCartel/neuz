@@ -8,7 +8,6 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, ShoutConfig},
     movement::MovementAccessor,
-    platform::PlatformAccessor,
     play,
 };
 
@@ -18,7 +17,6 @@ use super::Behavior;
 pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor, /*<'a>*/
     window: &'a Window,
     last_shout_time: Instant,
@@ -29,14 +27,12 @@ pub struct ShoutBehavior<'a> {
 
 impl<'a> Behavior<'a> for ShoutBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement: &'a MovementAccessor,
         window: &'a Window
     ) -> Self {
         Self {
             logger,
-            platform,
             movement,
             window,
             rng: rand::thread_rng(),

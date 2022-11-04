@@ -74,14 +74,14 @@ impl<'a> MovementCoordinator {
 
     // Wrapper functions
 
-    pub fn with_probability<F>(&mut self, probability: f64, func: F)
+  /*   pub fn with_probability<F>(&mut self, probability: f64, func: F)
     where
         F: Fn(&Self),
     {
         if self.rng.gen_bool(probability) {
             func(self);
         }
-    }
+    } */
 
     // Movement functions
 
