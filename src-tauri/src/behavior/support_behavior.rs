@@ -17,6 +17,7 @@ pub struct SupportBehavior<'a> {
     movement: &'a MovementAccessor,
     window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
+    last_jump_time: Instant,
     //is_on_flight: bool,
 }
 
@@ -30,6 +31,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             movement,
             window,
             slots_usage_last_time: [[None; 10]; 9],
+            last_jump_time: Instant::now(),
             //is_on_flight: false,
         }
     }
@@ -58,9 +60,13 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
             play!(self.movement => [
                 PressKey("Z"),
-                Wait(dur::Fixed(100)),
-                Jump,
             ]);
+            if self.last_jump_time.elapsed().as_millis() > 3000 {
+                self.last_jump_time = Instant::now();
+                play!(self.movement => [
+                    Jump,
+                ]);
+            }
         }
     }
 }

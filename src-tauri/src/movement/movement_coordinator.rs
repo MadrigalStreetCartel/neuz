@@ -2,7 +2,6 @@ use std::{ops::Range, thread, time::Duration};
 
 use rand::Rng;
 use tauri::Window;
-
 use crate::platform::{
     eval_send_message, /* , PlatformAccessor*/
     KeyMode, eval_send_key,
@@ -97,7 +96,9 @@ impl<'a> MovementCoordinator {
     fn play_single(&mut self, movement: Movement) {
         match movement {
             Movement::Jump => {
-                eval_send_key(&self.window, "Space", KeyMode::Press);
+                eval_send_key(&self.window, "Space", KeyMode::Hold);
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                eval_send_key(&self.window, "Space", KeyMode::Release);
             }
             Movement::Move(direction, duration) => {
                 let key = match direction {
