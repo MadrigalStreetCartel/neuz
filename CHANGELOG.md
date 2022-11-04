@@ -5,8 +5,19 @@ Date format: `DD/MM/YYYY`
 [@genoxalmighty]: https://github.com/genoxalmighty
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
+
+**0.15.0**
+> Released on 04.11.2022
+- Misc
+  - Adds background working for automation modes!! You can now launch multiple instance of Neuz (you'll need to create multiple .botconfig if you want multiple farming or support config, check discord for tips)
+  - A lot of code refacto
+  - Various bug fixes
+
+**0.14.1**
+- Fix a little bug that can be annoying in 0.14.0, slot's type selection text was in white, so kinda invisible
+
 **0.14.0**
-> Released on XX.10.2022
+> Released on 01.11.2022
 - Support mode released
   - Implements Heal Spell slots used to heal target, you can still use Food/Pills to heal yourself
   - Follows target by using Z key (make sure it's binded to follow)
