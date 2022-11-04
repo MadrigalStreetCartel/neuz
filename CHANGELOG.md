@@ -6,6 +6,11 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.15.1**
+> Released on 04.11.2022
+- Fix a buff usage bug
+- Implements jump cooldown selection for support mode
+
 **0.15.0**
 > Released on 04.11.2022
 - Misc
