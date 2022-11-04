@@ -60,12 +60,16 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             }/>
+            <ConfigPanel>
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
+                        item={<NumericInput unit='ms' value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                    />
+                </ConfigTable>
+            </ConfigPanel>
 
-            <ConfigTableRow
-                layout="v"
-                label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                item={<NumericInput unit='ms' value={config.jump_cooldown} onChange={value => onChange({...config, jump_cooldown: value})} />}
-            />
 
 
             {info && (
