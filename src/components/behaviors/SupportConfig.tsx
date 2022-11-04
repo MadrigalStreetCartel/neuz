@@ -13,6 +13,8 @@ import ConfigPanel from '../config/ConfigPanel'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
 import styled from "styled-components"
+import { DefaultValuesChecker } from "../utils/DefaultValuesChecker"
+import NumericInput from "../config/NumericInput"
 
 type Props = {
     className?: string,
@@ -26,6 +28,12 @@ type Props = {
 const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode }: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
+
+    const defaultValues = {
+        'jump_cooldown': 5000,
+    }
+
+    DefaultValuesChecker(config, defaultValues, onChange)
 
     let botState = running? info?.is_running? !info?.is_alive? "dead" : "healing" : "ready" : "idle"
 
@@ -52,6 +60,13 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             }/>
+
+            <ConfigTableRow
+                layout="v"
+                label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
+                item={<NumericInput unit='ms' value={config.jump_cooldown} onChange={value => onChange({...config, jump_cooldown: value})} />}
+            />
+
 
             {info && (
                 <div className="info">

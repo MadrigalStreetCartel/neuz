@@ -266,9 +266,14 @@ impl FarmingConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
+    jump_cooldown: Option<u128>,
 }
 
 impl SupportConfig {
+    pub fn jump_cooldown(&self) -> u128 {
+        return self.jump_cooldown.unwrap_or(0);
+    }
+
     pub fn slot_bars(&self) -> Vec<SlotBar> {
         self.slot_bars
             .map(|slots| slots.into_iter().collect::<Vec<_>>())

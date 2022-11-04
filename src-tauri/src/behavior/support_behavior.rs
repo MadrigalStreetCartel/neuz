@@ -17,6 +17,7 @@ pub struct SupportBehavior<'a> {
     movement: &'a MovementAccessor,
     window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
+    last_buff_usage: Instant,
     last_jump_time: Instant,
     //is_on_flight: bool,
 }
@@ -31,6 +32,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             movement,
             window,
             slots_usage_last_time: [[None; 10]; 9],
+            last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
             //is_on_flight: false,
         }
@@ -61,12 +63,15 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             play!(self.movement => [
                 PressKey("Z"),
             ]);
-            if self.last_jump_time.elapsed().as_millis() > 3000 {
-                self.last_jump_time = Instant::now();
-                play!(self.movement => [
-                    Jump,
-                ]);
+            if config.jump_cooldown() > 0 {
+                if self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
+                    self.last_jump_time = Instant::now();
+                    play!(self.movement => [
+                        Jump,
+                    ]);
+                }
             }
+
         }
     }
 }
@@ -126,7 +131,10 @@ impl<'a> SupportBehavior<'_> {
     }
 
     fn check_buffs(&mut self, config: &SupportConfig) {
-        self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        if self.last_buff_usage.elapsed().as_millis() > 2000 {
+            self.last_buff_usage = Instant::now();
+            self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        }
     }
 
     fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {

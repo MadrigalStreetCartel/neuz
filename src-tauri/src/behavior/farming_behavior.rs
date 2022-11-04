@@ -45,6 +45,8 @@ pub struct FarmingBehavior<'a> {
     last_killed_type: MobType,
     start_time: Instant,
     already_attack_count: u32,
+    last_buff_usage: Instant,
+
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -72,6 +74,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_killed_type: MobType::Passive,
             start_time: Instant::now(),
             already_attack_count: 0,
+            last_buff_usage: Instant::now(),
+
         }
     }
 
@@ -250,7 +254,10 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn check_buffs(&mut self, config: &FarmingConfig) {
-        self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        if self.last_buff_usage.elapsed().as_millis() > 2000 {
+            self.last_buff_usage = Instant::now();
+            self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        }
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
