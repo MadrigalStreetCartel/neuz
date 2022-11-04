@@ -1,44 +1,36 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use libscreenshot::shared::Area;
-use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::{PhysicalPosition, Position};
+use tauri::Window;
 
 use crate::{
-    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
     movement::MovementAccessor,
-    platform::{send_slot, Key, PlatformAccessor},
+    platform::send_slot_eval,
     play,
-    utils::DateTime,
 };
 
 use super::Behavior;
 
 pub struct SupportBehavior<'a> {
-    rng: rand::rngs::ThreadRng,
-    logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
+    window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
-    is_on_flight: bool,
+    //is_on_flight: bool,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
-        logger: &'a Logger,
+        _logger: &'a Logger,
         movement: &'a MovementAccessor,
+        window: &'a Window
     ) -> Self {
         Self {
-            rng: rand::thread_rng(),
-            logger,
-            platform,
             movement,
+            window,
             slots_usage_last_time: [[None; 10]; 9],
-            is_on_flight: false,
+            //is_on_flight: false,
         }
     }
 
@@ -50,7 +42,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
     fn run_iteration(
         &mut self,
-        frontend_info: &mut FrontendInfo,
+        _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
         image: &mut ImageAnalyzer,
     ) {
@@ -65,7 +57,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             use crate::movement::prelude::*;
 
             play!(self.movement => [
-                PressKey(Key::Z),
+                PressKey("Z"),
                 Wait(dur::Fixed(100)),
                 Jump,
             ]);
@@ -74,8 +66,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 }
 
 impl<'a> SupportBehavior<'_> {
+    /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &SupportConfig) {
-        // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
             let mut slot_index = 0;
@@ -107,7 +99,6 @@ impl<'a> SupportBehavior<'_> {
     ) -> Option<(usize, usize)> {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
-            &mut self.rng,
             threshold,
             self.slots_usage_last_time,
         ) {
@@ -123,8 +114,7 @@ impl<'a> SupportBehavior<'_> {
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot(slot_index.0, slot_index.1.into());
-
+        send_slot_eval(self.window, slot_index.0, slot_index.1);
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }

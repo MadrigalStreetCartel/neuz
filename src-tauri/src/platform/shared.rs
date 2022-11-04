@@ -1,11 +1,15 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tauri::Window;
+use std::time::Duration;
 
-mod key;
-mod platform_accessor;
+use crate::data::Point;
 
-pub use key::{Key, KeyMode};
-pub use platform_accessor::PlatformAccessor;
+#[derive(Debug)]
+pub enum KeyMode {
+    Press,
+    Hold,
+    Release,
+}
 
 // For visual recognition: Avoids mouse clicks outside the window by ignoring monster names that are too close to the bottom of the GUI
 pub const IGNORE_AREA_BOTTOM: u32 = 110;
@@ -31,19 +35,60 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
     }
 }
 
-/// Determine whether the window is currently focused.
-pub fn get_window_focused(window: &Window) -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        let focused_hwnd = unsafe { winapi::um::winuser::GetForegroundWindow() };
-        if let Ok(hwnd) = window.hwnd().map(|hwnd| hwnd.0) {
-            focused_hwnd as isize == hwnd
-        } else {
-            false
-        }
+pub fn eval_send_key(window: &Window, key: &str, mode: KeyMode) {
+    match mode {
+        KeyMode::Press => {
+            drop(window.eval(format!("
+                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))
+                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
+            , key).as_str()))
+        },
+        KeyMode::Hold => {
+            drop(window.eval(format!("
+                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))"
+            , key).as_str()))
+        },
+        KeyMode::Release => {
+            drop(window.eval(format!("
+                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
+            , key).as_str()))
+        },
     }
-    #[cfg(not(target_os = "windows"))]
-    {
-        true
-    }
+}
+
+pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
+    eval_send_key(window, format!("F{}", slot_bar_index + 1).to_string().as_str(), KeyMode::Press);
+    eval_send_key(window, k.to_string().as_str(), KeyMode::Press);
+    std::thread::sleep(Duration::from_millis(100));
+}
+
+
+pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
+    drop(window.eval(format!("
+        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
+            clientX: {0},
+            clientY: {1}
+        }}))
+
+        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
+            clientX: {0},
+            clientY: {1}
+        }}))"
+    , pos.x, pos.y).as_str()));
+}
+
+pub fn eval_mouse_move(window: &Window, pos: Point) {
+    drop(window.eval(format!("
+        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
+            clientX: {0},
+            clientY: {1}
+        }}))"
+    , pos.x, pos.y).as_str()));
+}
+
+pub fn eval_send_message(window: &Window,text: &str) {
+    drop(window.eval(format!("
+    document.querySelector('input').value = '{0}';
+    document.querySelector('input').select();"
+    , text).as_str()));
 }

@@ -1,10 +1,11 @@
 use std::{ops::Range, thread, time::Duration};
 
 use rand::Rng;
+use tauri::Window;
 
 use crate::platform::{
-    send_keystroke, send_message, send_slot, /* , PlatformAccessor*/
-    Key, KeyMode,
+    eval_send_message, /* , PlatformAccessor*/
+    KeyMode, eval_send_key,
 };
 
 #[allow(dead_code)]
@@ -41,51 +42,52 @@ impl ActionDuration {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub enum Movement {
+pub enum Movement<'a> {
     Jump,
     Move(MovementDirection, ActionDuration),
     Rotate(RotationDirection, ActionDuration),
-    SendSlot(usize, Key),
-    PressKey(Key),
-    HoldKeyFor(Key, ActionDuration),
-    HoldKey(Key),
-    HoldKeys(Vec<Key>),
-    ReleaseKey(Key),
-    ReleaseKeys(Vec<Key>),
-    Repeat(u64, Vec<Movement>),
+    PressKey(&'a str),
+    HoldKeyFor(&'a str, ActionDuration),
+    HoldKey(&'a str),
+    HoldKeys(Vec<&'a str>),
+    ReleaseKey(&'a str),
+    ReleaseKeys(Vec<&'a str>),
+    Repeat(u64, Vec<Movement<'a>>),
     Type(String),
     Wait(ActionDuration),
 }
 
 pub struct MovementCoordinator {
     rng: rand::rngs::ThreadRng,
+    window: Window,
 }
 
 impl<'a> MovementCoordinator {
-    pub fn new() -> Self {
+    pub fn new(window: Window) -> Self {
         let rng = rand::thread_rng();
 
         Self {
             rng, /*, platform */
+            window
         }
     }
 
     // Wrapper functions
 
-    pub fn with_probability<F>(&mut self, probability: f64, func: F)
+  /*   pub fn with_probability<F>(&mut self, probability: f64, func: F)
     where
         F: Fn(&Self),
     {
         if self.rng.gen_bool(probability) {
             func(self);
         }
-    }
+    } */
 
     // Movement functions
 
     pub fn play<M>(&mut self, movements: M)
     where
-        M: AsRef<[Movement]>,
+        M: AsRef<[Movement<'a>]>,
     {
         for movement in movements.as_ref() {
             self.play_single(movement.clone());
@@ -95,69 +97,66 @@ impl<'a> MovementCoordinator {
     fn play_single(&mut self, movement: Movement) {
         match movement {
             Movement::Jump => {
-                send_keystroke(Key::Space, KeyMode::Press);
+                eval_send_key(&self.window, "Space", KeyMode::Press);
             }
             Movement::Move(direction, duration) => {
                 let key = match direction {
-                    MovementDirection::Forward => Key::W,
-                    MovementDirection::Backward => Key::S,
+                    MovementDirection::Forward => "W",
+                    MovementDirection::Backward => "S",
                     MovementDirection::Random => {
                         if self.rng.gen() {
-                            Key::W
+                            "W"
                         } else {
-                            Key::S
+                            "S"
                         }
                     }
                 };
-                send_keystroke(key, KeyMode::Hold);
+                eval_send_key(&self.window, key, KeyMode::Hold);
                 thread::sleep(duration.to_duration(&mut self.rng));
-                send_keystroke(key, KeyMode::Release);
+                eval_send_key(&self.window, key, KeyMode::Release);
             }
             Movement::Rotate(direction, duration) => {
                 let key = match direction {
-                    RotationDirection::Left => Key::Left,
-                    RotationDirection::Right => Key::Right,
+                    RotationDirection::Left => "Left",
+                    RotationDirection::Right => "Right",
                     RotationDirection::Random => {
                         if self.rng.gen() {
-                            Key::Left
+                            "Left"
                         } else {
-                            Key::Right
+                            "Right"
                         }
                     }
                 };
-                send_keystroke(key, KeyMode::Hold);
+                eval_send_key(&self.window, key, KeyMode::Hold);
                 thread::sleep(duration.to_duration(&mut self.rng));
-                send_keystroke(key, KeyMode::Release);
+                eval_send_key(&self.window, key, KeyMode::Release);
             }
             Movement::Wait(duration) => thread::sleep(duration.to_duration(&mut self.rng)),
             Movement::Type(text) => {
-                send_message(&text);
-            }
-            Movement::SendSlot(slot_bar_index, key) => {
-                send_slot(slot_bar_index, key);
+                eval_send_message(&self.window,&text);
             }
             Movement::PressKey(key) => {
-                send_keystroke(key, KeyMode::Press);
+                eval_send_key(&self.window, key, KeyMode::Press);
             }
             Movement::HoldKeyFor(key, duration) => {
-                send_keystroke(key, KeyMode::Hold);
+                eval_send_key(&self.window, key, KeyMode::Hold);
                 thread::sleep(duration.to_duration(&mut self.rng));
-                send_keystroke(key, KeyMode::Release);
+                eval_send_key(&self.window, key, KeyMode::Release);
             }
             Movement::HoldKey(key) => {
-                send_keystroke(key, KeyMode::Hold);
+                eval_send_key(&self.window, key, KeyMode::Hold);
             }
             Movement::HoldKeys(keys) => {
                 for key in keys {
-                    send_keystroke(key, KeyMode::Hold);
+                    eval_send_key(&self.window, key, KeyMode::Hold);
                 }
             }
             Movement::ReleaseKey(key) => {
-                send_keystroke(key, KeyMode::Release);
+                eval_send_key(&self.window, key, KeyMode::Release);
             }
             Movement::ReleaseKeys(keys) => {
                 for key in keys {
-                    send_keystroke(key, KeyMode::Release);
+                    eval_send_key(&self.window, key, KeyMode::Release);
                 }
             }
             Movement::Repeat(times, movements) => {
@@ -166,9 +165,5 @@ impl<'a> MovementCoordinator {
                 }
             }
         }
-    }
-
-    pub fn jump(&self) {
-        send_keystroke(Key::Space, KeyMode::Press);
     }
 }

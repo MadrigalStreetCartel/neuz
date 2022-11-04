@@ -1,6 +1,5 @@
 use std::{fmt, fs::File, time::Instant};
 
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,16 +57,13 @@ impl SlotBar {
     }
 
     /// Get a random usable matching slot index
-    pub fn get_usable_slot_index<R>(
+    pub fn get_usable_slot_index(
         &self,
         slot_type: SlotType,
-        rng: &mut R,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
         slot_bar_index: usize,
     ) -> Option<(usize, usize)>
-    where
-        R: Rng,
     {
         self.slots()
             .iter()
@@ -237,20 +233,16 @@ impl FarmingConfig {
     }
 
     /// Get a random usable matching slot index
-    pub fn get_usable_slot_index<R>(
+    pub fn get_usable_slot_index(
         &self,
         slot_type: SlotType,
-        rng: &mut R,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
     ) -> Option<(usize, usize)>
-    where
-        R: Rng,
     {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
-                rng,
                 threshold,
                 last_slots_usage,
                 n,
@@ -261,20 +253,6 @@ impl FarmingConfig {
         }
         None
     }
-
-    /// Get a random matching slot index
-    //pub fn get_random_slot_index<R>(&self, slot_type: SlotType, rng: &mut R) -> Option<usize>
-    //where
-    //    R: Rng,
-    //{
-    //    self.slots
-    //        .unwrap_or_default()
-    //        .iter()
-    //        .enumerate()
-    //        .filter(|(_, slot)| slot.slot_type == slot_type)
-    //        .choose(rng)
-    //        .map(|(index, _)| index)
-    //}
 
     pub fn is_stop_fighting(&self) -> bool {
         self.is_stop_fighting.unwrap_or(false)
@@ -305,32 +283,17 @@ impl SupportConfig {
         return self.slots(slot_bar_index)[slot_index].get_slot_cooldown();
     }
 
-    /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
-        for n in 0..9 {
-            let found_index = self.slot_bars()[n].get_slot_index(slot_type);
-            if found_index.is_some() {
-                return Some((n, found_index.unwrap()));
-            }
-        }
-        None
-    }
-
     /// Get a random usable matching slot index
-    pub fn get_usable_slot_index<R>(
+    pub fn get_usable_slot_index(
         &self,
         slot_type: SlotType,
-        rng: &mut R,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
     ) -> Option<(usize, usize)>
-    where
-        R: Rng,
     {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
-                rng,
                 threshold,
                 last_slots_usage,
                 n,

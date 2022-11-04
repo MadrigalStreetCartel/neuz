@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::data::Bounds;
-
 #[derive(Debug, Default, Serialize, Deserialize, Copy, Clone)]
 pub struct FrontendInfo {
     /* enemy_bounds: Option<Vec<Bounds>>,
@@ -12,24 +10,9 @@ pub struct FrontendInfo {
     is_attacking: bool,
     is_running: bool,
     is_alive: bool,
-    version: Option<[u8; 3]>,
 }
 
 impl FrontendInfo {
-    pub fn new() -> Self {
-        Self {
-            /* enemy_bounds: None,
-            active_enemy_bounds: None, */
-            version: None,
-            enemy_kill_count: 0,
-            kill_min_avg: 0.0,
-            kill_hour_avg: 0.0,
-            is_attacking: false,
-            is_running: false,
-            is_alive: false,
-        }
-    }
-
     /*  pub fn set_enemy_bounds(&mut self, enemy_bounds: Vec<Bounds>) {
            self.enemy_bounds = Some(enemy_bounds);
        }
@@ -38,9 +21,7 @@ impl FrontendInfo {
            self.active_enemy_bounds = Some(active_enemy_bounds);
        }
     */
-    pub fn set_version(&mut self, version: Option<[u8; 3]>) {
-        self.version = version;
-    }
+
     pub fn set_kill_count(&mut self, enemy_kill_count: u32) {
         self.enemy_kill_count = enemy_kill_count;
     }
@@ -65,12 +46,12 @@ impl FrontendInfo {
         self.is_alive
     }
     /// Serialize config to disk
-    pub fn serialize(&self) {
+    /* pub fn serialize(&self) {
         let config = {
-            let mut config = self.clone();
+            let config = self.clone();
             config
         };
-    }
+    } */
 
     /// Deserialize config from disk
     pub fn deserialize_or_default() -> Self {

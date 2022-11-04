@@ -2,12 +2,12 @@ use std::time::Instant;
 
 use guard::guard;
 use slog::Logger;
+use tauri::Window;
 
 use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, ShoutConfig},
     movement::MovementAccessor,
-    platform::{Key, PlatformAccessor},
     play,
 };
 
@@ -17,8 +17,8 @@ use super::Behavior;
 pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor, /*<'a>*/
+    window: &'a Window,
     last_shout_time: Instant,
     shown_messages: Vec<String>,
     shout_interval: u64,
@@ -27,14 +27,14 @@ pub struct ShoutBehavior<'a> {
 
 impl<'a> Behavior<'a> for ShoutBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
-        movement: &'a MovementAccessor, /*<'a>*/
+        movement: &'a MovementAccessor,
+        window: &'a Window
     ) -> Self {
         Self {
             logger,
-            platform,
             movement,
+            window,
             rng: rand::thread_rng(),
             last_shout_time: Instant::now(),
             shown_messages: Vec::new(),
@@ -60,7 +60,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
 
     fn run_iteration(
         &mut self,
-        frontend_info: &mut FrontendInfo,
+        _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
         _analyzer: &mut ImageAnalyzer,
     ) {
@@ -97,18 +97,19 @@ impl<'a> ShoutBehavior<'_> {
         // Play movement
         play!(self.movement => [
             // Open chatbox
-            PressKey(Key::Enter),
+            PressKey("Enter"),
             Wait(dur::Random(100..250)),
 
             // Type message
             Type(message.to_string()),
+            Wait(dur::Random(100..200)),
 
             // Send message
-            PressKey(Key::Enter),
+            PressKey("Enter"),
             Wait(dur::Random(100..250)),
 
             // Close chatbox
-            PressKey(Key::Escape),
+            PressKey("Escape"),
             Wait(dur::Fixed(100)),
         ]);
 

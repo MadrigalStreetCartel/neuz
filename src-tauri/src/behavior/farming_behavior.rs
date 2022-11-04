@@ -3,14 +3,14 @@ use std::time::{Duration, Instant};
 use libscreenshot::shared::Area;
 use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::{PhysicalPosition, Position};
+use tauri::Window;
 
 use crate::{
     data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{send_slot, Key, PlatformAccessor},
+    platform::{send_slot_eval, eval_mouse_move, eval_mouse_click_at_point},
     play,
     utils::DateTime,
 };
@@ -29,8 +29,8 @@ enum State {
 pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    platform: &'a PlatformAccessor<'a>,
     movement: &'a MovementAccessor,
+    window: &'a Window,
     state: State,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
@@ -49,14 +49,14 @@ pub struct FarmingBehavior<'a> {
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
     fn new(
-        platform: &'a PlatformAccessor<'a>,
         logger: &'a Logger,
         movement: &'a MovementAccessor,
+        window: &'a Window,
     ) -> Self {
         Self {
             logger,
-            platform,
             movement,
+            window,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
             slots_usage_last_time: [[None; 10]; 9],
@@ -120,8 +120,8 @@ impl<'a> FarmingBehavior<'_> {
         self.update_avoid_bounds();
     }
 
+    /// Update avoid bounds cooldowns timers
     fn update_avoid_bounds(&mut self) {
-        // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
         for n in 0..self.avoided_bounds.len() {
             let current = self.avoided_bounds[n];
@@ -132,8 +132,8 @@ impl<'a> FarmingBehavior<'_> {
         self.avoided_bounds = result;
     }
 
+    /// Check whether pickup pet should be unsummoned
     fn update_pickup_pet(&mut self, config: &FarmingConfig) {
-        // Check whether pickup pet should be unsummoned
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
                 if last_time.elapsed().as_millis()
@@ -141,15 +141,15 @@ impl<'a> FarmingBehavior<'_> {
                         .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
                         .unwrap_or(3000) as u128
                 {
-                    send_slot(pickup_pet_slot_index.0, pickup_pet_slot_index.1.into());
+                    send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
                     self.last_summon_pet_time = None;
                 }
             }
         }
     }
 
+    /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &FarmingConfig) {
-        // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
             let mut slot_index = 0;
@@ -181,7 +181,6 @@ impl<'a> FarmingBehavior<'_> {
     ) -> Option<(usize, usize)> {
         if let Some(slot_index) = config.get_usable_slot_index(
             slot_type,
-            &mut self.rng,
             threshold,
             self.slots_usage_last_time,
         ) {
@@ -197,54 +196,30 @@ impl<'a> FarmingBehavior<'_> {
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot(slot_index.0, slot_index.1.into());
-
+        send_slot_eval(self.window, slot_index.0 , slot_index.1);
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }
 
     /// Pickup items on the ground.
     fn pickup_items(&mut self, config: &FarmingConfig) {
-        use crate::movement::prelude::*;
-
-        let mut is_pet = true;
-        let pickup_slot = {
-            let slot = self.get_slot_for(config, None, SlotType::PickupPet, false);
-            if slot.is_some() {
-                slot
+        let slot = self.get_slot_for(config, None, SlotType::PickupPet, false);
+        if slot.is_some() {
+            let index = slot.unwrap();
+            if self.last_summon_pet_time.is_none() {
+                send_slot_eval(self.window, index.0, index.1);
+                self.last_summon_pet_time = Some(Instant::now());
             } else {
-                is_pet = false;
-                let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
-                if slot.is_some() {
-                    slot
-                } else {
-                    None
+                // if pet is already out, just reset it's timer
+                self.last_summon_pet_time = Some(Instant::now());
+            }
+        } else {
+            let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
+            if slot.is_some() {
+                let index = slot.unwrap();
+                for _i in 1..7 {
+                    send_slot_eval(self.window, index.0, index.1);
                 }
-            }
-        };
-
-        match (pickup_slot, is_pet) {
-            // Pickup using pet
-            (Some(index), true) => {
-                if self.last_summon_pet_time.is_none() {
-                    send_slot(index.0, index.1.into());
-                    self.last_summon_pet_time = Some(Instant::now());
-                } else {
-                    // if pet is already out, just reset it's timer
-                    self.last_summon_pet_time = Some(Instant::now());
-                }
-            }
-            // Pickup using motion
-            (Some(index), false) => {
-                play!(self.movement => [
-                    Repeat(7, vec![
-                        // Press the motion key
-                        SendSlot(index.0,index.1.into()),
-                    ]),
-                ]);
-            }
-            _ => {
-                // Do nothing, we have no way to pickup items
             }
         }
     }
@@ -311,12 +286,12 @@ impl<'a> FarmingBehavior<'_> {
         // low rotation duration means big circle, high means little circle
         use crate::movement::prelude::*;
         play!(self.movement => [
-            HoldKeys(vec![Key::W, Key::Space, Key::D]),
+            HoldKeys(vec!["W", "Space", "D"]),
             Wait(dur::Fixed(rotation_duration)),
-            ReleaseKey(Key::D),
+            ReleaseKey("D"),
             Wait(dur::Fixed(20)),
-            ReleaseKeys(vec![Key::Space, Key::W]),
-            HoldKeyFor(Key::S, dur::Fixed(50)),
+            ReleaseKeys(vec!["Space", "W"]),
+            HoldKeyFor("S", dur::Fixed(50)),
         ]);
     }
 
@@ -416,22 +391,14 @@ impl<'a> FarmingBehavior<'_> {
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
-        let target_cursor_pos = Position::Physical(PhysicalPosition {
-            x: point.x as i32,
-            y: point.y as i32,
-        });
 
         // Set cursor position and simulate a click
-        drop(self.platform.window.set_cursor_position(target_cursor_pos));
+        eval_mouse_move(self.window, point);
         std::thread::sleep(Duration::from_millis(100));
         image.capture_window_area(self.logger, config, Area::new(0, 0, 2, 2));
         let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
         if cursor_style.value {
-            drop(
-                self.platform
-                    .mouse
-                    .click(&mouse_rs::types::keys::Keys::LEFT),
-            );
+            eval_mouse_click_at_point(self.window, point);
             self.missclick_count = 0;
 
             // Wait a few ms before transitioning state
@@ -463,7 +430,7 @@ impl<'a> FarmingBehavior<'_> {
         }
         self.already_attack_count += 1;
         play!(self.movement => [
-            PressKey(Key::Escape),
+            PressKey("Escape"),
         ]);
         return State::SearchingForEnemy;
     }
@@ -480,7 +447,7 @@ impl<'a> FarmingBehavior<'_> {
             if image.client_stats.target_hp.value == 0 {
                 use crate::movement::prelude::*;
                 play!(self.movement => [
-                    HoldKeyFor(Key::S, dur::Fixed(50)),
+                    HoldKeyFor("S", dur::Fixed(50)),
                 ]);
                 return State::SearchingForEnemy;
             }
@@ -538,14 +505,14 @@ impl<'a> FarmingBehavior<'_> {
                 }
                 self.last_initial_attack_time = Instant::now();
                 use crate::movement::prelude::*;
-                let rotation_key = [Key::A, Key::D].choose(&mut self.rng).unwrap_or(&Key::A);
+                let rotation_key = ["A", "D"].choose(&mut self.rng).unwrap_or(&"A");
 
                 // Move into a random direction while jumping
                 play!(self.movement => [
-                    HoldKeys(vec![Key::W, Key::Space]),
+                    HoldKeys(vec!["W", "Space"]),
                     HoldKeyFor(*rotation_key, dur::Fixed(200)),
                     Wait(dur::Fixed(800)),
-                    ReleaseKeys(vec![Key::Space, Key::W]),
+                    ReleaseKeys(vec!["Space", "W"]),
                 ]);
                 self.obstacle_avoidance_count += 1;
             }

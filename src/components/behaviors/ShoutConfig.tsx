@@ -1,6 +1,3 @@
-import styled from 'styled-components'
-
-import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
 import ConfigPanel from '../config/ConfigPanel'
 

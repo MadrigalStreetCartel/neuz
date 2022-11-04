@@ -7,6 +7,7 @@ use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
+use tauri::Window;
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
@@ -34,11 +35,11 @@ pub struct ImageAnalyzer {
 }
 
 impl ImageAnalyzer {
-    pub fn new() -> Self {
+    pub fn new(window: &Window) -> Self {
         Self {
             window_id: 0,
             image: None,
-            client_stats: ClientStats::new(),
+            client_stats: ClientStats::new(window.to_owned()),
         }
     }
 
@@ -305,7 +306,7 @@ impl ImageAnalyzer {
         //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
-        logger: &Logger,
+        _logger: &Logger,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
         let image = self.image.as_ref().unwrap();
@@ -335,7 +336,7 @@ impl ImageAnalyzer {
 
         if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if let Some((mob, _distance)) = distances.iter().find(|(mob, distance)| {
+            if let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
                 //*distance > 55
                 let mut coords = mob.get_attack_coords();
                 coords.y -= 10;

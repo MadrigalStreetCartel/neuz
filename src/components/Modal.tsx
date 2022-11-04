@@ -40,11 +40,11 @@ const SlotModal = ({className, isShowing, hide, body, title,closeBtn = true, onH
                                 </button>
                             }
                         </div>
-                        <div className="modal-body">
+
                             {body &&
-                               body
+                               <div className="modal-body">{body}</div>
                             }
-                        </div>
+
                     </div>
                     </div>
                 </div>
@@ -102,14 +102,13 @@ position: absolute;
     padding: 1rem;
     background: hsla(0,0%,0%,.75);
     backdrop-filter: blur(.9rem);
+    color: white;
 }
 
 & .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
-
 }
 
 & .modal-close-button {
@@ -124,6 +123,8 @@ position: absolute;
 &.modal-body {
     display: flex;
     flex-wrap: wrap;
+    width: 100%;
+    border: none;
 }
 
 

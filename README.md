@@ -39,9 +39,9 @@ Join our Discord: https://discord.gg/cZr3X3mCnq
 
 ## Engagement Behavior
 
-- Automation will take over your cursor as soon as the game window is focused.
-- Unfocusing the game window (e.g. <kbd>ALT+TAB</kbd>) will pause the automation until the game window is focused again.
+- Automation will start as soon as you `ENGAGE`.
 - Pressing `DISENGAGE` will fully stop the automation.
+- Fully workable in background since 0.15.0
 
 ## Farming Automation
 
@@ -53,13 +53,14 @@ Works best if you're in a densely populated farming area.
 
 No settings have to be changed by default.
 
-1. Use default theme (used by default)
+1. Use default theme -> Gold (used by default) 
 2. Enable auto-attack (enabled by default)
 
 For optimal performance (optional and not necessarily needed):
 
-1. Disable weather effects
+1. Disable weather, event effects.
 3. Press <kbd>ESC</kbd> a few times before engaging to clear all UI elements that are in the way. 
+3. Take a look at #How-To channel on discord for a full setup tutorial.
 
 ## Support Automation
 - Fill the slots as desired (Heal spell for the target you wanna heal, Food/Pills for yourself).
@@ -96,7 +97,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.14.1_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.0_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->
