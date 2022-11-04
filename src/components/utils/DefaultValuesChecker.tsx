@@ -6,7 +6,7 @@ export const DefaultValuesChecker = ( config: AnyConfig, defaultValues: any, onC
     if(!default_values_checked.current) {
         let newConfig = {...config}
         for (var key in defaultValues) {
-            if(!config[key]) {
+            if(config[key] === null) {
                 newConfig[key] = defaultValues[key]
             }
         };
