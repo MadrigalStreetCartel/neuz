@@ -73,8 +73,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 }
 
 impl<'a> SupportBehavior<'_> {
+    /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &SupportConfig) {
-        // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
             let mut slot_index = 0;

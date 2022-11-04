@@ -30,7 +30,6 @@ use crate::{
 
 struct AppState {
     logger: Logger,
-    image_analyzer: Option<ImageAnalyzer>,
     neuz_version: Option<[u8; 3]>,
 }
 
@@ -86,7 +85,6 @@ fn main() {
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState {
             logger,
-            image_analyzer: None,
             neuz_version: neuz_version,
         })
         .invoke_handler(tauri::generate_handler![start_bot,])
@@ -98,7 +96,6 @@ fn main() {
 fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client").unwrap();
     let logger = state.logger.clone();
-    //state.image_analyzer = Some(ImageAnalyzer::new(&window));
     let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
 
     image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
@@ -164,7 +161,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.005)";
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
             Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
-        frontend_info.write().set_version(neuz_version);
         send_info(&*frontend_info.read());
         // Enter main loop
         loop {
@@ -202,16 +198,6 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
                 continue;
             }
 
-            // Try again a bit later if the window is not focused
-   /*          if !platform::get_window_focused(&window) {
-                frontend_info_mut.set_is_running(false);
-                frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                // Send infos to frontend
-                send_info(&*frontend_info.read());
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                timer.silence();
-                continue;
-            } */
             frontend_info_mut.set_is_running(true);
 
             // Make sure an operation mode is set

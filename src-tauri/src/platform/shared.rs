@@ -1,14 +1,19 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tauri::Window;
 
-mod key;
 mod platform_accessor;
 
-pub use key::KeyMode;
 pub use platform_accessor::PlatformAccessor;
 use std::time::Duration;
 
 use crate::data::Point;
+
+#[derive(Debug)]
+pub enum KeyMode {
+    Press,
+    Hold,
+    Release,
+}
 
 // For visual recognition: Avoids mouse clicks outside the window by ignoring monster names that are too close to the bottom of the GUI
 pub const IGNORE_AREA_BOTTOM: u32 = 110;

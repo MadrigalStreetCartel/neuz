@@ -123,8 +123,8 @@ impl<'a> FarmingBehavior<'_> {
         self.update_avoid_bounds();
     }
 
+    /// Update avoid bounds cooldowns timers
     fn update_avoid_bounds(&mut self) {
-        // Update avoid bounds cooldowns timers
         let mut result: Vec<(Bounds, Instant, u128)> = vec![];
         for n in 0..self.avoided_bounds.len() {
             let current = self.avoided_bounds[n];
@@ -135,8 +135,8 @@ impl<'a> FarmingBehavior<'_> {
         self.avoided_bounds = result;
     }
 
+    /// Check whether pickup pet should be unsummoned
     fn update_pickup_pet(&mut self, config: &FarmingConfig) {
-        // Check whether pickup pet should be unsummoned
         if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
                 if last_time.elapsed().as_millis()
@@ -151,8 +151,8 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
+    /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &FarmingConfig) {
-        // Update slots cooldown timers
         let mut slotbar_index = 0;
         for slot_bars in self.slots_usage_last_time {
             let mut slot_index = 0;
@@ -207,43 +207,23 @@ impl<'a> FarmingBehavior<'_> {
 
     /// Pickup items on the ground.
     fn pickup_items(&mut self, config: &FarmingConfig) {
-        use crate::movement::prelude::*;
-
-        let mut is_pet = true;
-        let pickup_slot = {
-            let slot = self.get_slot_for(config, None, SlotType::PickupPet, false);
-            if slot.is_some() {
-                slot
+        let slot = self.get_slot_for(config, None, SlotType::PickupPet, false);
+        if slot.is_some() {
+            let index = slot.unwrap();
+            if self.last_summon_pet_time.is_none() {
+                send_slot_eval(self.window, index.0, index.1);
+                self.last_summon_pet_time = Some(Instant::now());
             } else {
-                is_pet = false;
-                let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
-                if slot.is_some() {
-                    slot
-                } else {
-                    None
-                }
+                // if pet is already out, just reset it's timer
+                self.last_summon_pet_time = Some(Instant::now());
             }
-        };
-
-        match (pickup_slot, is_pet) {
-            // Pickup using pet
-            (Some(index), true) => {
-                if self.last_summon_pet_time.is_none() {
-                    send_slot_eval(self.window, index.0, index.1);
-                    self.last_summon_pet_time = Some(Instant::now());
-                } else {
-                    // if pet is already out, just reset it's timer
-                    self.last_summon_pet_time = Some(Instant::now());
-                }
-            }
-            // Pickup using motion
-            (Some(index), false) => {
+        } else {
+            let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
+            if slot.is_some() {
+                let index = slot.unwrap();
                 for i in 1..7 {
                     send_slot_eval(self.window, index.0, index.1);
                 }
-            }
-            _ => {
-                // Do nothing, we have no way to pickup items
             }
         }
     }

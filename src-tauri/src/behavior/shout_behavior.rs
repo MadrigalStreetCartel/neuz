@@ -64,7 +64,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
 
     fn run_iteration(
         &mut self,
-        frontend_info: &mut FrontendInfo,
+        _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
         _analyzer: &mut ImageAnalyzer,
     ) {
@@ -106,6 +106,7 @@ impl<'a> ShoutBehavior<'_> {
 
             // Type message
             Type(message.to_string()),
+            Wait(dur::Random(100..200)),
 
             // Send message
             PressKey("Enter"),
