@@ -2,23 +2,24 @@ import styled from "styled-components"
 
 type Props = {
     className?: string,
-    value: number | undefined,
+    value: string | undefined,
     unit?: string,
-    onChange: (value: any) => void,
-    max?: number;
-    min?: number;
+    min?: number,
+    max?: number,
+    onChange: (value: string) => void,
+    condition?: (value: any) => boolean,
 }
 
-const NumericInput = ({ className, value, unit, min, max, onChange }: Props) => {
+const TextInput = ({ className, value, unit,min = 0, max, onChange, condition }: Props) => {
     return (
         <div className={className}>
-            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.valueAsNumber)} />
+            <input type="text" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.value)} />
             {unit && <span className="unit">{unit}</span>}
         </div>
     )
 }
 
-export default styled(NumericInput)`
+export default styled(TextInput)`
     display: flex;
     align-items: center;
     background: hsla(0,0%,0%,.75);

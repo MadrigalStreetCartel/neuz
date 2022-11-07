@@ -4,4 +4,4 @@
 !/target/release/bundle/msi/*
 
 # bot config
-.botconfig
+.botconfig*

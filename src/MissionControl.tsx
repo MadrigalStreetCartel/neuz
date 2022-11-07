@@ -115,7 +115,7 @@ export default styled(MissionControl)`
     flex-direction: column;
     justify-content: flex-start;
     overflow: auto;
-    padding: 1rem 0;
+    padding: 0.5rem 0;
     padding-bottom: 0;
 
     & .vstack {
