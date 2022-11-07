@@ -10,7 +10,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{send_slot_eval, eval_mouse_move, eval_mouse_click_at_point},
+    platform::{eval_mouse_click_at_point, eval_mouse_move, send_slot_eval},
     play,
     utils::DateTime,
 };
@@ -46,15 +46,10 @@ pub struct FarmingBehavior<'a> {
     start_time: Instant,
     already_attack_count: u32,
     last_buff_usage: Instant,
-
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
-    fn new(
-        logger: &'a Logger,
-        movement: &'a MovementAccessor,
-        window: &'a Window,
-    ) -> Self {
+    fn new(logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
         Self {
             logger,
             movement,
@@ -75,7 +70,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             start_time: Instant::now(),
             already_attack_count: 0,
             last_buff_usage: Instant::now(),
-
         }
     }
 
@@ -145,7 +139,11 @@ impl<'a> FarmingBehavior<'_> {
                         .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
                         .unwrap_or(3000) as u128
                 {
-                    send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
+                    send_slot_eval(
+                        self.window,
+                        pickup_pet_slot_index.0,
+                        pickup_pet_slot_index.1,
+                    );
                     self.last_summon_pet_time = None;
                 }
             }
@@ -183,11 +181,9 @@ impl<'a> FarmingBehavior<'_> {
         slot_type: SlotType,
         send: bool,
     ) -> Option<(usize, usize)> {
-        if let Some(slot_index) = config.get_usable_slot_index(
-            slot_type,
-            threshold,
-            self.slots_usage_last_time,
-        ) {
+        if let Some(slot_index) =
+            config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
+        {
             if send {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);
@@ -200,7 +196,7 @@ impl<'a> FarmingBehavior<'_> {
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot_eval(self.window, slot_index.0 , slot_index.1);
+        send_slot_eval(self.window, slot_index.0, slot_index.1);
         // Update usage last time
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }

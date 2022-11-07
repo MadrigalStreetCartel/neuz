@@ -12,6 +12,16 @@ import { randomNumberInRange } from './components/utils/RandomInt'
 import useModal from './components/utils/UseModal'
 import { getVersion } from '@tauri-apps/api/app'
 import YesNoModal from './components/YesNoModal'
+import { profile } from 'console'
+import { emit } from '@tauri-apps/api/event'
+import NumericInput from './components/config/NumericInput'
+import ConfigLabel from './components/config/ConfigLabel'
+import ConfigTableRow from './components/config/ConfigTableRow'
+import ConfigPanel from './components/config/ConfigPanel'
+import ConfigTable from './components/config/ConfigTable'
+import ProfileDisplay from './components/ProfileDisplay'
+import Select from 'react-select'
+import TextInput from './components/config/TextInput'
 
 const launcherBackgrounds = [LauncherBackground, LauncherBackground2]
 const Greetings = [
@@ -68,33 +78,31 @@ const Launcher = ({ className }: Props) => {
     const greeting = useMemo(() => sample(Greetings), []);
 
     const launch = () => {
-        const webview = new WebviewWindow(`client`, {
-            title: 'Flyff Universe',
-            url: 'https://universe.flyff.com/play',
-            center: true,
-            resizable: false,
-        })
+        if (!hasEnteredMainLoop) {
+            enterMainLoop()
+            invoke('create_window',{profileId: profileId}).then(()=> {
+                invoke('start_bot',{profileId: profileId}).then(()=> {setIsLaunched(true)})
+            })
 
-        webview.once('tauri://created', function () {
-            webview.show()
-            setIsLaunched(true)
-
-            if (!hasEnteredMainLoop) {
-                enterMainLoop()
-                invoke('start_bot')
-            }
-        })
-
-        webview.once('tauri://close-requested', function () {
-            webview.close()
-            setIsLaunched(false)
-            TauriProcess.relaunch();
-        })
+        }
     }
 
     const [currentVersion, setCurrentVersion] = useState("NaN")
     const lastVersion = useRef("NaN")
     const updateModal = useModal()
+
+    const newProfileModal = useModal()
+    const renameProfileModal = useModal()
+    const copyProfileModal = useModal()
+    const resetProfileModal = useModal()
+
+
+    const delProfileModal = useModal()
+
+    const [profileId, setPID] = useState<string | null>(null)
+    const [idList, setList] = useState<string[]>(["DEFAULT"])
+    const [currentPage,setPage] = useState(1)
+    const [newProfile,setNewProfile] = useState("")
 
     const getData=()=>{
         fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/main/updater.json')
@@ -108,14 +116,24 @@ const Launcher = ({ className }: Props) => {
             }
         });
     }
+
     if (currentVersion === "NaN") {
         getVersion().then((value) => {
             setCurrentVersion(value)
         })
 
     }
+
+    const refreshProfiles = () => {
+        invoke('get_profiles').then((value: any)=> {
+            if(value) setList(value);
+        })
+    }
+
     useEffect(() => {
         getData()
+        refreshProfiles()
+
     },[currentVersion])
 
     return (
@@ -131,17 +149,128 @@ const Launcher = ({ className }: Props) => {
                     }
                     onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}
                 />
+
+                <YesNoModal isShowing={newProfileModal.isShown} hide={newProfileModal.close}
+                    title={<h4>New profile</h4>}
+                    body={
+                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value.toUpperCase()) }} />
+                    }
+                    onYes={() => {
+                        if (newProfile.length > 0 && !idList.includes("profile_" + newProfile.toUpperCase())){
+                            invoke('create_profile', {profileId:newProfile.toUpperCase()})
+                            setList((oldValue) => [...oldValue, "profile_" + newProfile.toUpperCase()])
+                        }
+                        setNewProfile("")
+                    }}
+                />
+
+                <YesNoModal isShowing={renameProfileModal.isShown} hide={renameProfileModal.close}
+                    title={<h4>Rename profile {profileId?.replaceAll("profile_", "")}</h4>}
+                    body={
+                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
+                    }
+                    onYes={() => {
+                        if (!idList.includes("profile_" + newProfile.toUpperCase())){
+                            invoke('rename_profile', {profileId: profileId, newProfileId: newProfile})
+                            setList((oldValue) => [...oldValue.filter((val) => val.replaceAll("profile_", "") != profileId), "profile_" + newProfile.toUpperCase()])
+                        }
+                        setNewProfile("")
+                    }}
+                />
+
+                <YesNoModal isShowing={copyProfileModal.isShown} hide={copyProfileModal.close}
+                    title={<h4>Profile {profileId?.replaceAll("profile_", "")} will be copied</h4>}
+                    body={
+                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
+                    }
+                    onYes={() => {
+                        if (!idList.includes("profile_" + newProfile.toUpperCase())){
+                            invoke('copy_profile', {profileId: profileId, newProfileId: newProfile})
+                            setList((oldValue) => [...oldValue, "profile_" + newProfile.toUpperCase()])
+                        }
+                        setNewProfile("")
+                    }}
+                />
+
+                <YesNoModal isShowing={delProfileModal.isShown} hide={delProfileModal.close}
+                    title={<h4>Do you want to delete this profile ?</h4>}
+                    body={
+                       <h3>This action cant be undone</h3>
+                    }
+                    onYes={() => {
+                        invoke('remove_profile', {profileId: profileId})
+                        setList((oldValue) => oldValue.filter((filtred) => filtred.replaceAll("profile_","") != profileId))
+                        setPage(1)
+                        setPID(null)
+                    }}
+                />
+
+                <YesNoModal isShowing={resetProfileModal.isShown} hide={resetProfileModal.close}
+                    title={<h4>Do you want to reset this profile ?</h4>}
+                    body={
+                       <h3>This action cant be undone</h3>
+                    }
+                    onYes={() => {
+                        invoke('reset_profile', {profileId: profileId})
+                    }}
+                />
+
                 {!isLaunched && (
                     <div className="container">
                         <div className="logo-container">
                             <img className="logo" alt="Flyff Universe Logo" src={FlyffLogo} />
                             <span className="greet">{greeting}</span>
                         </div>
+                        <ConfigPanel>
+                            <ConfigTable>
+                                <ConfigTableRow
+                                    layout="v"
+                                    label={<ConfigLabel name={"Profiles | Current: " + profileId} helpText={"Select/create/edit/copy you're profiles."} />}
+                                    item={
+                                        <>
+                                            <div>
+                                                <div className="btn m" onClick={newProfileModal.open}>New</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && renameProfileModal.open()}}>Rename</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && copyProfileModal.open()}}>Copy</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && delProfileModal.open()}}>Remove</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && resetProfileModal.open()}}>Reset</div>
+
+                                                <div className="btn m" onClick={refreshProfiles}>Refresh</div>
+
+
+
+                                            </div>
+
+                                            <table id="profiles">
+                                                {idList.sort((a,b) => (a > b) ? 1 : ((b > a) ? -1 : 0)).slice( (currentPage -1) * 4,  (currentPage -1) * 4 + 4).map((pid, index) => <>
+                                                    {(index %5 != 0 || true) &&<tr className={pid.replaceAll("profile_","") == profileId ? "selected" : ""} onClick={() => setPID(pid.replaceAll("profile_",""))}>
+                                                        <td>{(pid.startsWith("profile_")? pid.replace("profile_","") : pid)}</td>
+                                                    </tr>}
+                                                </>)}
+                                                <br />
+                                                <div style={{display:"flex", textAlign: "center", alignItems: "center",fontSize: "1rem" }}>
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == 1? current: current -1)}}>{"<-"}</div>
+                                                    Page: {currentPage}/{Math.ceil(idList.length / 4)}
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == Math.ceil(idList.length / 4)? current: current +1)}}>{"->"}</div>
+                                                </div>
+
+
+                                            </table>
+
+                                        </>
+                                    }
+                                />
+                            </ConfigTable>
+                        </ConfigPanel>
+
                         <div className="btn" onClick={launch}>Play</div>
                     </div>
                 )}
                 {isLaunched && (
-                    <MissionControl currentVersion={currentVersion} lastVersion={lastVersion.current} />
+                    <>
+                        <ProfileDisplay profileId={profileId?? ""} />
+                        <MissionControl currentVersion={currentVersion} lastVersion={lastVersion.current} />
+                    </>
                 )}
 
             </div>
@@ -243,5 +372,52 @@ export default styled(Launcher)`
         align-self: center;
         width: 60%;
         font-size: 1.25rem;
+    }
+
+    & .m {
+        padding: 0.5rem 0.5rem;
+        align-self: center;
+        width: 100%;
+        font-size: 1rem;
+    }
+
+    & #profiles {
+        margin-left: 20px;
+        font-family: Arial, Helvetica, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    & #profiles td, #profiles th {
+        padding: 15px;
+    }
+
+    & #profiles tr {
+        background: hsla(203, 100%, 0%, .75);
+        backdrop-filter: blur(.5rem);
+        text-align: center;
+        border-bottom: 1px solid;
+    }
+    & #profiles tr:nth-child(even){
+        background: hsla(203, 100%, 0%, .75);
+        backdrop-filter: blur(.5rem);
+    }
+
+    & #profiles tr:hover {
+        background: hsl(0deg 0% 30% / 75%) !important;
+        color: black;
+    }
+
+    & #profiles .selected {
+        background: hsl(0deg 0% 89% / 75%) !important;
+        color: black;
+    }
+
+    & #profiles th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        text-align: left;
+        background-color: #04AA6D;
+        color: white;
     }
 `

@@ -63,8 +63,7 @@ impl SlotBar {
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
         slot_bar_index: usize,
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         self.slots()
             .iter()
             .enumerate()
@@ -238,8 +237,7 @@ impl FarmingConfig {
         slot_type: SlotType,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
@@ -294,8 +292,7 @@ impl SupportConfig {
         slot_type: SlotType,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
@@ -391,20 +388,20 @@ impl BotConfig {
     }
 
     /// Serialize config to disk
-    pub fn serialize(&self) {
+    pub fn serialize(&self, path: String) {
         let config = {
             let mut config = self.clone();
             config.is_running = false;
             config
         };
-        if let Ok(mut file) = File::create(".botconfig") {
+        if let Ok(mut file) = File::create(path) {
             let _ = serde_json::to_writer(&mut file, &config);
         }
     }
 
     /// Deserialize config from disk
-    pub fn deserialize_or_default() -> Self {
-        if let Ok(mut file) = File::open(".botconfig") {
+    pub fn deserialize_or_default(path: String) -> Self {
+        if let Ok(mut file) = File::open(path) {
             serde_json::from_reader::<_, BotConfig>(&mut file).unwrap_or_default()
         } else {
             Self::default()

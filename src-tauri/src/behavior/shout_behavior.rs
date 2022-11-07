@@ -26,11 +26,7 @@ pub struct ShoutBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for ShoutBehavior<'a> {
-    fn new(
-        logger: &'a Logger,
-        movement: &'a MovementAccessor,
-        window: &'a Window
-    ) -> Self {
+    fn new(logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
         Self {
             logger,
             movement,

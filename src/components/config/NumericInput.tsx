@@ -12,7 +12,7 @@ type Props = {
 const NumericInput = ({ className, value, unit, min, max, onChange }: Props) => {
     return (
         <div className={className}>
-            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.value ? parseInt(e.target.value) : null)} />
+            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.valueAsNumber)} />
             {unit && <span className="unit">{unit}</span>}
         </div>
     )

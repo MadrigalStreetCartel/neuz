@@ -23,11 +23,7 @@ pub struct SupportBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
-    fn new(
-        _logger: &'a Logger,
-        movement: &'a MovementAccessor,
-        window: &'a Window
-    ) -> Self {
+    fn new(_logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
         Self {
             movement,
             window,
@@ -71,7 +67,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     ]);
                 }
             }
-
         }
     }
 }
@@ -108,11 +103,9 @@ impl<'a> SupportBehavior<'_> {
         slot_type: SlotType,
         send: bool,
     ) -> Option<(usize, usize)> {
-        if let Some(slot_index) = config.get_usable_slot_index(
-            slot_type,
-            threshold,
-            self.slots_usage_last_time,
-        ) {
+        if let Some(slot_index) =
+            config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
+        {
             if send {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);

@@ -11,7 +11,13 @@ mod movement;
 mod platform;
 mod utils;
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    fs::{self},
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use guard::guard;
 use ipc::FrontendInfo;
@@ -65,30 +71,203 @@ fn main() {
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
-        .manage(AppState {
-            logger,
-        })
-        .invoke_handler(tauri::generate_handler![start_bot,])
+        .manage(AppState { logger })
+        .invoke_handler(tauri::generate_handler![
+            start_bot,
+            create_window,
+            get_profiles,
+            create_profile,
+            remove_profile,
+            rename_profile,
+            copy_profile,
+            reset_profile
+        ])
         .run(context)
         .expect("error while running tauri application");
 }
 
 #[tauri::command]
-fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
-    let window = app_handle.get_window("client").unwrap();
-    let logger = state.logger.clone();
-    let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
+fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
+    let paths = fs::read_dir(format!(
+        r"{}\",
+        app_handle
+            .path_resolver()
+            .app_dir()
+            .unwrap()
+            .to_string_lossy()
+    ))
+    .unwrap();
+    let mut profiles = vec![];
+    for path in paths {
+        if let Ok(entry) = path {
+            if entry.file_name().to_str().unwrap().starts_with("profile_") {
+                profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
+            }
+        }
+    }
 
-    image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
+    profiles
+}
+
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+fn config_folder_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
+    format!(
+        r"{}\profile_{}",
+        app_handle
+            .path_resolver()
+            .app_dir()
+            .unwrap()
+            .to_string_lossy(),
+        profile_id
+    )
+}
+fn config_file_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
+    format!(
+        r"{}\.botconfig_{}",
+        app_handle
+            .path_resolver()
+            .app_dir()
+            .unwrap()
+            .to_string_lossy(),
+        profile_id
+    )
+}
+#[tauri::command]
+fn copy_profile(
+    profile_id: String,
+    new_profile_id: String,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) {
+    drop(fs::copy(
+        config_file_path(&app_handle, &profile_id),
+        config_file_path(&app_handle, &new_profile_id).clone(),
+    ));
+    drop(copy_dir_all(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id),
+    ));
+}
+
+#[tauri::command]
+fn create_profile(
+    profile_id: String,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) {
+    drop(fs::create_dir(config_folder_path(&app_handle, &profile_id)));
+}
+
+#[tauri::command]
+fn remove_profile(
+    profile_id: String,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) {
+    drop(fs::remove_dir_all(config_folder_path(
+        &app_handle,
+        &profile_id,
+    )));
+    drop(fs::remove_file(config_file_path(&app_handle, &profile_id)));
+}
+
+#[tauri::command]
+fn rename_profile(
+    profile_id: String,
+    new_profile_id: String,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) {
+    drop(fs::rename(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id),
+    ));
+    drop(fs::rename(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id).clone(),
+    ));
+}
+
+#[tauri::command]
+fn reset_profile(profile_id: String, _state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+    drop(fs::remove_dir_all(config_folder_path(
+        &app_handle,
+        &profile_id,
+    )));
+    drop(fs::remove_file(
+        config_file_path(&app_handle, &profile_id).clone(),
+    ));
+    drop(fs::create_dir(
+        config_folder_path(&app_handle, &profile_id).clone(),
+    ));
+}
+
+#[tauri::command]
+async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
+    let window = tauri::WindowBuilder::new(
+        &app_handle,
+        "client",
+        tauri::WindowUrl::External("https://universe.flyff.com/play".parse().unwrap()),
+    )
+    .data_directory(PathBuf::from(format!(
+        r"{}\profile_{}",
+        app_handle
+            .path_resolver()
+            .app_dir()
+            .unwrap()
+            .to_string_lossy(),
+        profile_id
+    )))
+    .resizable(false)
+    .center()
+    .inner_size(800.0, 600.0)
+    .title(format!("Flyff Universe {}", profile_id))
+    .build()
+    .unwrap();
+    drop(window.show());
+
+    let main_window = app_handle.get_window("main").unwrap();
+    drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
+    window.once("tauri://close-requested", move |_| app_handle.restart());
+}
+
+#[tauri::command]
+fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+    let logger = state.logger.clone();
+    let config_path = format!(
+        r"{}\.botconfig_{}",
+        app_handle
+            .path_resolver()
+            .app_dir()
+            .unwrap()
+            .to_string_lossy(),
+        profile_id
+    )
+    .clone();
+
     std::thread::spawn(move || {
         let logger = logger.clone();
+
         let mut last_config_change_id = 0;
         let config: Arc<RwLock<BotConfig>> =
-            Arc::new(RwLock::new(BotConfig::deserialize_or_default()));
+            Arc::new(RwLock::new(BotConfig::deserialize_or_default(config_path)));
 
         // Listen for config changes from the UI
         let local_config = config.clone();
         let logger_botconfig_c2s = logger.clone();
+
         app_handle.listen_global("bot_config_c2s", move |e| {
             slog::trace!(logger_botconfig_c2s, "Received config change"; "event_payload" => e.payload());
             if let Some(payload) = e.payload() {
@@ -123,8 +302,12 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
         // Send initial config to frontend
         send_config(&*config.read());
 
+        let window = app_handle.get_window("client").unwrap();
+        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
+        image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
+
         // Create movement accessor
-        let movement = MovementAccessor::new(window.clone()/*&accessor*/);
+        let movement = MovementAccessor::new(window.clone() /*&accessor*/);
 
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&logger, &movement, &window);
@@ -143,6 +326,10 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
 
+            let window = app_handle.get_window("client").unwrap();
+            if window.current_monitor().is_err() {
+                break;
+            }
             // Check if cursor div is well shown
             drop(
                 window.eval(
@@ -156,7 +343,18 @@ fn start_bot(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
-                config.serialize();
+                config.serialize(
+                    format!(
+                        r"{}\.botconfig_{}",
+                        app_handle
+                            .path_resolver()
+                            .app_dir()
+                            .unwrap()
+                            .to_string_lossy(),
+                        profile_id
+                    )
+                    .clone(),
+                );
                 send_config(config);
                 last_config_change_id = config.change_id();
 
