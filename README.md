@@ -20,8 +20,7 @@ Take a look at the [changelog][changelog]!
 # Community
 **v0.12.1 is the last maintained and published release from the initial founders. Further versions are solely community developed**
 
-Planned Features for now (as of v0.12.1):
-- FS mode for assist/rm with auto-buff, auto-heal, auto-follow and auto-mount
+Planned Features for now:
 - Giant detection and avoidance
 - Scripting support (realized through a DSL) for custom movement and other behaviors
 - Full Mac & Linux cross-platform support
@@ -32,10 +31,11 @@ Join our Discord: https://discord.gg/cZr3X3mCnq
 # Usage
 
 1. Start Neuz
-2. Press `Play`
-3. Select a playstyle
-4. Adjust settings to your liking
-5. Press `ENGAGE`
+2. Choose or create your profile
+3. Press `Play`
+4. Select a playstyle
+5. Adjust settings to your liking
+6. Press `ENGAGE`
 
 ## Engagement Behavior
 
@@ -69,18 +69,18 @@ For optimal performance (optional and not necessarily needed):
 
 ## Slot Configuration
 
-| Slot Symbol | Flyff Equivalent |
-| ----------- | ---------------- |
-| 🍔         | Food             |
-| 💊         | Pill             |
-| ![](./src/assets/heal_spell_16x16.png) | Heal Spell |
-| 🐶         | Pickup Pet       |
-| ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion |
-| ![](./src/assets/icon_refresher_16x16.png) | MP restorer   |
-| ![](./src/assets/icon_vitaldrink_16x16.png) | FP restorer   |
-| 🗡️         | Attack Skill     |
-| 🪄         | Buff Skill       |
-| ✈️         | Board/Mount      |
+| Slot Symbol | Flyff Equivalent |   Description    |
+| ----------- | ---------------- | ---------------- |
+| 🍔         | Food             |   Heals you fast and has a low cooldown, will trigger when hp are lower than the threshold
+| 💊         | Pill             |  Heals you fast but has a long cooldown, same trigger
+| ![](./src/assets/heal_spell_16x16.png) | Heal Spell | Only support, heal followed character same except it belongs to the target hp
+| 🐶         | Pickup Pet       |  Summon you're pet when needed 
+| ![](./src/assets/icon_motion_pickup_16x16.png) | Pickup Motion | Grab items on the ground
+| ![](./src/assets/icon_refresher_16x16.png) | MP restorer   | Restore you're mp fast, low cooldown, will trigger when mp are lower than the threshold
+| ![](./src/assets/icon_vitaldrink_16x16.png) | FP restorer   | Same for fp
+| 🗡️         | Attack Skill     |   Attack skill or **motion**
+| 🪄         | Buff Skill       | We waited a long time for this one
+| ✈️         | Board/Mount      |   Maybe in the sky
 
 ## AutoShout
 - Write your messages (1 per line press enter to return line).
@@ -97,7 +97,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.1_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.2_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->
