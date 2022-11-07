@@ -368,13 +368,17 @@ export default styled(Launcher)`
         background: hsla(203, 100%, 0%, .75);
         backdrop-filter: blur(.5rem);
         text-align: center;
+        border-bottom: 1px solid;
     }
     & #profiles tr:nth-child(even){
         background: hsla(203, 100%, 0%, .75);
         backdrop-filter: blur(.5rem);
     }
 
-    & #profiles tr:hover {background-color: #ddd;}
+    & #profiles tr:hover {
+        background: hsl(0deg 0% 30% / 75%) !important;
+        color: black;
+    }
 
     & #profiles .selected {
         background: hsla(203, 100%, 45%, .5) !important;
