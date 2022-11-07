@@ -77,16 +77,6 @@ const Launcher = ({ className }: Props) => {
     const [isLaunched, setIsLaunched] = useState(false)
     const greeting = useMemo(() => sample(Greetings), []);
 
-    const launch = () => {
-        if (!hasEnteredMainLoop) {
-            enterMainLoop()
-            invoke('create_window',{profileId: profileId}).then(()=> {
-                invoke('start_bot',{profileId: profileId}).then(()=> {setIsLaunched(true)})
-            })
-
-        }
-    }
-
     const [currentVersion, setCurrentVersion] = useState("NaN")
     const lastVersion = useRef("NaN")
     const updateModal = useModal()
@@ -99,10 +89,20 @@ const Launcher = ({ className }: Props) => {
 
     const delProfileModal = useModal()
 
-    const [profileId, setPID] = useState<string | null>(null)
+    const [profileId, setPID] = useState<string>("")
     const [idList, setList] = useState<string[]>(["DEFAULT"])
     const [currentPage,setPage] = useState(1)
     const [newProfile,setNewProfile] = useState("")
+
+    const launch = () => {
+        if (!hasEnteredMainLoop && profileId != "" ) {
+            enterMainLoop()
+            invoke('create_window',{profileId: profileId}).then(()=> {
+                invoke('start_bot',{profileId: profileId}).then(()=> {setIsLaunched(true)})
+            })
+
+        }
+    }
 
     const getData=()=>{
         fetch('https://raw.githubusercontent.com/MadrigalStreetCartel/neuz/main/updater.json')
@@ -201,7 +201,7 @@ const Launcher = ({ className }: Props) => {
                         invoke('remove_profile', {profileId: profileId})
                         setList((oldValue) => oldValue.filter((filtred) => filtred.replaceAll("profile_","") != profileId))
                         setPage(1)
-                        setPID(null)
+                        setPID("")
                     }}
                 />
 

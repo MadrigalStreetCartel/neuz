@@ -6,9 +6,13 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.15.4**
+> Released on 07.11.2022
+- HOTFIX If launch is pressed without a profile selected it will crash and never start something again
+
 **0.15.3**
 > Released on 07.11.2022
-- Base profile folder were not created..
+- HOTFIX Base profile folder were not created..
 
 **0.15.2**
 > Released on 07.11.2022
