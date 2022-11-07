@@ -6,6 +6,10 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.15.3**
+> Released on 07.11.2022
+- Base profile folder were not created..
+
 **0.15.2**
 > Released on 07.11.2022
 - Misc

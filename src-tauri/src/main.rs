@@ -88,6 +88,16 @@ fn main() {
 
 #[tauri::command]
 fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
+    drop(fs::create_dir(
+        format!(
+            r"{}\",
+            app_handle
+                .path_resolver()
+                .app_dir()
+                .unwrap()
+                .to_string_lossy()
+        ).clone(),
+    ));
     let paths = fs::read_dir(format!(
         r"{}\",
         app_handle
@@ -98,13 +108,28 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
     ))
     .unwrap();
     let mut profiles = vec![];
-    for path in paths {
-        if let Ok(entry) = path {
-            if entry.file_name().to_str().unwrap().starts_with("profile_") {
-                profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
+
+        for path in paths {
+            if let Ok(entry) = path {
+                if entry.file_name().to_str().unwrap().starts_with("profile_") {
+                    profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
+                }
             }
         }
+    if profiles.len() == 0 {
+        drop(fs::create_dir(
+            format!(
+                r"{}\profile_DEFAULT",
+                app_handle
+                    .path_resolver()
+                    .app_dir()
+                    .unwrap()
+                    .to_string_lossy()
+            ).clone(),
+        ));
+        profiles.push("profile_DEFAULT".to_string());
     }
+
 
     profiles
 }

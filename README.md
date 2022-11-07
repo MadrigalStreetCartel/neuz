@@ -30,7 +30,7 @@ Join our Discord: https://discord.gg/cZr3X3mCnq
 
 # Usage
 
-1. Start Neuz
+1. Start Neuz as an admin
 2. Choose or create your profile
 3. Press `Play`
 4. Select a playstyle
@@ -97,7 +97,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.2_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.3_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->
