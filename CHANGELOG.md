@@ -6,6 +6,12 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.15.2**
+> Released on 07.11.2022
+- Misc
+  - Moves the window start from JS to Rust
+  - Adds complete profile system
+  
 **0.15.1**
 > Released on 04.11.2022
 - Fix a buff usage bug
