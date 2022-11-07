@@ -221,9 +221,9 @@ const Launcher = ({ className }: Props) => {
                                                 </>)}
                                                 <br />
                                                 <div style={{display:"flex", textAlign: "center", alignItems: "center",fontSize: "1rem" }}>
-                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == 1? current: current -1)}}>⬅️</div>
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == 1? current: current -1)}}>{"<-"}</div>
                                                     Page: {currentPage}/{Math.ceil(idList.length / 4)}
-                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == Math.ceil(idList.length / 4)? current: current +1)}}>➡️</div>
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == Math.ceil(idList.length / 4)? current: current +1)}}>{"->"}</div>
                                                 </div>
 
 
@@ -381,7 +381,8 @@ export default styled(Launcher)`
     }
 
     & #profiles .selected {
-        background: hsla(203, 100%, 45%, .5) !important;
+        background: hsl(0deg 0% 89% / 75%) !important;
+        color: black;
     }
 
     & #profiles th {
