@@ -114,17 +114,24 @@ const Launcher = ({ className }: Props) => {
             }
         });
     }
+
     if (currentVersion === "NaN") {
         getVersion().then((value) => {
             setCurrentVersion(value)
         })
 
     }
-    useEffect(() => {
-        getData()
+
+    const refreshProfiles = () => {
         invoke('get_profiles').then((value: any)=> {
             if(value) setList(value);
         })
+    }
+
+    useEffect(() => {
+        getData()
+        refreshProfiles()
+
     },[currentVersion])
 
     return (
@@ -210,6 +217,8 @@ const Launcher = ({ className }: Props) => {
                                                 <div className="btn m" onClick={()=> {profileId != null && renProfileModal.open()}}>Rename</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && copyProfileModal.open()}}>Copy</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && delProfileModal.open()}}>Remove</div>
+                                                <div className="btn m" onClick={refreshProfiles}>Refresh</div>
+
 
                                             </div>
 
