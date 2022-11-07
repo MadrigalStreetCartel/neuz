@@ -9,11 +9,8 @@ use crate::{
 
 pub trait Behavior<'a> {
     /// Runs on initialization
-    fn new(
-        logger: &'a Logger,
-        movement_accessor: &'a MovementAccessor,
-        window: &'a Window
-    ) -> Self;
+    fn new(logger: &'a Logger, movement_accessor: &'a MovementAccessor, window: &'a Window)
+        -> Self;
 
     /// Runs on activation
     fn start(&mut self, config: &BotConfig);

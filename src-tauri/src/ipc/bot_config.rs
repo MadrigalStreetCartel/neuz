@@ -63,8 +63,7 @@ impl SlotBar {
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
         slot_bar_index: usize,
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         self.slots()
             .iter()
             .enumerate()
@@ -238,8 +237,7 @@ impl FarmingConfig {
         slot_type: SlotType,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
@@ -294,8 +292,7 @@ impl SupportConfig {
         slot_type: SlotType,
         threshold: Option<u32>,
         last_slots_usage: [[Option<Instant>; 10]; 9],
-    ) -> Option<(usize, usize)>
-    {
+    ) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_usable_slot_index(
                 slot_type,
@@ -389,7 +386,6 @@ impl BotConfig {
     pub fn mode(&self) -> Option<BotMode> {
         self.mode.clone()
     }
-
 
     /// Serialize config to disk
     pub fn serialize(&self, path: String) {

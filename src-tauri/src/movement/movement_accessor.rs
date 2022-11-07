@@ -10,9 +10,9 @@ pub struct MovementAccessor /*<'a>*/ {
 }
 
 impl<'a> MovementAccessor /*<'a>*/ {
-    pub fn new(window: Window/*platform: &'a PlatformAccessor<'a>*/) -> Self {
+    pub fn new(window: Window /*platform: &'a PlatformAccessor<'a>*/) -> Self {
         Self {
-            coordinator: Mutex::new(MovementCoordinator::new(window/*platform*/)),
+            coordinator: Mutex::new(MovementCoordinator::new(window /*platform*/)),
         }
     }
 

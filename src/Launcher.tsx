@@ -90,9 +90,11 @@ const Launcher = ({ className }: Props) => {
     const [currentVersion, setCurrentVersion] = useState("NaN")
     const lastVersion = useRef("NaN")
     const updateModal = useModal()
+
     const newProfileModal = useModal()
-    const renProfileModal = useModal()
+    const renameProfileModal = useModal()
     const copyProfileModal = useModal()
+    const resetProfileModal = useModal()
 
 
     const delProfileModal = useModal()
@@ -147,20 +149,22 @@ const Launcher = ({ className }: Props) => {
                     }
                     onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz")}}
                 />
+
                 <YesNoModal isShowing={newProfileModal.isShown} hide={newProfileModal.close}
                     title={<h4>New profile</h4>}
                     body={
-                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
+                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value.toUpperCase()) }} />
                     }
                     onYes={() => {
-                        if (!idList.includes("profile_" + newProfile.toUpperCase())){
+                        if (newProfile.length > 0 && !idList.includes("profile_" + newProfile.toUpperCase())){
                             invoke('create_profile', {profileId:newProfile.toUpperCase()})
                             setList((oldValue) => [...oldValue, "profile_" + newProfile.toUpperCase()])
                         }
                         setNewProfile("")
                     }}
                 />
-                <YesNoModal isShowing={renProfileModal.isShown} hide={renProfileModal.close}
+
+                <YesNoModal isShowing={renameProfileModal.isShown} hide={renameProfileModal.close}
                     title={<h4>Rename profile {profileId?.replaceAll("profile_", "")}</h4>}
                     body={
                         <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
@@ -187,8 +191,9 @@ const Launcher = ({ className }: Props) => {
                         setNewProfile("")
                     }}
                 />
+
                 <YesNoModal isShowing={delProfileModal.isShown} hide={delProfileModal.close}
-                    title={<h4>Do you want to delete this profile</h4>}
+                    title={<h4>Do you want to delete this profile ?</h4>}
                     body={
                        <h3>This action cant be undone</h3>
                     }
@@ -199,6 +204,17 @@ const Launcher = ({ className }: Props) => {
                         setPID(null)
                     }}
                 />
+
+                <YesNoModal isShowing={resetProfileModal.isShown} hide={resetProfileModal.close}
+                    title={<h4>Do you want to reset this profile ?</h4>}
+                    body={
+                       <h3>This action cant be undone</h3>
+                    }
+                    onYes={() => {
+                        invoke('reset_profile', {profileId: profileId})
+                    }}
+                />
+
                 {!isLaunched && (
                     <div className="container">
                         <div className="logo-container">
@@ -214,10 +230,13 @@ const Launcher = ({ className }: Props) => {
                                         <>
                                             <div>
                                                 <div className="btn m" onClick={newProfileModal.open}>New</div>
-                                                <div className="btn m" onClick={()=> {profileId != null && renProfileModal.open()}}>Rename</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && renameProfileModal.open()}}>Rename</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && copyProfileModal.open()}}>Copy</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && delProfileModal.open()}}>Remove</div>
+                                                <div className="btn m" onClick={()=> {profileId != null && resetProfileModal.open()}}>Reset</div>
+
                                                 <div className="btn m" onClick={refreshProfiles}>Refresh</div>
+
 
 
                                             </div>

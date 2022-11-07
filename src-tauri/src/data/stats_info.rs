@@ -5,7 +5,7 @@ use tauri::Window;
 
 use crate::{
     image_analyzer::{Color, ImageAnalyzer},
-    platform::{KeyMode, eval_send_key},
+    platform::{eval_send_key, KeyMode},
 };
 
 use super::PointCloud;
@@ -52,7 +52,7 @@ impl ClientStats {
             target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
 
             stat_try_not_detected_count: 0,
-            window
+            window,
         }
     }
 

@@ -1,11 +1,8 @@
 use std::{ops::Range, thread, time::Duration};
 
+use crate::platform::{eval_send_key, eval_send_message /* , PlatformAccessor*/, KeyMode};
 use rand::Rng;
 use tauri::Window;
-use crate::platform::{
-    eval_send_message, /* , PlatformAccessor*/
-    KeyMode, eval_send_key,
-};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -67,13 +64,13 @@ impl<'a> MovementCoordinator {
 
         Self {
             rng, /*, platform */
-            window
+            window,
         }
     }
 
     // Wrapper functions
 
-  /*   pub fn with_probability<F>(&mut self, probability: f64, func: F)
+    /*   pub fn with_probability<F>(&mut self, probability: f64, func: F)
     where
         F: Fn(&Self),
     {
@@ -134,7 +131,7 @@ impl<'a> MovementCoordinator {
             }
             Movement::Wait(duration) => thread::sleep(duration.to_duration(&mut self.rng)),
             Movement::Type(text) => {
-                eval_send_message(&self.window,&text);
+                eval_send_message(&self.window, &text);
             }
             Movement::PressKey(key) => {
                 eval_send_key(&self.window, key, KeyMode::Press);

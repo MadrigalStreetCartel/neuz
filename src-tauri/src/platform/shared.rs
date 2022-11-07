@@ -1,6 +1,6 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use tauri::Window;
 use std::time::Duration;
+use tauri::Window;
 
 use crate::data::Point;
 
@@ -57,14 +57,20 @@ pub fn eval_send_key(window: &Window, key: &str, mode: KeyMode) {
 }
 
 pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
-    eval_send_key(window, format!("F{}", slot_bar_index + 1).to_string().as_str(), KeyMode::Press);
+    eval_send_key(
+        window,
+        format!("F{}", slot_bar_index + 1).to_string().as_str(),
+        KeyMode::Press,
+    );
     eval_send_key(window, k.to_string().as_str(), KeyMode::Press);
     std::thread::sleep(Duration::from_millis(100));
 }
 
-
 pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
-    drop(window.eval(format!("
+    drop(
+        window.eval(
+            format!(
+                "
         document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
             clientX: {0},
             clientY: {1}
@@ -73,22 +79,40 @@ pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
         document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
             clientX: {0},
             clientY: {1}
-        }}))"
-    , pos.x, pos.y).as_str()));
+        }}))",
+                pos.x, pos.y
+            )
+            .as_str(),
+        ),
+    );
 }
 
 pub fn eval_mouse_move(window: &Window, pos: Point) {
-    drop(window.eval(format!("
+    drop(
+        window.eval(
+            format!(
+                "
         document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
             clientX: {0},
             clientY: {1}
-        }}))"
-    , pos.x, pos.y).as_str()));
+        }}))",
+                pos.x, pos.y
+            )
+            .as_str(),
+        ),
+    );
 }
 
-pub fn eval_send_message(window: &Window,text: &str) {
-    drop(window.eval(format!("
+pub fn eval_send_message(window: &Window, text: &str) {
+    drop(
+        window.eval(
+            format!(
+                "
     document.querySelector('input').value = '{0}';
-    document.querySelector('input').select();"
-    , text).as_str()));
+    document.querySelector('input').select();",
+                text
+            )
+            .as_str(),
+        ),
+    );
 }
