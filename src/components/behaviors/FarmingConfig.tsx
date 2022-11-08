@@ -103,6 +103,7 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                         item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType.current === 0)? config.passive_tolerence : config.aggressive_tolerence} onChange={value => onChange?.((selectedMobType.current === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
                     />
                     <ConfigTableRow
+                    layout="v"
                         label={<ConfigLabel name="" helpText="" />}
                         item={<button onClick={()=>colorsRefResetter[selectedMobType.current]()}>Reset</button>}
                     />
@@ -111,10 +112,12 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
             <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Obstacle avoidance enabled" helpText="" />}
                         item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
                     />
                     <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Abort attack only for passive" helpText="" />}
                         item={<BooleanSlider value={config.obstacle_avoidance_only_passive ?? false} onChange={value => onChange?.({ ...config, obstacle_avoidance_only_passive: value })} />}
                     />
@@ -133,6 +136,7 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
             <Modal isShowing={mobsNameDebugModal.isShown} hide={mobsNameDebugModal.close} title={<h4>Mobs detection</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Passive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
                             selectedMobType.current = 0
@@ -140,6 +144,7 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                         }}>⚙️</button>}
                     />
                     <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Agressive mob detection settings" helpText="" />}
                         item={<button onClick={() => {
                             selectedMobType.current = 1
