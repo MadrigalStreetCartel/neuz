@@ -63,7 +63,7 @@ pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
         KeyMode::Press,
     );
     eval_send_key(window, k.to_string().as_str(), KeyMode::Press);
-    std::thread::sleep(Duration::from_millis(100));
+    //std::thread::sleep(Duration::from_millis(100));
 }
 
 pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
