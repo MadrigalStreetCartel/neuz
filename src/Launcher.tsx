@@ -228,35 +228,27 @@ const Launcher = ({ className }: Props) => {
                                     label={<ConfigLabel name={"Profiles | Current: " + profileId} helpText={"Select/create/edit/copy you're profiles."} />}
                                     item={
                                         <>
-                                            <div>
+                                            <div style={{display: "inline"}}>
                                                 <div className="btn m" onClick={newProfileModal.open}>New</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && renameProfileModal.open()}}>Rename</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && copyProfileModal.open()}}>Copy</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && delProfileModal.open()}}>Remove</div>
                                                 <div className="btn m" onClick={()=> {profileId != null && resetProfileModal.open()}}>Reset</div>
-
                                                 <div className="btn m" onClick={refreshProfiles}>Refresh</div>
-
-
-
                                             </div>
 
                                             <table id="profiles">
                                                 {idList.sort((a,b) => (a > b) ? 1 : ((b > a) ? -1 : 0)).slice( (currentPage -1) * 4,  (currentPage -1) * 4 + 4).map((pid, index) => <>
-                                                    {(index %5 != 0 || true) &&<tr className={pid.replaceAll("profile_","") == profileId ? "selected" : ""} onClick={() => setPID(pid.replaceAll("profile_",""))}>
-                                                        <td>{(pid.startsWith("profile_")? pid.replace("profile_","") : pid)}</td>
-                                                    </tr>}
+                                                    <tr key={index} className={pid.replaceAll("profile_","") == profileId ? "selected" : ""} onClick={() => setPID(pid.replaceAll("profile_",""))}>
+                                                        <td key={index}>{(pid.startsWith("profile_")? pid.replace("profile_","") : pid)}</td>
+                                                    </tr>
                                                 </>)}
-                                                <br />
                                                 <div style={{display:"flex", textAlign: "center", alignItems: "center",fontSize: "1rem" }}>
                                                     <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == 1? current: current -1)}}>{"<-"}</div>
                                                     Page: {currentPage}/{Math.ceil(idList.length / 4)}
                                                     <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == Math.ceil(idList.length / 4)? current: current +1)}}>{"->"}</div>
                                                 </div>
-
-
                                             </table>
-
                                         </>
                                     }
                                 />
