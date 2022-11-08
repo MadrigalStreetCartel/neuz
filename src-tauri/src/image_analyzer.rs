@@ -47,7 +47,7 @@ impl ImageAnalyzer {
         self.image.is_some()
     }
 
-    pub fn capture_window(&mut self, logger: &Logger, _config: &FarmingConfig, app_handle: &AppHandle) {
+    pub fn capture_window(&mut self, logger: &Logger, _config: &FarmingConfig) {
         let _timer = Timer::start_new("capture_window");
         if self.window_id == 0 {
             return;
@@ -57,7 +57,6 @@ impl ImageAnalyzer {
             if let Ok(image) = provider.capture_window(self.window_id) {
                 self.image = Some(image);
             } else {
-                app_handle.exit(0);
                 slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
             }
         }

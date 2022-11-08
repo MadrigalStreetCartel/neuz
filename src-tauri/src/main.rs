@@ -265,7 +265,7 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
 
     let main_window = app_handle.get_window("main").unwrap();
     drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
-    window.once("tauri://close-requested", move |_| app_handle.restart());
+    //window.once_global("tauri://close-requested", move |_| app_handle.restart());
 }
 
 #[tauri::command]
@@ -372,6 +372,12 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 support_behavior.update(config);
             }
 
+            // Client window is closed
+            if window.is_resizable().is_err() {
+                app_handle.restart();
+                break;
+            }
+
             // Continue early if the bot is not engaged
             if !config.is_running() {
                 if !window.is_resizable().unwrap() {
@@ -418,7 +424,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             }
 
             // Capture client window
-            image_analyzer.capture_window(&logger, config.farming_config(), &app_handle);
+            image_analyzer.capture_window(&logger, config.farming_config());
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
