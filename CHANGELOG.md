@@ -6,6 +6,20 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.15.5**
+> Released on 08.11.2022
+- Misc 
+  - Bot will now closes if you try to engage when client was closed
+  - You can now use the bot in fullscreen, except when using mob detection (switch automatically)
+  - UI
+    - Fix ColorInput (unwanted texts were displayed)
+    - All table row now use layout: V
+    - Help buttons are now well aligned on the right side
+- Farming
+  - Improves mob detection by refactoring the code (it uses completely the new inputs system)
+  - Dead mobs avoidance now use click's coords instead of mob or target bounds
+
+
 **0.15.4**
 > Released on 07.11.2022
 - HOTFIX If launch is pressed without a profile selected it will crash and never start something again
