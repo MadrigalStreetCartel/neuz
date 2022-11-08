@@ -17,7 +17,7 @@ use super::Behavior;
 pub struct ShoutBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    movement: &'a MovementAccessor, /*<'a>*/
+    movement: &'a MovementAccessor,
     window: &'a Window,
     last_shout_time: Instant,
     shown_messages: Vec<String>,

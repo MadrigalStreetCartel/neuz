@@ -1,16 +1,15 @@
 use std::time::{Duration, Instant};
 
-use libscreenshot::shared::Area;
 use rand::prelude::SliceRandom;
 use slog::Logger;
 use tauri::Window;
 
 use crate::{
-    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType},
+    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType, Point},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{eval_mouse_click_at_point, eval_mouse_move, send_slot_eval},
+    platform::{send_slot_eval, eval_mob_click},
     play,
     utils::DateTime,
 };
@@ -40,12 +39,12 @@ pub struct FarmingBehavior<'a> {
     is_attacking: bool,
     kill_count: u32,
     obstacle_avoidance_count: u32,
-    missclick_count: u32,
     last_summon_pet_time: Option<Instant>,
     last_killed_type: MobType,
     start_time: Instant,
     already_attack_count: u32,
     last_buff_usage: Instant,
+    last_click_pos: Option<Point>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -64,12 +63,12 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             rotation_movement_tries: 0,
             kill_count: 0,
             obstacle_avoidance_count: 0,
-            missclick_count: 0,
             last_summon_pet_time: None,
             last_killed_type: MobType::Passive,
             start_time: Instant::now(),
             already_attack_count: 0,
             last_buff_usage: Instant::now(),
+            last_click_pos: None
         }
     }
 
@@ -260,12 +259,12 @@ impl<'a> FarmingBehavior<'_> {
         use crate::movement::prelude::*;
 
         // Try rotating first in order to locate nearby enemies
-        if self.rotation_movement_tries < 20 {
+        if self.rotation_movement_tries < 30 {
             play!(self.movement => [
                 // Rotate in random direction for a random duration
-                Rotate(rot::Right, dur::Fixed(100)),
+                Rotate(rot::Right, dur::Fixed(50)),
                 // Wait a bit to wait for monsters to enter view
-                Wait(dur::Fixed(200)),
+                Wait(dur::Fixed(50)),
             ]);
             self.rotation_movement_tries += 1;
 
@@ -323,13 +322,12 @@ impl<'a> FarmingBehavior<'_> {
                 .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
                 .cloned()
                 .collect::<Vec<_>>();
-            let mut mob_type = "aggressive";
 
             // Check if there's aggressive mobs otherwise collect passive mobs
             if mob_list.is_empty()
                 || self.last_killed_type == MobType::Aggressive
                     && mob_list.len() == 1
-                    && self.last_kill_time.elapsed().as_millis() < 5500
+                    && self.last_kill_time.elapsed().as_millis() < 5000
             {
                 if image.client_stats.hp.value >= config.min_hp_attack() {
                     mob_list = mobs
@@ -337,28 +335,14 @@ impl<'a> FarmingBehavior<'_> {
                         .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
                         .cloned()
                         .collect::<Vec<_>>();
-                    mob_type = "passive";
                 }
             }
 
             // Check again
             if !mob_list.is_empty() {
-                let killed_type = {
-                    if mob_type == "aggressive" {
-                        MobType::Aggressive
-                    } else {
-                        MobType::Passive
-                    }
-                };
+                self.rotation_movement_tries = 0;
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
-                    if killed_type == self.last_killed_type
-                        && mob_list.len() == 1
-                        && self.last_kill_time.elapsed().as_millis() < 5500
-                    {
-                        // Transition to next state
-                        return State::NoEnemyFound;
-                    }
                     // Try avoiding detection of last killed mob
                     if self.avoided_bounds.len() > 0 {
                         image.find_closest_mob(
@@ -375,7 +359,7 @@ impl<'a> FarmingBehavior<'_> {
                     State::EnemyFound(*mob)
                 } else {
                     // Transition to next state
-                    State::NoEnemyFound
+                    State::SearchingForEnemy
                 }
             } else {
                 // Transition to next state
@@ -390,33 +374,32 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-        self.rotation_movement_tries = 0;
 
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
+        if self.last_click_pos.is_some() && self.last_click_pos.unwrap() == point  {
+            let mut marker = Bounds::default();
+            marker.x = point.x -1;
+            marker.y = point.y -1;
+            marker.w = 2;
+            marker.h = 2;
+            self.avoided_bounds.push((
+                marker,
+                Instant::now(),
+                5000,
+            ));
+            return State::SearchingForEnemy
+        } else {
+            self.last_click_pos = Some(point);
 
-        // Set cursor position and simulate a click
-        eval_mouse_move(self.window, point);
-        std::thread::sleep(Duration::from_millis(100));
-        image.capture_window_area(self.logger, config, Area::new(0, 0, 2, 2));
-        let cursor_style = PixelDetection::new(PixelDetectionKind::CursorType, Some(image));
-        if cursor_style.value {
-            eval_mouse_click_at_point(self.window, point);
-            self.missclick_count = 0;
+            // Set cursor position and simulate a click
+            eval_mob_click(self.window, point);
 
             // Wait a few ms before transitioning state
             std::thread::sleep(Duration::from_millis(100));
             State::Attacking(mob)
-        } else {
-            self.missclick_count += 1;
-            self.avoided_bounds.push((mob.bounds, Instant::now(), 3000));
-            if self.missclick_count == 30 {
-                self.missclick_count = 0;
-                State::NoEnemyFound
-            } else {
-                State::SearchingForEnemy
-            }
         }
+
     }
 
     fn abort_attack(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
@@ -448,13 +431,10 @@ impl<'a> FarmingBehavior<'_> {
         let is_npc = PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value;
         if !self.is_attacking && !config.is_stop_fighting() {
             if image.client_stats.target_hp.value == 0 {
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    HoldKeyFor("S", dur::Fixed(50)),
-                ]);
-                return State::SearchingForEnemy;
+                return State::SearchingForEnemy
             }
             if image.client_stats.target_hp.value > 0 {
+                self.rotation_movement_tries = 0;
                 // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
                 if (config.get_prevent_already_attacked()
                     && image.client_stats.target_hp.value < 100)
@@ -469,11 +449,13 @@ impl<'a> FarmingBehavior<'_> {
         if !is_npc
             && (image.client_stats.target_hp.value > 0 || image.client_stats.target_mp.value > 0)
         {
+
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
                 self.last_initial_attack_time = Instant::now();
                 self.is_attacking = true;
             }
+
             if !config.is_stop_fighting()
                 && config.obstacle_avoidance_enabled()
                 && image.client_stats.target_hp.last_update_time.is_some()
@@ -503,7 +485,7 @@ impl<'a> FarmingBehavior<'_> {
                 {
                     self.obstacle_avoidance_count = 0;
                     let state = self.abort_attack(config, image);
-                    std::thread::sleep(Duration::from_millis(500));
+                    std::thread::sleep(Duration::from_millis(100));
                     return state;
                 }
                 self.last_initial_attack_time = Instant::now();
@@ -519,19 +501,22 @@ impl<'a> FarmingBehavior<'_> {
                 ]);
                 self.obstacle_avoidance_count += 1;
             }
+
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
+
         } else if image.client_stats.target_hp.value == 0
             && image.client_stats.target_mp.value == 0
             && self.is_attacking
             && image.client_stats.is_alive()
         {
-            self.is_attacking = false;
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
                 TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
                 TargetType::TargetMarker => {}
             }
+
+            self.is_attacking = false;
             return State::AfterEnemyKill(mob);
         } else {
             self.is_attacking = false;

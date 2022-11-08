@@ -179,7 +179,7 @@ impl FarmingConfig {
     }
 
     pub fn min_mobs_name_width(&self) -> u32 {
-        self.min_mobs_name_width.unwrap_or(15)
+        self.min_mobs_name_width.unwrap_or(11)
     }
 
     pub fn max_mobs_name_width(&self) -> u32 {

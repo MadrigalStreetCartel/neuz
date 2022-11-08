@@ -340,8 +340,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
-
-        let cursor_detection_js = "const overlayElem=document.createElement('div');overlayElem.style.position='absolute',overlayElem.style.left=0,overlayElem.style.top=0,overlayElem.style.height='2px',overlayElem.style.width='2px',overlayElem.style.zIndex=100,overlayElem.id='fuck',overlayElem.style.backgroundColor='red',document.body.appendChild(overlayElem),setInterval(()=>{document.body.style.cursor.indexOf('curattack')>0?overlayElem.style.backgroundColor='green':overlayElem.style.backgroundColor='red'},0.005)";
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
             Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
         send_info(&*frontend_info.read());
@@ -350,21 +348,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             let timer = Timer::start_new("main_loop");
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
-
-            let window = app_handle.get_window("client").unwrap();
-            if window.current_monitor().is_err() {
-                break;
-            }
-            // Check if cursor div is well shown
-            drop(
-                window.eval(
-                    format!(
-                        "if(!document.getElementById('fuck')){{ {} }}",
-                        cursor_detection_js
-                    )
-                    .as_str(),
-                ),
-            );
 
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
@@ -442,8 +425,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 if !is_alive {
                     frontend_info_mut.set_is_alive(false);
                     frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                    // Send infos to frontend
-                    send_info(&*frontend_info.read());
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);

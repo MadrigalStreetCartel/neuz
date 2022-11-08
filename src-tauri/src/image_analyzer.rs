@@ -338,8 +338,7 @@ impl ImageAnalyzer {
             // Try finding closest mob that's not the mob to be avoided
             if let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
                 //*distance > 55
-                let mut coords = mob.get_attack_coords();
-                coords.y -= 10;
+                let coords = mob.get_attack_coords();
                 let mut result = true;
                 for avoided_item in avoided_bounds {
                     if avoided_item.0.contains_point(&coords) {
