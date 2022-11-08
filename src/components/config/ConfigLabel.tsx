@@ -43,6 +43,8 @@ export default styled(ConfigLabel)`
         display: flex;
         align-items: center;
         gap: .5rem;
+        justify-content: space-between;
+        margin-right: 5px;
     }
 
     & .help {
