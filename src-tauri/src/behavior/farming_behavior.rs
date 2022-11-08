@@ -99,7 +99,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         self.state = match self.state {
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
-            State::EnemyFound(mob) => self.on_enemy_found(config, mob, image),
+            State::EnemyFound(mob) => self.on_enemy_found(mob),
             State::Attacking(mob) => self.on_attacking(config, mob, image),
             State::AfterEnemyKill(_) => self.after_enemy_kill(frontend_info, config),
         };
@@ -370,9 +370,7 @@ impl<'a> FarmingBehavior<'_> {
 
     fn on_enemy_found(
         &mut self,
-        config: &FarmingConfig,
         mob: Target,
-        image: &mut ImageAnalyzer,
     ) -> State {
 
         // Transform attack coords into local window coords
@@ -396,7 +394,7 @@ impl<'a> FarmingBehavior<'_> {
             eval_mob_click(self.window, point);
 
             // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(250));
             State::Attacking(mob)
         }
 
@@ -430,10 +428,10 @@ impl<'a> FarmingBehavior<'_> {
         // Engagin combat
         let is_npc = PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value;
         if !self.is_attacking && !config.is_stop_fighting() {
-            if image.client_stats.target_hp.value == 0 {
+            if image.client_stats.target_hp.value == 0 && image.client_stats.target_mp.value == 0 {
                 return State::SearchingForEnemy
             }
-            if image.client_stats.target_hp.value > 0 {
+            if image.client_stats.target_hp.value > 0 || image.client_stats.target_mp.value > 0 {
                 self.rotation_movement_tries = 0;
                 // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
                 if (config.get_prevent_already_attacked()
