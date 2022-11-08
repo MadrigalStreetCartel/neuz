@@ -23,7 +23,7 @@ use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
-use tauri::Manager;
+use tauri::{Manager, Size, LogicalSize};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
@@ -255,10 +255,10 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
             .to_string_lossy(),
         profile_id
     )))
-    .resizable(false)
+    //.resizable(false)
     .center()
     .inner_size(800.0, 600.0)
-    .title(format!("Flyff Universe {}", profile_id))
+    .title(format!("{} | Flyff Universe", profile_id))
     .build()
     .unwrap();
     drop(window.show());
@@ -374,10 +374,20 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Continue early if the bot is not engaged
             if !config.is_running() {
+                if !window.is_resizable().unwrap() {
+                    drop(window.set_resizable(true));
+                }
                 std::thread::sleep(std::time::Duration::from_millis(250));
                 timer.silence();
                 continue;
             }
+
+            if !config.farming_config().is_stop_fighting() {
+               drop(window.set_size(Size::Logical(LogicalSize {width: 800.0, height: 600.0})));
+               drop(window.set_resizable(false));
+             }else {
+                drop(window.set_resizable(true));
+             }
 
             frontend_info_mut.set_is_running(true);
 
@@ -408,7 +418,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             }
 
             // Capture client window
-            image_analyzer.capture_window(&logger, config.farming_config());
+            image_analyzer.capture_window(&logger, config.farming_config(), &app_handle);
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
@@ -424,7 +434,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 let is_alive = image_analyzer.client_stats.is_alive();
                 if !is_alive {
                     frontend_info_mut.set_is_alive(false);
-                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    //frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);
