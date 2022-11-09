@@ -18,6 +18,7 @@ import SupportConfig from "./components/behaviors/SupportConfig"
 import ShoutConfig from "./components/behaviors/ShoutConfig"
 import Footer from "./components/Footer"
 import { FrontendInfoModel } from "./models/FrontendInfo"
+import { invoke } from "@tauri-apps/api"
 
 type Bounds = {x: number, y: number, w: number, h: number}
 
@@ -86,6 +87,8 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
                         </div>
                     </>
                 )}
+                                    <div className="btn sm" onClick={() => {invoke("focus_window")}}>Focus</div>
+
                 <div className="footer">
                     {!isNil(config?.mode) && <div className="btn" onClick={handleToggle}>{config?.is_running ? 'Disengage' : 'Engage'}</div>}
                 </div>
@@ -115,14 +118,14 @@ export default styled(MissionControl)`
     flex-direction: column;
     justify-content: flex-start;
     overflow: auto;
-    padding: 0.5rem 0;
+    padding: 0.25rem 0;
     padding-bottom: 0;
 
     & .vstack {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1rem;
+        gap: 0.5rem;
         height: 100%;
     }
 
@@ -175,7 +178,7 @@ export default styled(MissionControl)`
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1rem;
+        gap: 0.25rem;
     }
 
     & .view {

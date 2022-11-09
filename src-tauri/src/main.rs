@@ -80,12 +80,19 @@ fn main() {
             remove_profile,
             rename_profile,
             copy_profile,
-            reset_profile
+            reset_profile,
+            focus_window
         ])
         .run(context)
         .expect("error while running tauri application");
 }
 
+#[tauri::command]
+fn focus_window(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+    let window = app_handle.get_window("client");
+    window.clone().unwrap().unminimize();
+    window.unwrap().set_focus();
+}
 #[tauri::command]
 fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
     drop(fs::create_dir(

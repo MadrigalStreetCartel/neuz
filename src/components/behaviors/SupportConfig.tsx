@@ -15,6 +15,7 @@ import ConfigTableRow from '../config/ConfigTableRow'
 import styled from "styled-components"
 import { DefaultValuesChecker } from "../utils/DefaultValuesChecker"
 import NumericInput from "../config/NumericInput"
+import TimeInput from "../config/TimeInput"
 
 type Props = {
     className?: string,
@@ -65,7 +66,7 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                        item={<NumericInput unit='ms' value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
                     />
                 </ConfigTable>
             </ConfigPanel>
