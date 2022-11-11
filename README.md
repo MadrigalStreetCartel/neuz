@@ -97,7 +97,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.15.5_x64_en-US.msi
+[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.16.0_x64_en-US.msi
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->

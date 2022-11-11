@@ -5,11 +5,11 @@ use slog::Logger;
 use tauri::Window;
 
 use crate::{
-    data::{Bounds, MobType, PixelDetection, PixelDetectionKind, Target, TargetType, Point},
+    data::{Bounds, MobType, Point, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{send_slot_eval, eval_mob_click},
+    platform::{eval_mob_click, send_slot_eval},
     play,
     utils::DateTime,
 };
@@ -45,6 +45,7 @@ pub struct FarmingBehavior<'a> {
     already_attack_count: u32,
     last_buff_usage: Instant,
     last_click_pos: Option<Point>,
+    stealed_target_count: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -68,7 +69,8 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             start_time: Instant::now(),
             already_attack_count: 0,
             last_buff_usage: Instant::now(),
-            last_click_pos: None
+            last_click_pos: None,
+            stealed_target_count: 0,
         }
     }
 
@@ -131,7 +133,7 @@ impl<'a> FarmingBehavior<'_> {
 
     /// Check whether pickup pet should be unsummoned
     fn update_pickup_pet(&mut self, config: &FarmingConfig) {
-        if let Some(pickup_pet_slot_index) = config.get_slot_index(SlotType::PickupPet) {
+        if let Some(pickup_pet_slot_index) = config.slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
                 if last_time.elapsed().as_millis()
                     > config
@@ -216,6 +218,7 @@ impl<'a> FarmingBehavior<'_> {
             let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
             if slot.is_some() {
                 let index = slot.unwrap();
+
                 for _i in 1..7 {
                     send_slot_eval(self.window, index.0, index.1);
                 }
@@ -368,55 +371,89 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn on_enemy_found(
-        &mut self,
-        mob: Target,
-    ) -> State {
-
-        // Transform attack coords into local window coords
-        let point = mob.get_attack_coords();
-        if self.last_click_pos.is_some() && self.last_click_pos.unwrap() == point  {
+    fn avoid_last_click(&mut self) {
+        if let Some(point) = self.last_click_pos {
             let mut marker = Bounds::default();
-            marker.x = point.x -1;
-            marker.y = point.y -1;
+            marker.x = point.x - 1;
+            marker.y = point.y - 1;
             marker.w = 2;
             marker.h = 2;
-            self.avoided_bounds.push((
-                marker,
-                Instant::now(),
-                5000,
-            ));
-            return State::SearchingForEnemy
-        } else {
-            self.last_click_pos = Some(point);
-
-            // Set cursor position and simulate a click
-            eval_mob_click(self.window, point);
-
-            // Wait a few ms before transitioning state
-            std::thread::sleep(Duration::from_millis(250));
-            State::Attacking(mob)
+            self.avoided_bounds.push((marker, Instant::now(), 5000));
         }
+    }
 
+    fn on_enemy_found(&mut self, mob: Target) -> State {
+        // Transform attack coords into local window coords
+        let point = mob.get_attack_coords();
+
+        self.last_click_pos = Some(point);
+
+        // Set cursor position and simulate a click
+        eval_mob_click(self.window, point);
+
+        // Wait a few ms before transitioning state
+        std::thread::sleep(Duration::from_millis(500));
+        State::Attacking(mob)
     }
 
     fn abort_attack(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
         use crate::movement::prelude::*;
         self.is_attacking = false;
 
-        if let Some(marker) = image.identify_target_marker(config) {
+        if self.already_attack_count > 0 {
             // Target marker found
-            self.avoided_bounds.push((
-                marker.bounds.grow_by(self.already_attack_count * 10),
-                Instant::now(),
-                2500,
-            ));
+            if let Some(marker) = image.identify_target_marker(config) {
+                self.avoided_bounds.push((
+                    marker.bounds.grow_by(self.already_attack_count * 10),
+                    Instant::now(),
+                    2000,
+                ));
+                self.already_attack_count += 1;
+            }
+        } else {
+            self.obstacle_avoidance_count = 0;
+            self.avoid_last_click();
         }
-        self.already_attack_count += 1;
         play!(self.movement => [
             PressKey("Escape"),
         ]);
         return State::SearchingForEnemy;
+    }
+
+    fn avoid_obstacle(
+        &mut self,
+        config: &FarmingConfig,
+        image: &mut ImageAnalyzer,
+        max_avoid: u32,
+    ) -> bool {
+        if self.obstacle_avoidance_count < max_avoid {
+            use crate::movement::prelude::*;
+            if self.obstacle_avoidance_count == 0 {
+                play!(self.movement => [
+                    PressKey("Z"),
+                    HoldKeys(vec!["W", "Space"]),
+                    Wait(dur::Fixed(800)),
+                    ReleaseKeys(vec!["Space", "W"]),
+                ]);
+            } else {
+                let rotation_key = ["A", "D"].choose(&mut self.rng).unwrap_or(&"A");
+                // Move into a random direction while jumping
+                play!(self.movement => [
+                    HoldKeys(vec!["W", "Space"]),
+                    HoldKeyFor(*rotation_key, dur::Fixed(200)),
+                    Wait(dur::Fixed(800)),
+                    ReleaseKeys(vec!["Space", "W"]),
+                    PressKey("Z"),
+                ]);
+            }
+
+            image.client_stats.target_hp.reset_last_update_time();
+            self.obstacle_avoidance_count += 1;
+            return false;
+        } else {
+            self.abort_attack(config, image);
+            return true;
+        }
     }
 
     fn on_attacking(
@@ -425,89 +462,75 @@ impl<'a> FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-        // Engagin combat
-        let is_npc = PixelDetection::new(PixelDetectionKind::IsNpc, Some(image)).value;
+        let is_npc =
+            image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
+        let is_mob =
+            image.client_stats.target_hp.value > 0 && image.client_stats.target_mp.value > 0;
+        let is_mob_alive = image.client_stats.target_mp.value > 0;
+
         if !self.is_attacking && !config.is_stop_fighting() {
-            if image.client_stats.target_hp.value == 0 && image.client_stats.target_mp.value == 0 {
-                return State::SearchingForEnemy
-            }
-            if image.client_stats.target_hp.value > 0 || image.client_stats.target_mp.value > 0 {
+            if is_npc {
+                self.avoid_last_click();
+                return State::SearchingForEnemy;
+            } else if is_mob {
                 self.rotation_movement_tries = 0;
-                // try to implement something related to party, if mob is less than 100% he was probably attacked by someone else so we can avoid it
-                if (config.get_prevent_already_attacked()
-                    && image.client_stats.target_hp.value < 100)
-                    || is_npc
-                {
-                    return self.abort_attack(config, image);
+                let hp_last_update = image.client_stats.hp.last_update_time.unwrap();
+
+                // Detect if mob was attacked
+                if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
+                    // If we didn't take any damages
+                    if hp_last_update.elapsed().as_millis() > 3000 {
+                        return self.abort_attack(config, image);
+                    } else {
+                        if self.stealed_target_count > 5 {
+                            self.stealed_target_count = 0;
+                            self.already_attack_count = 1;
+                        }
+                    }
                 }
-                self.already_attack_count = 0;
+            } else {
+                // Not a mob we go search for another
+                self.avoid_last_click();
+                return State::SearchingForEnemy;
+            }
+        } else if !self.is_attacking && config.is_stop_fighting() {
+            if is_npc {
+                return self.state;
             }
         }
 
-        if !is_npc
-            && (image.client_stats.target_hp.value > 0 || image.client_stats.target_mp.value > 0)
-        {
-
+        if is_mob_alive {
+            // Engagin combat
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
                 self.last_initial_attack_time = Instant::now();
                 self.is_attacking = true;
+                self.already_attack_count = 0;
             }
 
-            if !config.is_stop_fighting()
-                && config.obstacle_avoidance_enabled()
-                && image.client_stats.target_hp.last_update_time.is_some()
-                && image
-                    .client_stats
-                    .target_hp
-                    .last_update_time
-                    .unwrap()
-                    .elapsed()
-                    .as_millis()
-                    > config.get_obstacle_avoidance_cooldown()
-            {
-                // Reset timer otherwise it'll trigger every tick
-                image.client_stats.target_hp.reset_last_update_time();
+            let last_target_hp_update = image
+                .client_stats
+                .target_hp
+                .last_update_time
+                .unwrap()
+                .elapsed()
+                .as_millis();
 
-                let mut avoid_max_try = config.get_obstacle_avoidance_max_try();
-                if !config.obstacle_avoidance_only_passive() {
-                    match mob.target_type {
-                        TargetType::Mob(MobType::Aggressive) => avoid_max_try = avoid_max_try * 5,
-                        _ => {}
-                    }
+            if image.client_stats.target_hp.value == 100 && last_target_hp_update > 3000 {
+                if self.avoid_obstacle(config, image, 1) {
+                    return State::SearchingForEnemy;
                 }
-
-                // Abort attack after x avoidance
-                if self.obstacle_avoidance_count >= avoid_max_try
-                    && image.client_stats.hp.value == 100
-                {
-                    self.obstacle_avoidance_count = 0;
-                    let state = self.abort_attack(config, image);
-                    std::thread::sleep(Duration::from_millis(100));
-                    return state;
+            } else if last_target_hp_update > config.obstacle_avoidance_cooldown() {
+                if self.avoid_obstacle(config, image, config.obstacle_avoidance_max_try()) {
+                    return State::SearchingForEnemy;
                 }
-                self.last_initial_attack_time = Instant::now();
-                use crate::movement::prelude::*;
-                let rotation_key = ["A", "D"].choose(&mut self.rng).unwrap_or(&"A");
-
-                // Move into a random direction while jumping
-                play!(self.movement => [
-                    HoldKeys(vec!["W", "Space"]),
-                    HoldKeyFor(*rotation_key, dur::Fixed(200)),
-                    Wait(dur::Fixed(800)),
-                    ReleaseKeys(vec!["Space", "W"]),
-                ]);
-                self.obstacle_avoidance_count += 1;
             }
 
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
 
-        } else if image.client_stats.target_hp.value == 0
-            && image.client_stats.target_mp.value == 0
-            && self.is_attacking
-            && image.client_stats.is_alive()
-        {
+            return self.state;
+        } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
                 TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
@@ -520,7 +543,6 @@ impl<'a> FarmingBehavior<'_> {
             self.is_attacking = false;
             return State::SearchingForEnemy;
         }
-        self.state
     }
 
     fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
@@ -544,17 +566,17 @@ impl<'a> FarmingBehavior<'_> {
             DateTime::format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
         let kill_per_hour = DateTime::format_float(kill_per_minute * 60.0, 0);
 
-        let elapsed_search_time = format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
-        let elapsed_time_to_kill =
+        let elapsed_search_time_string = format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
+        let elapsed_time_to_kill_string =
             format!("{}secs", DateTime::format_float(time_to_kill_as_secs, 2));
 
         let elapsed = format!(
             "Elapsed time : since start {} to kill {} to find {} ",
-            started_formatted, elapsed_time_to_kill, elapsed_search_time
+            started_formatted, elapsed_time_to_kill_string, elapsed_search_time_string
         );
         slog::debug!(self.logger, "Monster was killed {}", elapsed);
 
-        frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))
+        frontend_info.set_kill_stats((kill_per_minute, kill_per_hour), ( elapsed_search_time.as_millis(), elapsed_time_to_kill.as_millis() ))
     }
 
     fn after_enemy_kill(
@@ -566,6 +588,7 @@ impl<'a> FarmingBehavior<'_> {
         frontend_info.set_kill_count(self.kill_count);
         self.after_enemy_kill_debug(frontend_info);
 
+        self.stealed_target_count = 0;
         self.last_kill_time = Instant::now();
 
         // Pickup items

@@ -6,6 +6,21 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.16.0**
+> Released on 12.11.2022
+- Misc 
+  - Now restart when client is closed
+  - Refactor code
+  - UI
+    - Implements compact UI mode
+    - Duration & cooldowns can now be setted as 00:00:00:000 format
+    - Global kill/min & kill/hour for farming
+    - Various changes in the UI
+- Farming
+  - Improves mob detection completely reworked system
+    - new obstacle avoidance
+    - new already attacked monsters, monsters can now be attacked if they deal us damages
+
 **0.15.5**
 > Released on 08.11.2022
 - Misc 

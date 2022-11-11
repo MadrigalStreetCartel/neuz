@@ -5,6 +5,8 @@ export type FrontendInfoModel = {
     is_attacking: boolean,
     is_running: boolean,
     is_alive: boolean,
+    last_fight_duration: number,
+    last_search_duration: number,
     kill_min_avg: number,
     kill_hour_avg: number,
     version: number[],

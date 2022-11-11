@@ -5,7 +5,7 @@ import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import SlotBar from "../SlotBar"
-import { useStopWatch } from "../utils/StopWatch"
+import { StopWatchValues, useStopWatch } from "../utils/StopWatch"
 
 import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
@@ -15,6 +15,7 @@ import ConfigTableRow from '../config/ConfigTableRow'
 import styled from "styled-components"
 import { DefaultValuesChecker } from "../utils/DefaultValuesChecker"
 import NumericInput from "../config/NumericInput"
+import TimeInput from "../config/TimeInput"
 
 type Props = {
     className?: string,
@@ -23,9 +24,13 @@ type Props = {
     onChange: (config: SupportConfigModel) => void,
     running: boolean,
     isCurrentMode: boolean,
+    botStopWatch: StopWatchValues | null,
+    botState: string,
+
+
 }
 
-const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode }: Props) => {
+const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState}: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
 
@@ -34,14 +39,6 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
-
-    let botState = running? info?.is_running? !info?.is_alive? "dead" : "healing" : "ready" : "idle"
-
-    let botStopWatch = useStopWatch()
-
-    if(isCurrentMode) {
-        botStopWatch.start(botState == "healing")
-    }
 
     return (
         <>
@@ -65,7 +62,7 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                        item={<NumericInput unit='ms' value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
                     />
                 </ConfigTable>
             </ConfigPanel>
@@ -78,7 +75,7 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                         <div>State: {botState}</div>
                     </div>
                     <div className="row">
-                        <div>Botting time: {botStopWatch.watch.toString()}</div>
+                        <div>Botting time: {botStopWatch?.toString()}</div>
                     </div>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>

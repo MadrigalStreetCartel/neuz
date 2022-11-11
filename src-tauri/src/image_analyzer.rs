@@ -3,11 +3,11 @@ use std::{
     time::Instant,
 };
 
-use libscreenshot::shared::Area;
+//use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
-use tauri::{Window, AppHandle};
+use tauri::{Window};
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
@@ -62,7 +62,7 @@ impl ImageAnalyzer {
         }
     }
 
-    pub fn capture_window_area(&mut self, logger: &Logger, _config: &FarmingConfig, area: Area) {
+/*     pub fn capture_window_area(&mut self, logger: &Logger, _config: &FarmingConfig, area: Area) {
         let _timer = Timer::start_new("capture_window_area");
         if self.window_id == 0 {
             return;
@@ -75,7 +75,7 @@ impl ImageAnalyzer {
                 slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
             }
         }
-    }
+    } */
 
     pub fn pixel_detection(
         &self,
@@ -203,8 +203,8 @@ impl ImageAnalyzer {
         let mut mob_coords_agg: Vec<Point> = Vec::default();
 
         // Reference colors
-        let ref_color_pas_wrapped: [Option<u8>; 3] = config.get_passive_mobs_colors(); // Passive mobs 234, 234, 149
-        let ref_color_agg_wrapped: [Option<u8>; 3] = config.get_aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
+        let ref_color_pas_wrapped: [Option<u8>; 3] = config.passive_mobs_colors(); // Passive mobs 234, 234, 149
+        let ref_color_agg_wrapped: [Option<u8>; 3] = config.aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
         let ref_color_pas: [u8; 3] = [
             ref_color_pas_wrapped[0].unwrap_or(234),
             ref_color_pas_wrapped[1].unwrap_or(234),
@@ -235,12 +235,12 @@ impl ImageAnalyzer {
                         // avoid detect the health bar as a monster
                         continue;
                     }
-                    if Self::pixel_matches(&px.0, &ref_color_pas, config.get_passive_tolerence()) {
+                    if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
                     } else if Self::pixel_matches(
                         &px.0,
                         &ref_color_agg,
-                        config.get_aggressive_tolerence(),
+                        config.aggressive_tolerence(),
                     ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }

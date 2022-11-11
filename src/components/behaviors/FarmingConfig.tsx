@@ -2,7 +2,6 @@ import styled from 'styled-components'
 
 import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
-import ConfigPanel from '../config/ConfigPanel'
 import ConfigTable from '../config/ConfigTable'
 import ConfigTableRow from '../config/ConfigTableRow'
 import NumericInput from '../config/NumericInput'
@@ -15,7 +14,7 @@ import { FrontendInfoModel } from '../../models/FrontendInfo'
 import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
-import { useStopWatch } from '../utils/StopWatch'
+import { MsFormat, StopWatchValues } from '../utils/StopWatch'
 import { DefaultValuesChecker } from '../utils/DefaultValuesChecker'
 
 type Props = {
@@ -25,9 +24,11 @@ type Props = {
     onChange: (config: FarmingConfigModel) => void,
     running: boolean,
     isCurrentMode: boolean,
+    botStopWatch: StopWatchValues | null,
+    botState: string,
 }
 
-const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMode }: Props) => {
+const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState }: Props) => {
     const statsModal = useModal()
     const debugModal = useModal()
     const mobsNameDebugModal = useModal(debugModal)
@@ -42,12 +43,13 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
         'passive_tolerence': 5,
         'aggressive_mobs_colors': [179, 23, 23],
         'aggressive_tolerence': 10,
-        'obstacle_avoidance_cooldown': 6000,
+        'obstacle_avoidance_cooldown': 3000,
         'obstacle_avoidance_max_try': 3,
         'min_mobs_name_width': 15,
         'max_mobs_name_width': 180,
         'circle_pattern_rotation_duration': 30,
         'min_hp_attack': 30,
+        'prevent_already_attacked': true,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
@@ -57,15 +59,12 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
         () => onChange({...config, ...{aggressive_mobs_colors: defaultValues['aggressive_mobs_colors'], aggressive_tolerence: defaultValues['aggressive_tolerence']} })
     ]
 
-    let botState = running? info?.is_running? !info?.is_alive? "dead" : config.is_stop_fighting? "manual" : info.is_attacking? "fighting" : "searching" : "ready" : "idle"
-
     // StopWatchs
-    let botStopWatch = useStopWatch(), searchMobStopWatch = useStopWatch(), fightStopWatch = useStopWatch()
-    if(isCurrentMode) {
-        botStopWatch.start(botState === "searching" || botState === "fighting")
-        searchMobStopWatch.start(botState === "searching", true)
-        fightStopWatch.start(botState === "fighting", true)
-    }
+    const searchMobStopWatch = MsFormat(info?.last_search_duration ?? 0),
+    fightStopWatch = MsFormat(info?.last_search_duration ?? 0)
+
+    const globalKPM = ((info?.enemy_kill_count?? 0) / Math.round(Number(botStopWatch?.timer ?? 0) / 60000)).toFixed(2)
+    const globalKPH = (Number(globalKPM) * 60).toFixed(2)
 
     return (
         <>
@@ -109,17 +108,12 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             }/>
-            <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Obstacle avoidance settings</h4>} body={
+            <Modal isShowing={obstacleAvoidanceDebugModal.isShown} hide={obstacleAvoidanceDebugModal.close} title={<h4>Avoidances settings</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
                         layout="v"
-                        label={<ConfigLabel name="Obstacle avoidance enabled" helpText="" />}
-                        item={<BooleanSlider value={config.obstacle_avoidance_enabled ?? true} onChange={value => onChange?.({ ...config, obstacle_avoidance_enabled: value })} />}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Abort attack only for passive" helpText="" />}
-                        item={<BooleanSlider value={config.obstacle_avoidance_only_passive ?? false} onChange={value => onChange?.({ ...config, obstacle_avoidance_only_passive: value })} />}
+                        label={<ConfigLabel name="Avoid attacked monster" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
+                        item={<BooleanSlider value={config.prevent_already_attacked ?? true} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
                     />
                     <ConfigTableRow
                         layout="v"
@@ -161,44 +155,54 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                         label={<ConfigLabel name="Max mobs name width" helpText="" />}
                         item={<NumericInput unit='px' value={config.max_mobs_name_width} onChange={value => onChange({...config, max_mobs_name_width: value})} />}
                     />
-                </ConfigTable>
-            }/>
-            {/* DEBUG END */}
-            <ConfigPanel>
-                <ConfigTable>
                     <ConfigTableRow
-                        label={<ConfigLabel name="Avoid attacked monster" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
-                        item={<BooleanSlider value={config.prevent_already_attacked ?? false} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
-                    />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Circle pattern duration" helpText="The bot will try to move in a circle pattern to find target. Value of 0 will stay in place. Lower value to increase circle. Default : 30" />}
+                        layout="v"
+                        label={<ConfigLabel name="Circle pattern duration" helpText="The bot will try to move in a circle pattern to find targets. Value of 0 will stay in place. Lower the value to increase circle size. Default : 30" />}
                         item={<NumericInput value={config.circle_pattern_rotation_duration} onChange={value => onChange?.({ ...config, circle_pattern_rotation_duration: value })} />}
                     />
+
                     <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Min HP percent to attack" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
                         item={<NumericInput unit='%' value={config.min_hp_attack} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
-                    <ConfigTableRow
-                        label={<ConfigLabel name="Stop mob detection" helpText="Stop mob searching but keeps benefit of using the bot like item pickup, buffs, restoration, etc..." />}
-                        item={<BooleanSlider value={config.is_stop_fighting ?? false} onChange={value => onChange?.({ ...config, is_stop_fighting: value })} />}
-                    />
+
                 </ConfigTable>
-            </ConfigPanel>
+            }/>
+            {/* DEBUG END */}
+{/*             <ConfigPanel>
+                <ConfigTable>
+
+                </ConfigTable>
+            </ConfigPanel> */}
             <Modal isShowing={statsModal.isShown} hide={statsModal.close}
             title={<h4>Stats - State: { botState }</h4>} body={
                 <div className="stats">
                     <div className="row">
-                        <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour | total : {info?.enemy_kill_count}</div>
+                        <div>Kills : {info?.enemy_kill_count}</div>
                     </div>
                     <div className="row">
-                        <div>Botting time: {botStopWatch.watch.toString()}</div>
+                        <div>Botting time: {botStopWatch?.toString()}</div>
                     </div>
                     <div className="row">
-                        <div>Search time: {searchMobStopWatch.watch.toString()}</div>
+                        <div>Last search time: {searchMobStopWatch}</div>
                     </div>
                     <div className="row">
-                        <div>Fight time: {fightStopWatch.watch.toString()}</div>
+                        <div>Last fight time: {fightStopWatch}</div>
                     </div>
+                    <div className="row">
+                        <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour</div>
+                    </div>
+                    <div className="row">
+                        <div>Global kills stats(approx): {globalKPM === "NaN" || globalKPM === "Infinity" ? 0 : globalKPM}/min
+                        | {globalKPH === "NaN" || globalKPH === "Infinity" ? 0 : globalKPH}/hour</div>
+                    </div>
+
+
+
+
+
+
                 </div>
             }/>
             {info && (
@@ -206,7 +210,14 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <div className="row">
                         <div>State: { botState }</div>
                     </div>
+                    <div className="row">
+                        <div>Target's detection mode: { config.is_stop_fighting? "🛑" : "✅" }</div>
+                    </div>
                     <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
+                    <button className="btn sm"
+                        onClick={e => onChange?.({ ...config, is_stop_fighting: !config.is_stop_fighting })} >
+                        Detection 🎯
+                    </button>
                     <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
                 </div>
             )}

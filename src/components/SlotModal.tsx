@@ -7,6 +7,7 @@ import Select from 'react-select'
 import Modal from './Modal'
 import ConfigTable from './config/ConfigTable'
 import BooleanSlider from './config/BooleanSlider'
+import TimeInput from './config/TimeInput'
 
 type Props = {
     className?: string,
@@ -46,8 +47,8 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
                     {cooldownSlotTypes.includes(slot.slot_type) &&
                         <ConfigTableRow
                             layout="v"
-                            label={<ConfigLabel name="Cooldown" helpText="Interval between to use." />}
-                            item={<NumericInput unit="ms" value={slot.slot_cooldown} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
+                            label={<ConfigLabel name="Cooldown" helpText="Interval between two usage. Format must be : hh:mm:ss:mss" />}
+                            item={<TimeInput value={slot.slot_cooldown} onChange={value => {slot.slot_cooldown = value;onChange(barIndex, index, slot)}} />}
                         />
                     }
 

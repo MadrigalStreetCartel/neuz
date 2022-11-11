@@ -1,7 +1,6 @@
 import { useReducer, useState, useMemo, useRef, useEffect } from 'react'
-import { invoke, process as TauriProcess } from '@tauri-apps/api'
+import { invoke } from '@tauri-apps/api'
 import { sample } from 'lodash'
-import { WebviewWindow } from '@tauri-apps/api/window'
 import styled from 'styled-components'
 
 import FlyffLogo from './assets/msc_dark.png'
@@ -12,15 +11,11 @@ import { randomNumberInRange } from './components/utils/RandomInt'
 import useModal from './components/utils/UseModal'
 import { getVersion } from '@tauri-apps/api/app'
 import YesNoModal from './components/YesNoModal'
-import { profile } from 'console'
-import { emit } from '@tauri-apps/api/event'
-import NumericInput from './components/config/NumericInput'
 import ConfigLabel from './components/config/ConfigLabel'
 import ConfigTableRow from './components/config/ConfigTableRow'
 import ConfigPanel from './components/config/ConfigPanel'
 import ConfigTable from './components/config/ConfigTable'
 import ProfileDisplay from './components/ProfileDisplay'
-import Select from 'react-select'
 import TextInput from './components/config/TextInput'
 
 const launcherBackgrounds = [LauncherBackground, LauncherBackground2]
@@ -95,7 +90,7 @@ const Launcher = ({ className }: Props) => {
     const [newProfile,setNewProfile] = useState("")
 
     const launch = () => {
-        if (!hasEnteredMainLoop && profileId != "" ) {
+        if (!hasEnteredMainLoop && profileId !== "" ) {
             enterMainLoop()
             invoke('create_window',{profileId: profileId}).then(()=> {
                 invoke('start_bot',{profileId: profileId}).then(()=> {setIsLaunched(true)})
@@ -172,7 +167,7 @@ const Launcher = ({ className }: Props) => {
                     onYes={() => {
                         if (!idList.includes("profile_" + newProfile.toUpperCase())){
                             invoke('rename_profile', {profileId: profileId, newProfileId: newProfile})
-                            setList((oldValue) => [...oldValue.filter((val) => val.replaceAll("profile_", "") != profileId), "profile_" + newProfile.toUpperCase()])
+                            setList((oldValue) => [...oldValue.filter((val) => val.replaceAll("profile_", "") !== profileId), "profile_" + newProfile.toUpperCase()])
                         }
                         setNewProfile("")
                     }}
@@ -199,7 +194,7 @@ const Launcher = ({ className }: Props) => {
                     }
                     onYes={() => {
                         invoke('remove_profile', {profileId: profileId})
-                        setList((oldValue) => oldValue.filter((filtred) => filtred.replaceAll("profile_","") != profileId))
+                        setList((oldValue) => oldValue.filter((filtred) => filtred.replaceAll("profile_","") !== profileId))
                         setPage(1)
                         setPID("")
                     }}
@@ -225,38 +220,30 @@ const Launcher = ({ className }: Props) => {
                             <ConfigTable>
                                 <ConfigTableRow
                                     layout="v"
-                                    label={<ConfigLabel name={"Profiles | Current: " + profileId} helpText={"Select/create/edit/copy you're profiles."} />}
+                                    label={<ConfigLabel name={`Profiles${profileId !== "" ? ` | Current : ${profileId}` :""}`} helpText={"Select/create/edit/copy you're profiles."} />}
                                     item={
                                         <>
-                                            <div>
+                                            <div style={{display: "inline"}}>
                                                 <div className="btn m" onClick={newProfileModal.open}>New</div>
-                                                <div className="btn m" onClick={()=> {profileId != null && renameProfileModal.open()}}>Rename</div>
-                                                <div className="btn m" onClick={()=> {profileId != null && copyProfileModal.open()}}>Copy</div>
-                                                <div className="btn m" onClick={()=> {profileId != null && delProfileModal.open()}}>Remove</div>
-                                                <div className="btn m" onClick={()=> {profileId != null && resetProfileModal.open()}}>Reset</div>
-
+                                                <div className="btn m" onClick={()=> {profileId !== null && renameProfileModal.open()}}>Rename</div>
+                                                <div className="btn m" onClick={()=> {profileId !== null && copyProfileModal.open()}}>Copy</div>
+                                                <div className="btn m" onClick={()=> {profileId !== null && delProfileModal.open()}}>Remove</div>
+                                                <div className="btn m" onClick={()=> {profileId !== null && resetProfileModal.open()}}>Reset</div>
                                                 <div className="btn m" onClick={refreshProfiles}>Refresh</div>
-
-
-
                                             </div>
 
                                             <table id="profiles">
                                                 {idList.sort((a,b) => (a > b) ? 1 : ((b > a) ? -1 : 0)).slice( (currentPage -1) * 4,  (currentPage -1) * 4 + 4).map((pid, index) => <>
-                                                    {(index %5 != 0 || true) &&<tr className={pid.replaceAll("profile_","") == profileId ? "selected" : ""} onClick={() => setPID(pid.replaceAll("profile_",""))}>
-                                                        <td>{(pid.startsWith("profile_")? pid.replace("profile_","") : pid)}</td>
-                                                    </tr>}
+                                                    <tr key={index} className={pid.replaceAll("profile_","") === profileId ? "selected" : ""} onClick={() => setPID(pid.replaceAll("profile_",""))}>
+                                                        <td key={index}>{(pid.startsWith("profile_")? pid.replace("profile_","") : pid)}</td>
+                                                    </tr>
                                                 </>)}
-                                                <br />
                                                 <div style={{display:"flex", textAlign: "center", alignItems: "center",fontSize: "1rem" }}>
-                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == 1? current: current -1)}}>{"<-"}</div>
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current === 1? current: current -1)}}>{"<-"}</div>
                                                     Page: {currentPage}/{Math.ceil(idList.length / 4)}
-                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current == Math.ceil(idList.length / 4)? current: current +1)}}>{"->"}</div>
+                                                    <div  style={{width: "50%", fontSize: "1.5rem"}} className="btn sm" onClick={()=> {setPage((current) => current === Math.ceil(idList.length / 4)? current: current +1)}}>{"->"}</div>
                                                 </div>
-
-
                                             </table>
-
                                         </>
                                     }
                                 />

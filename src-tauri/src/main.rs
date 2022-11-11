@@ -23,7 +23,7 @@ use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
-use tauri::{Manager, Size, LogicalSize};
+use tauri::{LogicalSize, Manager, Size, Window};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
@@ -80,10 +80,54 @@ fn main() {
             remove_profile,
             rename_profile,
             copy_profile,
-            reset_profile
+            reset_profile,
+            focus_client,
+            toggle_main_size,
         ])
         .run(context)
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn toggle_main_size(
+    size: [u32; 2],
+    should_not_toggle: Option<bool>,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> bool {
+    let window = app_handle.get_window("main").unwrap();
+    let win_size = window.inner_size();
+    if win_size.is_err() {
+        return false;
+    }
+    let win_size = win_size.unwrap().clone();
+
+    let default_width = 550;
+    let default_height = 630;
+
+    let min_width = size[0];
+    let min_height = size[1];
+
+    fn resize_window(window: Window, width: u32, height: u32, should_not_toggle: Option<bool>) {
+        if should_not_toggle.unwrap_or(false) == false {
+            drop(window.set_size(LogicalSize { width, height }));
+        }
+    }
+
+    if win_size.width == min_width && win_size.height == min_height {
+        resize_window(window, default_width, default_height, should_not_toggle);
+        return false;
+    } else {
+        resize_window(window, min_width, min_height, should_not_toggle);
+        return true;
+    }
+}
+
+#[tauri::command]
+fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+    let window = app_handle.get_window("client");
+    drop(window.clone().unwrap().unminimize());
+    drop(window.unwrap().set_focus());
 }
 
 #[tauri::command]
@@ -96,7 +140,8 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                 .app_dir()
                 .unwrap()
                 .to_string_lossy()
-        ).clone(),
+        )
+        .clone(),
     ));
     let paths = fs::read_dir(format!(
         r"{}\",
@@ -109,13 +154,13 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
     .unwrap();
     let mut profiles = vec![];
 
-        for path in paths {
-            if let Ok(entry) = path {
-                if entry.file_name().to_str().unwrap().starts_with("profile_") {
-                    profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
-                }
+    for path in paths {
+        if let Ok(entry) = path {
+            if entry.file_name().to_str().unwrap().starts_with("profile_") {
+                profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
             }
         }
+    }
     if profiles.len() == 0 {
         drop(fs::create_dir(
             format!(
@@ -125,11 +170,11 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                     .app_dir()
                     .unwrap()
                     .to_string_lossy()
-            ).clone(),
+            )
+            .clone(),
         ));
         profiles.push("profile_DEFAULT".to_string());
     }
-
 
     profiles
 }
@@ -389,11 +434,14 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             }
 
             if !config.farming_config().is_stop_fighting() {
-               drop(window.set_size(Size::Logical(LogicalSize {width: 800.0, height: 600.0})));
-               drop(window.set_resizable(false));
-             }else {
+                drop(window.set_size(Size::Logical(LogicalSize {
+                    width: 800.0,
+                    height: 600.0,
+                })));
+                drop(window.set_resizable(false));
+            } else {
                 drop(window.set_resizable(true));
-             }
+            }
 
             frontend_info_mut.set_is_running(true);
 
@@ -440,7 +488,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 let is_alive = image_analyzer.client_stats.is_alive();
                 if !is_alive {
                     frontend_info_mut.set_is_alive(false);
-                    //frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    // Send infos to frontend
+                    send_info(&*frontend_info.read());
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);
