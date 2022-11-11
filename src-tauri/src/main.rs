@@ -23,7 +23,6 @@ use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
-use tauri::{Manager, Size, LogicalSize};
 use tauri::{LogicalSize, Manager, Size, Window};
 
 use crate::{
@@ -82,7 +81,6 @@ fn main() {
             rename_profile,
             copy_profile,
             reset_profile,
-            focus_window
             focus_client,
             toggle_main_size,
         ])
@@ -91,7 +89,6 @@ fn main() {
 }
 
 #[tauri::command]
-fn focus_window(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 fn toggle_main_size(
     size: [u32; 2],
     should_not_toggle: Option<bool>,
@@ -129,8 +126,6 @@ fn toggle_main_size(
 #[tauri::command]
 fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client");
-    window.clone().unwrap().unminimize();
-    window.unwrap().set_focus();
     drop(window.clone().unwrap().unminimize());
     drop(window.unwrap().set_focus());
 }
@@ -145,7 +140,6 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                 .app_dir()
                 .unwrap()
                 .to_string_lossy()
-        ).clone(),
         )
         .clone(),
     ));
@@ -160,11 +154,6 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
     .unwrap();
     let mut profiles = vec![];
 
-        for path in paths {
-            if let Ok(entry) = path {
-                if entry.file_name().to_str().unwrap().starts_with("profile_") {
-                    profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
-                }
     for path in paths {
         if let Ok(entry) = path {
             if entry.file_name().to_str().unwrap().starts_with("profile_") {
@@ -181,13 +170,11 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                     .app_dir()
                     .unwrap()
                     .to_string_lossy()
-            ).clone(),
             )
             .clone(),
         ));
         profiles.push("profile_DEFAULT".to_string());
     }
-
 
     profiles
 }
@@ -447,9 +434,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             }
 
             if !config.farming_config().is_stop_fighting() {
-               drop(window.set_size(Size::Logical(LogicalSize {width: 800.0, height: 600.0})));
-               drop(window.set_resizable(false));
-             }else {
                 drop(window.set_size(Size::Logical(LogicalSize {
                     width: 800.0,
                     height: 600.0,
@@ -457,7 +441,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 drop(window.set_resizable(false));
             } else {
                 drop(window.set_resizable(true));
-             }
             }
 
             frontend_info_mut.set_is_running(true);
@@ -505,7 +488,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 let is_alive = image_analyzer.client_stats.is_alive();
                 if !is_alive {
                     frontend_info_mut.set_is_alive(false);
-                    //frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    // Send infos to frontend
+                    send_info(&*frontend_info.read());
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);

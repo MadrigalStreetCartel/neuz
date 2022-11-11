@@ -1,20 +1,20 @@
 use std::{fmt, time::Instant};
 
-use crate::image_analyzer::{Color, ImageAnalyzer};
+use crate::image_analyzer::{Color,
+    //ImageAnalyzer
+};
 
-use super::PointCloud;
+//use super::PointCloud;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum PixelDetectionKind {
     #[default]
     CursorType,
-    IsNpc,
 }
 impl fmt::Display for PixelDetectionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PixelDetectionKind::CursorType => write!(f, "cursor type"),
-            PixelDetectionKind::IsNpc => write!(f, "is NPC"),
         }
     }
 }
@@ -52,17 +52,6 @@ impl From<PixelDetectionKind> for PixelDetectionConfig {
                 cursor_type.max_y = 1;
 
                 cursor_type
-            }
-            IsNpc => {
-                let mut is_npc = PixelDetectionConfig::new([72, 78, 166]);
-
-                is_npc.min_x = 310;
-                is_npc.min_y = 30;
-
-                is_npc.max_x = 500;
-                is_npc.max_y = 60;
-
-                is_npc
             }
         }
     }
@@ -108,7 +97,7 @@ impl PartialOrd for PixelDetection {
 }
 
 impl PixelDetection {
-    pub fn new(pixel_kind: PixelDetectionKind, image: Option<&ImageAnalyzer>) -> Self {
+    /* pub fn new(pixel_kind: PixelDetectionKind, image: Option<&ImageAnalyzer>) -> Self {
         let mut res = Self {
             value: false,
             pixel_kind,
@@ -122,7 +111,6 @@ impl PixelDetection {
 
         res
     }
-
     pub fn update_value(&mut self, image: &ImageAnalyzer) {
         let config: PixelDetectionConfig = self.pixel_kind.into();
 
@@ -151,5 +139,5 @@ impl PixelDetection {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
         }
-    }
+    } */
 }

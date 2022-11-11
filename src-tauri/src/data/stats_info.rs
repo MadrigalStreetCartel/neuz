@@ -38,7 +38,7 @@ pub struct ClientStats {
     pub fp: StatInfo,
     pub target_hp: StatInfo,
     pub target_mp: StatInfo,
-
+    is_alive: bool,
     pub stat_try_not_detected_count: i32,
     window: Window,
 }
@@ -50,7 +50,7 @@ impl ClientStats {
             fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
             target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
             target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
-
+            is_alive: false,
             stat_try_not_detected_count: 0,
             window,
         }
@@ -71,32 +71,38 @@ impl ClientStats {
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
-    pub fn detect_stat_tray(&mut self) {
+    pub fn detect_stat_tray(&mut self) -> bool {
         // Since HP/MP/FP are 0 we know bar should be hidden
         if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
             self.stat_try_not_detected_count += 1;
-            if self.stat_try_not_detected_count == 4 {
+            if self.stat_try_not_detected_count == 5 {
                 self.stat_try_not_detected_count = 0;
 
                 // Try to open char stat tray
                 eval_send_key(&self.window, "T", KeyMode::Press);
             }
+            return false;
         } else {
             self.stat_try_not_detected_count = 0;
+            return true;
         }
     }
 
     // bot died
     pub fn is_alive(&mut self) -> bool {
         // We need to be sure that char tray is open before
-        self.detect_stat_tray();
-
-        // Obfviously
-        if self.hp.value == 0 {
-            false
-        } else {
-            true
+        if self.detect_stat_tray() {
+            // Obfviously
+            if self.hp.value == 0 {
+                self.is_alive = false
+            } else {
+                self.is_alive = true
+            }
         }
+        return self.is_alive
+
+
+
     }
 
     pub fn debug_print(&mut self, logger: &Logger) {

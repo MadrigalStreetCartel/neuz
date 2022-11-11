@@ -66,7 +66,7 @@ pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
     //std::thread::sleep(Duration::from_millis(100));
 }
 
-pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
+/* pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
     drop(
         window.eval(
             format!(
@@ -85,7 +85,7 @@ pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
             .as_str(),
         ),
     );
-}
+} */
 
 pub fn eval_mouse_move(window: &Window, pos: Point) {
     drop(
@@ -105,7 +105,7 @@ pub fn eval_mouse_move(window: &Window, pos: Point) {
 
 pub fn eval_mob_click(window: &Window, pos: Point) {
     eval_mouse_move(window, pos);
-    std::thread::sleep(Duration::from_millis(30));
+    std::thread::sleep(Duration::from_millis(20));
     drop(
         window.eval(
             format!(
