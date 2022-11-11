@@ -490,11 +490,6 @@ impl<'a> FarmingBehavior<'_> {
                 }
             } else {
                 // Not a mob we go search for another
-                use crate::movement::prelude::*;
-                play!(self.movement => [
-                    HoldKeyFor("S", dur::Fixed(50)),
-                ]);
-
                 self.avoid_last_click();
                 return State::SearchingForEnemy;
             }
