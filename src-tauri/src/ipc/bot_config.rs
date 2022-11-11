@@ -146,10 +146,8 @@ pub struct FarmingConfig {
     aggressive_mobs_colors: Option<[Option<u8>; 3]>,
     aggressive_tolerence: Option<u8>,
 
-    obstacle_avoidance_enabled: Option<bool>,
     obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
-    obstacle_avoidance_only_passive: Option<bool>,
 
     min_mobs_name_width: Option<u32>,
     max_mobs_name_width: Option<u32>,
@@ -162,20 +160,12 @@ impl FarmingConfig {
         self.circle_pattern_rotation_duration.unwrap_or(30)
     }
 
-    pub fn obstacle_avoidance_enabled(&self) -> bool {
-        self.obstacle_avoidance_enabled.unwrap_or(true)
+    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
+        self.obstacle_avoidance_cooldown.unwrap_or(5000).into()
     }
 
-    pub fn get_obstacle_avoidance_cooldown(&self) -> u128 {
-        self.obstacle_avoidance_cooldown.unwrap_or(5500).into()
-    }
-
-    pub fn get_obstacle_avoidance_max_try(&self) -> u32 {
-        self.obstacle_avoidance_max_try.unwrap_or(3)
-    }
-
-    pub fn obstacle_avoidance_only_passive(&self) -> bool {
-        self.obstacle_avoidance_only_passive.unwrap_or(true)
+    pub fn obstacle_avoidance_max_try(&self) -> u32 {
+        self.obstacle_avoidance_max_try.unwrap_or(5)
     }
 
     pub fn min_mobs_name_width(&self) -> u32 {
@@ -190,19 +180,19 @@ impl FarmingConfig {
         self.min_hp_attack.unwrap_or(0)
     }
 
-    pub fn get_passive_mobs_colors(&self) -> [Option<u8>; 3] {
+    pub fn passive_mobs_colors(&self) -> [Option<u8>; 3] {
         self.passive_mobs_colors.unwrap_or([None, None, None])
     }
 
-    pub fn get_passive_tolerence(&self) -> u8 {
+    pub fn passive_tolerence(&self) -> u8 {
         self.passive_tolerence.unwrap_or(5)
     }
 
-    pub fn get_aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
+    pub fn aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
         self.aggressive_mobs_colors.unwrap_or([None, None, None])
     }
 
-    pub fn get_aggressive_tolerence(&self) -> u8 {
+    pub fn aggressive_tolerence(&self) -> u8 {
         self.aggressive_tolerence.unwrap_or(10)
     }
 
@@ -221,7 +211,7 @@ impl FarmingConfig {
     }
 
     /// Get the first matching slot index
-    pub fn get_slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
+    pub fn slot_index(&self, slot_type: SlotType) -> Option<(usize, usize)> {
         for n in 0..9 {
             let found_index = self.slot_bars()[n].get_slot_index(slot_type);
             if found_index.is_some() {
@@ -256,8 +246,8 @@ impl FarmingConfig {
         self.is_stop_fighting.unwrap_or(false)
     }
 
-    pub fn get_prevent_already_attacked(&self) -> bool {
-        self.prevent_already_attacked.unwrap_or(false)
+    pub fn prevent_already_attacked(&self) -> bool {
+        self.prevent_already_attacked.unwrap_or(true)
     }
 }
 

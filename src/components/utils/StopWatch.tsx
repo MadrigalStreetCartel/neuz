@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
+export function MsFormat(timer: number) {
+    let ms = ("00" + ((timer) % 1000)).slice(-3)
+    let secs = ("0" + Math.floor((timer / 1000) % 60)).slice(-2)
+    let mins = ("0" + Math.floor((timer / 60000) % 60)).slice(-2)
+    let hours = ("0" + Math.floor((timer / 3600000) % 60)).slice(-2)
+
+    return `${hours}:${mins}:${secs}:${ms}`
+}
+
 export class StopWatchValues {
     hours = "00"
     mins = "00"
@@ -55,21 +64,29 @@ export class StopWatchValues {
         this.timer = timer
     }
 }
-export const useStopWatch = () => {
+export const useStopWatch = (startCondition: boolean) => {
     const time = useRef(0);
     const [started, setStarted] = useState(false);
-    const watch = useRef(new StopWatchValues(time.current))
+    const watch = useRef<StopWatchValues | null>(null)
+
+    useEffect(()=> {
+        watch.current = new StopWatchValues(time.current)
+    }, [])
 
     function reset() {
         time.current = 0;
     }
 
-    function start(startCondition: boolean, shouldReset = false) {
+    start()
+
+    function start(shouldReset = false) {
         if(!started && startCondition) {
             shouldReset && reset()
+            console.log("Started stopwatch")
             setStarted(true);
         }else if(started && !startCondition) {
             stop()
+            console.log("Stopped stopwatch")
         }
     }
 
@@ -81,9 +98,9 @@ export const useStopWatch = () => {
       let interval: string | number | NodeJS.Timeout | undefined;
       if (started) {
         interval = setInterval(() => {
-            time.current = time.current + 10
-            watch.current.update(time.current)
-        }, 10);
+            time.current = time.current + 50
+            watch.current?.update(time.current)
+        }, 50);
       } else if (!started) {
         clearInterval(interval);
       }

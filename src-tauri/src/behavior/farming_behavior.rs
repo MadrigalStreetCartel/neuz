@@ -546,15 +546,19 @@ impl<'a> FarmingBehavior<'_> {
 
         let elapsed_search_time = format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
         let elapsed_time_to_kill =
+        let elapsed_search_time_string = format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
+        let elapsed_time_to_kill_string =
             format!("{}secs", DateTime::format_float(time_to_kill_as_secs, 2));
 
         let elapsed = format!(
             "Elapsed time : since start {} to kill {} to find {} ",
             started_formatted, elapsed_time_to_kill, elapsed_search_time
+            started_formatted, elapsed_time_to_kill_string, elapsed_search_time_string
         );
         slog::debug!(self.logger, "Monster was killed {}", elapsed);
 
         frontend_info.set_kill_avg((kill_per_minute, kill_per_hour))
+        frontend_info.set_kill_stats((kill_per_minute, kill_per_hour), ( elapsed_search_time.as_millis(), elapsed_time_to_kill.as_millis() ))
     }
 
     fn after_enemy_kill(

@@ -24,6 +24,7 @@ use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
 use tauri::{Manager, Size, LogicalSize};
+use tauri::{LogicalSize, Manager, Size, Window};
 
 use crate::{
     behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
@@ -82,6 +83,8 @@ fn main() {
             copy_profile,
             reset_profile,
             focus_window
+            focus_client,
+            toggle_main_size,
         ])
         .run(context)
         .expect("error while running tauri application");
@@ -89,10 +92,49 @@ fn main() {
 
 #[tauri::command]
 fn focus_window(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+fn toggle_main_size(
+    size: [u32; 2],
+    should_not_toggle: Option<bool>,
+    _state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> bool {
+    let window = app_handle.get_window("main").unwrap();
+    let win_size = window.inner_size();
+    if win_size.is_err() {
+        return false;
+    }
+    let win_size = win_size.unwrap().clone();
+
+    let default_width = 550;
+    let default_height = 630;
+
+    let min_width = size[0];
+    let min_height = size[1];
+
+    fn resize_window(window: Window, width: u32, height: u32, should_not_toggle: Option<bool>) {
+        if should_not_toggle.unwrap_or(false) == false {
+            drop(window.set_size(LogicalSize { width, height }));
+        }
+    }
+
+    if win_size.width == min_width && win_size.height == min_height {
+        resize_window(window, default_width, default_height, should_not_toggle);
+        return false;
+    } else {
+        resize_window(window, min_width, min_height, should_not_toggle);
+        return true;
+    }
+}
+
+#[tauri::command]
+fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client");
     window.clone().unwrap().unminimize();
     window.unwrap().set_focus();
+    drop(window.clone().unwrap().unminimize());
+    drop(window.unwrap().set_focus());
 }
+
 #[tauri::command]
 fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
     drop(fs::create_dir(
@@ -104,6 +146,8 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                 .unwrap()
                 .to_string_lossy()
         ).clone(),
+        )
+        .clone(),
     ));
     let paths = fs::read_dir(format!(
         r"{}\",
@@ -121,8 +165,13 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                 if entry.file_name().to_str().unwrap().starts_with("profile_") {
                     profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
                 }
+    for path in paths {
+        if let Ok(entry) = path {
+            if entry.file_name().to_str().unwrap().starts_with("profile_") {
+                profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
             }
         }
+    }
     if profiles.len() == 0 {
         drop(fs::create_dir(
             format!(
@@ -133,6 +182,8 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                     .unwrap()
                     .to_string_lossy()
             ).clone(),
+            )
+            .clone(),
         ));
         profiles.push("profile_DEFAULT".to_string());
     }
@@ -399,8 +450,15 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                drop(window.set_size(Size::Logical(LogicalSize {width: 800.0, height: 600.0})));
                drop(window.set_resizable(false));
              }else {
+                drop(window.set_size(Size::Logical(LogicalSize {
+                    width: 800.0,
+                    height: 600.0,
+                })));
+                drop(window.set_resizable(false));
+            } else {
                 drop(window.set_resizable(true));
              }
+            }
 
             frontend_info_mut.set_is_running(true);
 

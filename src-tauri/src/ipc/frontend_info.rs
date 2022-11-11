@@ -5,6 +5,8 @@ pub struct FrontendInfo {
     /* enemy_bounds: Option<Vec<Bounds>>,
     active_enemy_bounds: Option<Bounds>, */
     enemy_kill_count: u32,
+    last_fight_duration: u64,
+    last_search_duration: u64,
     kill_min_avg: f32,
     kill_hour_avg: f32,
     is_attacking: bool,
@@ -26,9 +28,13 @@ impl FrontendInfo {
         self.enemy_kill_count = enemy_kill_count;
     }
 
-    pub fn set_kill_avg(&mut self, active_enemy_bounds: (f32, f32)) {
-        self.kill_min_avg = active_enemy_bounds.0;
-        self.kill_hour_avg = active_enemy_bounds.1;
+    /// last_kill_avg -> 0: kill/minute 1: kill/hour | action_duration 0: search 1: fight
+    pub fn set_kill_stats(&mut self, last_kill_avg: (f32, f32), action_duration: (u128, u128)) {
+        self.kill_min_avg = last_kill_avg.0;
+        self.kill_hour_avg = last_kill_avg.1;
+
+        self.last_search_duration = action_duration.0.try_into().unwrap_or(0);
+        self.last_fight_duration = action_duration.1.try_into().unwrap_or(0);
     }
     pub fn set_is_attacking(&mut self, is_attacking: bool) {
         self.is_attacking = is_attacking;
