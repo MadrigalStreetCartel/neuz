@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::Window;
+use tauri::{Window, Manager};
 
 use crate::{
     data::{Bounds, MobType, Point, Target, TargetType},
@@ -46,6 +46,7 @@ pub struct FarmingBehavior<'a> {
     last_buff_usage: Instant,
     last_click_pos: Option<Point>,
     stealed_target_count: u32,
+    last_no_ennemy_time: Option<Instant>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -71,6 +72,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_buff_usage: Instant::now(),
             last_click_pos: None,
             stealed_target_count: 0,
+            last_no_ennemy_time: None,
         }
     }
 
@@ -87,7 +89,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         image: &mut ImageAnalyzer,
     ) {
         let config = config.farming_config();
-
         // Update all needed timestamps
         self.update_timestamps(config);
 
@@ -257,8 +258,14 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
+        if let Some (last_no_ennemy_time) = self.last_no_ennemy_time {
+            if config.mobs_timeout() > 0 && last_no_ennemy_time.elapsed().as_millis() > config.mobs_timeout() {
+                self.window.app_handle().exit(0);
+            }
+        }else {
+            self.last_no_ennemy_time = Some(Instant::now());
+        }
         use crate::movement::prelude::*;
-
         // Try rotating first in order to locate nearby enemies
         if self.rotation_movement_tries < 30 {
             play!(self.movement => [

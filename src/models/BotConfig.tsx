@@ -93,6 +93,7 @@ export type FarmingConfigModel = Partial<{
     min_hp_attack: number,
     on_death_disconnect: boolean,
     interval_between_buffs: number,
+    mobs_timeout: number,
 }>
 
 export type SupportConfigModel = Partial<{

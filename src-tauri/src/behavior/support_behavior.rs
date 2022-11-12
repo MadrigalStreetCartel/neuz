@@ -89,11 +89,12 @@ impl<'a> SupportBehavior<'_> {
             if last_far_from_target.elapsed().as_millis() > config.obstacle_avoidance_cooldown() {
                     self.move_circle_pattern();
             }
+        } else{
+            use crate::movement::prelude::*;
+            play!(self.movement => [
+                PressKey("Z"),
+            ]);
         }
-        use crate::movement::prelude::*;
-        play!(self.movement => [
-            PressKey("Z"),
-        ]);
     }
 
     fn move_circle_pattern(&mut self) {

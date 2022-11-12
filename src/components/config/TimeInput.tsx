@@ -18,7 +18,7 @@ const TimeInput = ({ className, value, onChange }: Props) => {
             <input type="text" value={newValue?.toString() ?? ""}
                 onChange={(e)=>{
                     stopWatch.fromString(e.target.value)
-                    if (stopWatch.timer > 0) {
+                        if (stopWatch.timer > 0 || e.target.value == stopWatch.toString() ) {
                         onChange(stopWatch.timer)
                     }
                     setNewValue(e.target.value)

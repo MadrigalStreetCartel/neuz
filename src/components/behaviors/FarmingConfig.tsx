@@ -138,7 +138,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before we try to move or escape if monster's HP doesn't change" />}
-                        item={<NumericInput unit='ms' value={config.obstacle_avoidance_cooldown} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
+                        item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange({...config, obstacle_avoidance_cooldown: value})} />}
                     />
                     <ConfigTableRow
                         layout="v"
@@ -201,11 +201,14 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
             }/>
             {/* DEBUG END */}
             <Modal isShowing={onDeathModal.isShown} hide={onDeathModal.close}
-            title={<h4>On death behavior</h4>} body={
+            title={<h4>Auto disconnect</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
+                        label={<ConfigLabel name="No mob time out" helpText="After this time character will disconnect if no mobs were found" />}
+                        item={<TimeInput value={config.mobs_timeout} onChange={value => onChange({...config, mobs_timeout: value})} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Disconnect" helpText="Enable will automatically disconnect, otherwise we'll wait for revive" />}
                         item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
                     />
                 </ConfigTable>

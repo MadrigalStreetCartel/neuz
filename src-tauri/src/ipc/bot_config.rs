@@ -157,9 +157,14 @@ pub struct FarmingConfig {
     min_hp_attack: Option<u32>,
     on_death_disconnect: Option<bool>,
     interval_between_buffs: Option<u64>,
+    mobs_timeout: Option<u64>,
 }
 
 impl FarmingConfig {
+
+    pub fn mobs_timeout(&self) -> u128 {
+        self.mobs_timeout.unwrap_or(0).into()
+    }
 
     pub fn interval_between_buffs(&self) -> u128 {
         self.interval_between_buffs.unwrap_or(2000).into()

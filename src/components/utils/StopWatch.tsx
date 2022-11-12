@@ -48,7 +48,7 @@ export class StopWatchValues {
             time += parseInt(hours) * 3600000
         }
 
-        this.timer = time
+        this.update(time)
         return this
     }
 
