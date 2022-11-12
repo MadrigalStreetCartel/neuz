@@ -396,13 +396,13 @@ impl<'a> FarmingBehavior<'_> {
         State::Attacking(mob)
     }
 
-    fn abort_attack(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
+    fn abort_attack(&mut self, image: &mut ImageAnalyzer) -> State {
         use crate::movement::prelude::*;
         self.is_attacking = false;
 
         if self.already_attack_count > 0 {
             // Target marker found
-            if let Some(marker) = image.identify_target_marker(config) {
+            if let Some(marker) = image.identify_target_marker(false) {
                 self.avoided_bounds.push((
                     marker.bounds.grow_by(self.already_attack_count * 10),
                     Instant::now(),
@@ -451,7 +451,7 @@ impl<'a> FarmingBehavior<'_> {
             self.obstacle_avoidance_count += 1;
             return false;
         } else {
-            self.abort_attack(config, image);
+            self.abort_attack(image);
             return true;
         }
     }
@@ -466,7 +466,7 @@ impl<'a> FarmingBehavior<'_> {
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
         let is_mob =
             image.client_stats.target_hp.value > 0 && image.client_stats.target_mp.value > 0;
-        let is_mob_alive = image.identify_target_marker(config).is_some() || image.client_stats.target_mp.value > 0 || image.client_stats.target_hp.value > 0 ;
+        let is_mob_alive = image.identify_target_marker(false).is_some() || image.client_stats.target_mp.value > 0 || image.client_stats.target_hp.value > 0 ;
 
         if !self.is_attacking && !config.is_stop_fighting() {
             if is_npc {
@@ -480,7 +480,7 @@ impl<'a> FarmingBehavior<'_> {
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
                     // If we didn't take any damages
                     if hp_last_update.elapsed().as_millis() > 3000 {
-                        return self.abort_attack(config, image);
+                        return self.abort_attack(image);
                     } else {
                         if self.stealed_target_count > 5 {
                             self.stealed_target_count = 0;

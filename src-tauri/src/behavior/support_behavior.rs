@@ -47,37 +47,49 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         image: &mut ImageAnalyzer,
     ) {
         let config = config.support_config();
-
+        let target_marker = image.identify_target_marker(true);
         self.update_slots_usage(config);
 
-        if image.client_stats.target_hp.value == 0 && image.identify_target_marker(config).is_some() {
+        if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
             self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
             return;
         }
+
         self.check_restorations(config, image);
+        //std::thread::sleep(Duration::from_millis(200));
+
         if image.client_stats.target_hp.value > 0 {
             self.check_buffs(config);
 
             use crate::movement::prelude::*;
-
             play!(self.movement => [
                 PressKey("Z"),
             ]);
-
-            if config.jump_cooldown() > 0 {
-                if self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
-                    self.last_jump_time = Instant::now();
-                    play!(self.movement => [
-                        Jump,
-                    ]);
+            if let Some(target_marker) = target_marker {
+                let marker_distance = image.get_target_marker_distance(target_marker);
+                if marker_distance > 100 {
+                    self.avoid_obstacle(config);
                 }
+            } else {
+                self.avoid_obstacle(config);
             }
         }
     }
 }
 
 impl<'a> SupportBehavior<'_> {
+
+    fn avoid_obstacle(&mut self, config: &SupportConfig) {
+        use crate::movement::prelude::*;
+        if config.jump_cooldown() > 0 && self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
+            self.last_jump_time = Instant::now();
+            play!(self.movement => [
+                Jump,
+            ]);
+        }
+    }
+
     /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &SupportConfig) {
         let mut slotbar_index = 0;
