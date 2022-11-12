@@ -19,6 +19,7 @@ pub struct SupportBehavior<'a> {
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_buff_usage: Instant,
     last_jump_time: Instant,
+    avoid_obstacle_direction: String,
     //is_on_flight: bool,
 }
 
@@ -30,6 +31,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             slots_usage_last_time: [[None; 10]; 9],
             last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
+            avoid_obstacle_direction: "D".to_owned(),
             //is_on_flight: false,
         }
     }
@@ -60,13 +62,9 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         std::thread::sleep(Duration::from_millis(100));
 
         if image.client_stats.target_hp.value > 0 {
-            use crate::movement::prelude::*;
-            play!(self.movement => [
-                PressKey("Z"),
-            ]);
             if let Some(target_marker) = target_marker {
                 let marker_distance = image.get_target_marker_distance(target_marker);
-                if marker_distance > 100 {
+                if marker_distance > 200 {
                     self.avoid_obstacle(config);
                 } else {
                     self.check_buffs(config);
@@ -81,12 +79,38 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 impl<'a> SupportBehavior<'_> {
 
     fn avoid_obstacle(&mut self, config: &SupportConfig) {
+        self.move_circle_pattern();
         use crate::movement::prelude::*;
+        play!(self.movement => [
+            PressKey("Z"),
+        ]);
         if config.jump_cooldown() > 0 && self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
             self.last_jump_time = Instant::now();
             play!(self.movement => [
                 Jump,
             ]);
+        }
+    }
+
+    fn move_circle_pattern(&mut self) {
+        // low rotation duration means big circle, high means little circle
+        use crate::movement::prelude::*;
+        play!(self.movement => [
+            HoldKeys(vec!["W", "Space", &self.avoid_obstacle_direction]),
+            Wait(dur::Fixed(200)),
+            ReleaseKey(&self.avoid_obstacle_direction),
+            Wait(dur::Fixed(500)),
+            ReleaseKeys(vec!["Space", "W"]),
+            HoldKeyFor("S", dur::Fixed(50)),
+            Wait(dur::Fixed(300)),
+        ]);
+
+        self.avoid_obstacle_direction = {
+            if self.avoid_obstacle_direction == "D" {
+                "A".to_owned()
+            } else {
+                "D".to_owned()
+            }
         }
     }
 
