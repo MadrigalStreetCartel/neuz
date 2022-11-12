@@ -50,7 +50,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         self.update_slots_usage(config);
 
-        if image.client_stats.target_hp.value == 0 {
+        if image.client_stats.target_hp.value == 0 && image.identify_target_marker(config).is_some() {
             self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
             return;
