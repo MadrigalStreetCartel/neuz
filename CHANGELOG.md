@@ -6,6 +6,19 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.16.2**
+> Released on 12.11.2022
+- Support
+  - Buffs are now only triggered if character is close enought from target
+  - Adds movement pattern, will try to move after a given time (obstacle_avoidance_cooldown)
+- Farming 
+  - Improve obstacle avoidance by detecting the target marker
+  - Fix an issue where the buffs were not fired (only for farming)
+- Misc
+  - Adds choice between disconnect/revive **on death** and timeout if no mobs were found for farming mode
+  - Our good old debug is now Settings with a debug enable slider to get access to everything!
+  - Various fixes
+
 **0.16.1**
 > Released on 12.11.2022
 - HOTFIX Some mobs can heal themself what set their MP to 0, and because Neuz was detecting death by 0% MP it stopped the fight, now we check if target is present + HP & MP are greater than 0

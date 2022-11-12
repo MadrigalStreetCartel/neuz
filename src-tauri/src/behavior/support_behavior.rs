@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use slog::Logger;
 use tauri::Window;
@@ -19,6 +19,8 @@ pub struct SupportBehavior<'a> {
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_buff_usage: Instant,
     last_jump_time: Instant,
+    avoid_obstacle_direction: String,
+    last_far_from_target: Option<Instant>,
     //is_on_flight: bool,
 }
 
@@ -30,6 +32,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             slots_usage_last_time: [[None; 10]; 9],
             last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
+            avoid_obstacle_direction: "D".to_owned(),
+            last_far_from_target: None,
             //is_on_flight: false,
         }
     }
@@ -47,37 +51,75 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         image: &mut ImageAnalyzer,
     ) {
         let config = config.support_config();
-
+        let target_marker = image.identify_target_marker(true);
         self.update_slots_usage(config);
 
-        if image.client_stats.target_hp.value == 0 {
+        if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
             self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
             return;
         }
+
         self.check_restorations(config, image);
+        std::thread::sleep(Duration::from_millis(100));
+
         if image.client_stats.target_hp.value > 0 {
-            self.check_buffs(config);
-
-            use crate::movement::prelude::*;
-
-            play!(self.movement => [
-                PressKey("Z"),
-            ]);
-
-            if config.jump_cooldown() > 0 {
-                if self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
-                    self.last_jump_time = Instant::now();
-                    play!(self.movement => [
-                        Jump,
-                    ]);
+            if let Some(target_marker) = target_marker {
+                let marker_distance = image.get_target_marker_distance(target_marker);
+                if marker_distance > 200 {
+                    if self.last_far_from_target.is_none() {
+                        self.last_far_from_target = Some(Instant::now());
+                    }
+                    self.avoid_obstacle(config);
+                } else {
+                    self.last_far_from_target = None;
+                    self.check_buffs(config);
                 }
+            } else {
+                self.avoid_obstacle(config);
             }
         }
     }
 }
 
 impl<'a> SupportBehavior<'_> {
+
+    fn avoid_obstacle(&mut self, config: &SupportConfig) {
+        if let Some(last_far_from_target) = self.last_far_from_target {
+            if last_far_from_target.elapsed().as_millis() > config.obstacle_avoidance_cooldown() {
+                    self.move_circle_pattern();
+            }
+        } else{
+            use crate::movement::prelude::*;
+            play!(self.movement => [
+                PressKey("Z"),
+            ]);
+        }
+    }
+
+    fn move_circle_pattern(&mut self) {
+        // low rotation duration means big circle, high means little circle
+        use crate::movement::prelude::*;
+        play!(self.movement => [
+            HoldKeys(vec!["W", "Space", &self.avoid_obstacle_direction]),
+            Wait(dur::Fixed(200)),
+            ReleaseKey(&self.avoid_obstacle_direction),
+            Wait(dur::Fixed(500)),
+            ReleaseKeys(vec!["Space", "W"]),
+            HoldKeyFor("S", dur::Fixed(50)),
+            PressKey("Z"),
+            Wait(dur::Fixed(300)),
+        ]);
+
+        self.avoid_obstacle_direction = {
+            if self.avoid_obstacle_direction == "D" {
+                "A".to_owned()
+            } else {
+                "D".to_owned()
+            }
+        }
+    }
+
     /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &SupportConfig) {
         let mut slotbar_index = 0;
@@ -130,9 +172,10 @@ impl<'a> SupportBehavior<'_> {
     }
 
     fn check_buffs(&mut self, config: &SupportConfig) {
-        if self.last_buff_usage.elapsed().as_millis() > 2000 {
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.last_buff_usage = Instant::now();
             self.get_slot_for(config, None, SlotType::BuffSkill, true);
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 

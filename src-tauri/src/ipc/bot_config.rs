@@ -155,9 +155,25 @@ pub struct FarmingConfig {
     max_mobs_name_width: Option<u32>,
 
     min_hp_attack: Option<u32>,
+    on_death_disconnect: Option<bool>,
+    interval_between_buffs: Option<u64>,
+    mobs_timeout: Option<u64>,
 }
 
 impl FarmingConfig {
+
+    pub fn mobs_timeout(&self) -> u128 {
+        self.mobs_timeout.unwrap_or(0).into()
+    }
+
+    pub fn interval_between_buffs(&self) -> u128 {
+        self.interval_between_buffs.unwrap_or(2000).into()
+    }
+
+    pub fn on_death_disconnect(&self) -> bool {
+        self.on_death_disconnect.unwrap_or(true)
+    }
+
     pub fn circle_pattern_rotation_duration(&self) -> u64 {
         self.circle_pattern_rotation_duration.unwrap_or(30)
     }
@@ -256,12 +272,23 @@ impl FarmingConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
-    jump_cooldown: Option<u64>,
+    obstacle_avoidance_cooldown: Option<u64>,
+    on_death_disconnect: Option<bool>,
+    interval_between_buffs: Option<u64>,
 }
 
 impl SupportConfig {
-    pub fn jump_cooldown(&self) -> u128 {
-        return self.jump_cooldown.unwrap_or(0).into();
+
+    pub fn interval_between_buffs(&self) -> u128 {
+        self.interval_between_buffs.unwrap_or(2000).into()
+    }
+
+    pub fn on_death_disconnect(&self) -> bool {
+        self.on_death_disconnect.unwrap_or(true)
+    }
+
+    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
+        return self.obstacle_avoidance_cooldown.unwrap_or(0).into();
     }
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {

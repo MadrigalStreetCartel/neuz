@@ -22,26 +22,26 @@ type Props = {
     info: FrontendInfoModel | null,
     config: SupportConfigModel,
     onChange: (config: SupportConfigModel) => void,
-    running: boolean,
-    isCurrentMode: boolean,
     botStopWatch: StopWatchValues | null,
     botState: string,
 
 
 }
 
-const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState}: Props) => {
+const SupportConfig = ({ className, info, config, onChange, botStopWatch, botState}: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
+    const onDeathModal = useModal()
 
     const defaultValues = {
-        'jump_cooldown': 5000,
+        'obstacle_avoidance_cooldown': 2000,
+        'interval_between_buffs': 2000,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
 
     return (
-        <>
+        <div className={className}>
             <SlotBar botMode="support" config={config} onChange={onChange} />
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}
@@ -49,25 +49,36 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     const newConfig = { ...config, slot_bars: createSlotBars() }
                     onChange(newConfig)
             }}/>
-            <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>DEBUG</h4>} body={
+            <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>Settings</h4>} body={
                 <ConfigTable>
+                    <ConfigTableRow
+                        label={<ConfigLabel name="On death event" helpText="" />}
+                        item={<button onClick={onDeathModal.open}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before it tries to avoid obstacles, and start movement pattern" />}
+                        item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange?.({...config, obstacle_avoidance_cooldown: value})} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Interval between buffs" helpText="" />}
+                        item={<TimeInput value={config.interval_between_buffs} onChange={value => onChange({...config, interval_between_buffs: value})} />}
+                    />
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
                         item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
                     />
                 </ConfigTable>
             }/>
-            <ConfigPanel>
+            <Modal isShowing={onDeathModal.isShown} hide={onDeathModal.close}
+            title={<h4>On death behavior</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
                         layout="v"
-                        label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
+                        item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
                     />
                 </ConfigTable>
-            </ConfigPanel>
-
-
+            }/>
 
             {info && (
                 <div className="info">
@@ -77,10 +88,13 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <div className="row">
                         <div>Botting time: {botStopWatch?.toString()}</div>
                     </div>
-                    <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
+                    <div className="row">
+                        <button className="btn sm" onClick={debugModal.open}>Settings ⚙️</button>
+                    </div>
+
                 </div>
             )}
-        </>
+        </div>
     )
 }
 

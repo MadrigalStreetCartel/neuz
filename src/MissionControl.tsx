@@ -98,8 +98,8 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
                             <Tab mode="AutoShout" image={ImageShout} />
                         </TabControl>
                         <div className="config-container">
-                            {config?.mode === 'Farming' && (<FarmingConfig botState={farmingState} botStopWatch={farmStopWatch.watch} running={config.is_running} isCurrentMode={config.mode === "Farming"} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
-                            {config?.mode === 'Support' && (<SupportConfig botState={supportState} botStopWatch={suppStopWatch.watch} running={config.is_running} isCurrentMode={config.mode === "Support"} info={info} config={config.support_config} onChange={makeConfigUpdater('support_config')} />)}
+                            {config?.mode === 'Farming' && (<FarmingConfig botState={farmingState} botStopWatch={farmStopWatch.watch} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
+                            {config?.mode === 'Support' && (<SupportConfig botState={supportState} botStopWatch={suppStopWatch.watch} info={info} config={config.support_config} onChange={makeConfigUpdater('support_config')} />)}
                             {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
                         </div>
                     </>
@@ -188,6 +188,7 @@ export default styled(MissionControl)`
 
     & .info {
         margin: 0 auto;
+        margin-top: 5px;
         display: flex;
         flex-direction: column;
         padding: .5rem 1rem;
@@ -210,7 +211,6 @@ export default styled(MissionControl)`
             display: flex;
             align-items: center;
             justify-content: space-around;
-            gap: 3rem;
         }
     }
 

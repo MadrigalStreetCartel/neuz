@@ -45,12 +45,12 @@ pub struct ClientStats {
 impl ClientStats {
     pub fn new(window: Window) -> Self {
         Self {
-            hp: StatInfo::new(0, 0, StatusBarKind::Hp, None),
-            mp: StatInfo::new(0, 0, StatusBarKind::Mp, None),
-            fp: StatInfo::new(0, 0, StatusBarKind::Fp, None),
+            hp: StatInfo::new(0, 100, StatusBarKind::Hp, None),
+            mp: StatInfo::new(0, 100, StatusBarKind::Mp, None),
+            fp: StatInfo::new(0, 100, StatusBarKind::Fp, None),
             target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
             target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
-            is_alive: false,
+            is_alive: true,
             stat_try_not_detected_count: 0,
             window,
         }
@@ -151,7 +151,7 @@ impl StatInfo {
             value,
             stat_kind,
             last_update_time: Some(Instant::now()),
-            last_value: 0,
+            last_value: 100,
         };
         if image.is_some() {
             res.update_value(image.unwrap());

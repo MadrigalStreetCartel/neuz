@@ -139,10 +139,10 @@ impl ImageAnalyzer {
     }
 
     fn merge_cloud_into_mobs(
-        config: &FarmingConfig,
+        config: Option<&FarmingConfig>,
         cloud: &PointCloud,
         mob_type: TargetType,
-        ignore_size: bool,
+        //ignore_size: bool,
     ) -> Vec<Target> {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
@@ -170,13 +170,13 @@ impl ImageAnalyzer {
                 bounds: cluster.to_bounds(),
             })
             .filter(|mob| {
-                if ignore_size {
-                    true
-                } else {
+                if let Some(config) = config {
                     // Filter out small clusters (likely to cause misclicks)
                     mob.bounds.w > config.min_mobs_name_width()
                     // Filter out huge clusters (likely to be Violet Magician Troupe)
                     && mob.bounds.w < config.max_mobs_name_width()
+                } else {
+                    true
                 }
             })
             .collect()
@@ -256,28 +256,33 @@ impl ImageAnalyzer {
 
         // Categorize mobs
         let mobs_pas = Self::merge_cloud_into_mobs(
-            config,
+            Some(config),
             &PointCloud::new(mob_coords_pas),
             TargetType::Mob(MobType::Passive),
-            false,
         );
         let mobs_agg = Self::merge_cloud_into_mobs(
-            config,
+            Some(config),
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
-            false,
         );
 
         // Return all mobs
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
     }
 
-    pub fn identify_target_marker(&self, config: &FarmingConfig) -> Option<Target> {
+    pub fn identify_target_marker(&self, blank_target: bool) -> Option<Target> {
         let _timer = Timer::start_new("identify_target_marker");
         let mut coords = Vec::default();
 
         // Reference color
-        let ref_color: Color = Color::new(246, 90, 106);
+        let ref_color: Color = {
+            if !blank_target {
+                Color::new(246, 90, 106)
+            } else {
+                Color::new(164, 180, 226)
+            }
+        };
+
 
         // Collect pixel clouds
         let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
@@ -289,16 +294,32 @@ impl ImageAnalyzer {
 
         // Identify target marker entities
         let target_markers = Self::merge_cloud_into_mobs(
-            config,
+            None,
             &PointCloud::new(coords),
             TargetType::TargetMarker,
-            true,
         );
+
+        if !blank_target && target_markers.is_empty() {
+            return self.identify_target_marker(true);
+        }
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
+    pub fn get_target_marker_distance(&self,  mob: Target) -> i32 {
+        let image = self.image.as_ref().unwrap();
 
+        // Calculate middle point of player
+        let mid_x = (image.width() / 2) as i32;
+        let mid_y = (image.height() / 2) as i32;
+
+        // Calculate 2D euclidian distances to player
+        let point = mob.get_attack_coords();
+        let distance = (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2))
+            as f64)
+            .sqrt() as i32;
+        distance
+    }
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'a>(
         &self,
@@ -309,6 +330,7 @@ impl ImageAnalyzer {
         _logger: &Logger,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
+
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
