@@ -37,12 +37,13 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
 
     const defaultValues = {
         'jump_cooldown': 5000,
+        'interval_between_buffs': 2000,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
 
     return (
-        <>
+        <div className={className}>
             <SlotBar botMode="support" config={config} onChange={onChange} />
             <YesNoModal isShowing={resetSlotYesNo.isShown} hide={resetSlotYesNo.close}
                 title={<h4>Confirm slot reset this action is irreversible</h4>}
@@ -50,8 +51,20 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     const newConfig = { ...config, slot_bars: createSlotBars() }
                     onChange(newConfig)
             }}/>
-            <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>DEBUG</h4>} body={
+            <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>Settings</h4>} body={
                 <ConfigTable>
+                    <ConfigTableRow
+                        label={<ConfigLabel name="On death event" helpText="" />}
+                        item={<button onClick={onDeathModal.open}>⚙️</button>}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
+                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Interval between buffs" helpText="" />}
+                        item={<TimeInput value={config.interval_between_buffs} onChange={value => onChange({...config, interval_between_buffs: value})} />}
+                    />
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
                         item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
@@ -68,17 +81,6 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             }/>
-            <ConfigPanel>
-                <ConfigTable>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
-                    />
-                </ConfigTable>
-            </ConfigPanel>
-
-
 
             {info && (
                 <div className="info">
@@ -89,13 +91,12 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                         <div>Botting time: {botStopWatch?.toString()}</div>
                     </div>
                     <div className="row">
-                        <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
-                        <button className="btn sm" onClick={onDeathModal.open}>On death</button>
+                        <button className="btn sm" onClick={debugModal.open}>Settings ⚙️</button>
                     </div>
 
                 </div>
             )}
-        </>
+        </div>
     )
 }
 

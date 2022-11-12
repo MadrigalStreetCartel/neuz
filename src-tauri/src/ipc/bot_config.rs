@@ -156,9 +156,14 @@ pub struct FarmingConfig {
 
     min_hp_attack: Option<u32>,
     on_death_disconnect: Option<bool>,
+    interval_between_buffs: Option<u64>,
 }
 
 impl FarmingConfig {
+
+    pub fn interval_between_buffs(&self) -> u128 {
+        self.interval_between_buffs.unwrap_or(2000).into()
+    }
 
     pub fn on_death_disconnect(&self) -> bool {
         self.on_death_disconnect.unwrap_or(true)
@@ -264,9 +269,14 @@ pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
     jump_cooldown: Option<u64>,
     on_death_disconnect: Option<bool>,
+    interval_between_buffs: Option<u64>,
 }
 
 impl SupportConfig {
+
+    pub fn interval_between_buffs(&self) -> u128 {
+        self.interval_between_buffs.unwrap_or(2000).into()
+    }
 
     pub fn on_death_disconnect(&self) -> bool {
         self.on_death_disconnect.unwrap_or(true)

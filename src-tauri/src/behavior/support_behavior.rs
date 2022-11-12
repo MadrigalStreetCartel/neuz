@@ -166,9 +166,10 @@ impl<'a> SupportBehavior<'_> {
     }
 
     fn check_buffs(&mut self, config: &SupportConfig) {
-        if self.last_buff_usage.elapsed().as_millis() > 2000 {
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.last_buff_usage = Instant::now();
             self.get_slot_for(config, None, SlotType::BuffSkill, true);
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 

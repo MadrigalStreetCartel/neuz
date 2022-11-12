@@ -188,6 +188,7 @@ export default styled(MissionControl)`
 
     & .info {
         margin: 0 auto;
+        margin-top: 5px;
         display: flex;
         flex-direction: column;
         padding: .5rem 1rem;

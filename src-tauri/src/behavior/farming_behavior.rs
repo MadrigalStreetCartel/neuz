@@ -94,9 +94,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         // Check whether something should be restored
         self.check_restorations(config, image);
 
-        // Use buffs Yiha
-        self.check_buffs(config);
-
         // Check state machine
         self.state = match self.state {
             State::NoEnemyFound => self.on_no_enemy_found(config),
@@ -252,9 +249,10 @@ impl<'a> FarmingBehavior<'_> {
     }
 
     fn check_buffs(&mut self, config: &FarmingConfig) {
-        if self.last_buff_usage.elapsed().as_millis() > 2000 {
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.last_buff_usage = Instant::now();
             self.get_slot_for(config, None, SlotType::BuffSkill, true);
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 
