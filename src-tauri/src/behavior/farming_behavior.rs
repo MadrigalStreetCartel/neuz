@@ -420,7 +420,6 @@ impl<'a> FarmingBehavior<'_> {
 
     fn avoid_obstacle(
         &mut self,
-        config: &FarmingConfig,
         image: &mut ImageAnalyzer,
         max_avoid: u32,
     ) -> bool {
@@ -505,6 +504,8 @@ impl<'a> FarmingBehavior<'_> {
                 self.is_attacking = true;
                 self.already_attack_count = 0;
             }
+            // Use buffs only when target is found so we don't waste them
+            self.check_buffs(config);
 
             let last_target_hp_update = image
                 .client_stats
@@ -514,13 +515,16 @@ impl<'a> FarmingBehavior<'_> {
                 .elapsed()
                 .as_millis();
 
-            if image.client_stats.target_hp.value == 100 && last_target_hp_update > 3000 {
-                if self.avoid_obstacle(config, image, 1) {
-                    return State::SearchingForEnemy;
-                }
-            } else if last_target_hp_update > config.obstacle_avoidance_cooldown() {
-                if self.avoid_obstacle(config, image, config.obstacle_avoidance_max_try()) {
-                    return State::SearchingForEnemy;
+            // Obstacle avoidance
+            if image.identify_target_marker(false).is_none() || last_target_hp_update > config.obstacle_avoidance_cooldown() {
+                if image.client_stats.target_hp.value == 100 {
+                    if self.avoid_obstacle(image, 1) {
+                        return State::SearchingForEnemy;
+                    }
+                }else {
+                    if self.avoid_obstacle(image, config.obstacle_avoidance_max_try()) {
+                        return State::SearchingForEnemy;
+                    }
                 }
             }
 
@@ -529,6 +533,7 @@ impl<'a> FarmingBehavior<'_> {
 
             return self.state;
         } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
+            // Mob's dead
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
                 TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
