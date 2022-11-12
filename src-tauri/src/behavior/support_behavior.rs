@@ -20,6 +20,7 @@ pub struct SupportBehavior<'a> {
     last_buff_usage: Instant,
     last_jump_time: Instant,
     avoid_obstacle_direction: String,
+    last_far_from_target: Option<Instant>,
     //is_on_flight: bool,
 }
 
@@ -32,6 +33,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
             avoid_obstacle_direction: "D".to_owned(),
+            last_far_from_target: None,
             //is_on_flight: false,
         }
     }
@@ -65,8 +67,12 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             if let Some(target_marker) = target_marker {
                 let marker_distance = image.get_target_marker_distance(target_marker);
                 if marker_distance > 200 {
+                    if self.last_far_from_target.is_none() {
+                        self.last_far_from_target = Some(Instant::now());
+                    }
                     self.avoid_obstacle(config);
                 } else {
+                    self.last_far_from_target = None;
                     self.check_buffs(config);
                 }
             } else {
@@ -79,17 +85,15 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 impl<'a> SupportBehavior<'_> {
 
     fn avoid_obstacle(&mut self, config: &SupportConfig) {
-        self.move_circle_pattern();
+        if let Some(last_far_from_target) = self.last_far_from_target {
+            if last_far_from_target.elapsed().as_millis() > config.obstacle_avoidance_cooldown() {
+                    self.move_circle_pattern();
+            }
+        }
         use crate::movement::prelude::*;
         play!(self.movement => [
             PressKey("Z"),
         ]);
-        if config.jump_cooldown() > 0 && self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
-            self.last_jump_time = Instant::now();
-            play!(self.movement => [
-                Jump,
-            ]);
-        }
     }
 
     fn move_circle_pattern(&mut self) {

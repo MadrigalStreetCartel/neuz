@@ -267,7 +267,7 @@ impl FarmingConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
-    jump_cooldown: Option<u64>,
+    obstacle_avoidance_cooldown: Option<u64>,
     on_death_disconnect: Option<bool>,
     interval_between_buffs: Option<u64>,
 }
@@ -282,8 +282,8 @@ impl SupportConfig {
         self.on_death_disconnect.unwrap_or(true)
     }
 
-    pub fn jump_cooldown(&self) -> u128 {
-        return self.jump_cooldown.unwrap_or(0).into();
+    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
+        return self.obstacle_avoidance_cooldown.unwrap_or(0).into();
     }
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {

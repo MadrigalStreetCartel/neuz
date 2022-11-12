@@ -98,7 +98,7 @@ export type FarmingConfigModel = Partial<{
 export type SupportConfigModel = Partial<{
     [key: string]: any;
     slot_bars: SlotBars,
-    jump_cooldown: number,
+    obstacle_avoidance_cooldown: number,
     on_death_disconnect: boolean,
     interval_between_buffs: number,
 }>

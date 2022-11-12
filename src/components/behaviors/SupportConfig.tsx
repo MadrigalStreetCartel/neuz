@@ -36,7 +36,7 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
     const onDeathModal = useModal()
 
     const defaultValues = {
-        'jump_cooldown': 5000,
+        'obstacle_avoidance_cooldown': 2000,
         'interval_between_buffs': 2000,
     }
 
@@ -58,8 +58,8 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                         item={<button onClick={onDeathModal.open}>⚙️</button>}
                     />
                     <ConfigTableRow
-                        label={<ConfigLabel name="Jump cooldown" helpText="Time between two jumps If set to 0 the character will never jump." />}
-                        item={<TimeInput value={config.jump_cooldown} onChange={value => onChange?.({...config, jump_cooldown: value})} />}
+                        label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before it tries to avoid obstacles, and start movement pattern" />}
+                        item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange?.({...config, obstacle_avoidance_cooldown: value})} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Interval between buffs" helpText="" />}
