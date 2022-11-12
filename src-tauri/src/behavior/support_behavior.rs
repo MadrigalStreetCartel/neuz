@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use slog::Logger;
 use tauri::Window;
@@ -57,7 +57,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         self.check_restorations(config, image);
-        //std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(100));
 
         if image.client_stats.target_hp.value > 0 {
             use crate::movement::prelude::*;
