@@ -491,7 +491,7 @@ impl<'a> FarmingBehavior<'_> {
                 return State::SearchingForEnemy;
             }
         } else if !self.is_attacking && config.is_stop_fighting() {
-            if is_npc {
+            if !is_mob {
                 return self.state;
             }
         }
