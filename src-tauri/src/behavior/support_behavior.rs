@@ -60,8 +60,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         //std::thread::sleep(Duration::from_millis(200));
 
         if image.client_stats.target_hp.value > 0 {
-            self.check_buffs(config);
-
             use crate::movement::prelude::*;
             play!(self.movement => [
                 PressKey("Z"),
@@ -70,6 +68,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 let marker_distance = image.get_target_marker_distance(target_marker);
                 if marker_distance > 100 {
                     self.avoid_obstacle(config);
+                } else {
+                    self.check_buffs(config);
                 }
             } else {
                 self.avoid_obstacle(config);
