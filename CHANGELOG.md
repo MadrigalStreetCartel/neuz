@@ -6,8 +6,13 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
-**0.16.0**
+**0.16.1**
 > Released on 12.11.2022
+- HOTFIX Some mobs can heal themself what set their MP to 0, and because Neuz was detecting death by 0% MP it stopped the fight, now we check if target is present + HP & MP are greater than 0
+- Adds ressurection spell for support mode (farmers will spam Enter when dead to be rez)
+
+**0.16.0**
+> Released on 11.11.2022
 - Misc 
   - Now restart when client is closed
   - Refactor code

@@ -466,7 +466,7 @@ impl<'a> FarmingBehavior<'_> {
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
         let is_mob =
             image.client_stats.target_hp.value > 0 && image.client_stats.target_mp.value > 0;
-        let is_mob_alive = image.client_stats.target_mp.value > 0;
+        let is_mob_alive = image.identify_target_marker(config).is_some() || image.client_stats.target_mp.value > 0 || image.client_stats.target_hp.value > 0 ;
 
         if !self.is_attacking && !config.is_stop_fighting() {
             if is_npc {
