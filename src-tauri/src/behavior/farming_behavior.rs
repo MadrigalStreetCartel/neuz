@@ -476,7 +476,7 @@ impl<'a> FarmingBehavior<'_> {
                 // Detect if mob was attacked
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
                     // If we didn't take any damages
-                    if hp_last_update.elapsed().as_millis() > 3000 {
+                    if hp_last_update.elapsed().as_millis() > 5000 {
                         return self.abort_attack(image);
                     } else {
                         if self.stealed_target_count > 5 {
