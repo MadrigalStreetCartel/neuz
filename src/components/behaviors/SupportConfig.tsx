@@ -22,15 +22,13 @@ type Props = {
     info: FrontendInfoModel | null,
     config: SupportConfigModel,
     onChange: (config: SupportConfigModel) => void,
-    running: boolean,
-    isCurrentMode: boolean,
     botStopWatch: StopWatchValues | null,
     botState: string,
 
 
 }
 
-const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState}: Props) => {
+const SupportConfig = ({ className, info, config, onChange, botStopWatch, botState}: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
     const onDeathModal = useModal()

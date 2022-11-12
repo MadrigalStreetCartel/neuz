@@ -23,13 +23,11 @@ type Props = {
     info: FrontendInfoModel | null,
     config: FarmingConfigModel,
     onChange: (config: FarmingConfigModel) => void,
-    running: boolean,
-    isCurrentMode: boolean,
     botStopWatch: StopWatchValues | null,
     botState: string,
 }
 
-const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState }: Props) => {
+const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botState }: Props) => {
     const statsModal = useModal()
     const debugModal = useModal()
     const debugWarningModal = useModal(debugModal)
