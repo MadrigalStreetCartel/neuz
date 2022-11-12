@@ -475,7 +475,7 @@ impl<'a> FarmingBehavior<'_> {
 
                 // Detect if mob was attacked
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
-                    // If we didn't take any damages
+                    // If we didn't took any damages abort attack
                     if hp_last_update.elapsed().as_millis() > 5000 {
                         return self.abort_attack(image);
                     } else {
@@ -518,7 +518,7 @@ impl<'a> FarmingBehavior<'_> {
             // Obstacle avoidance
             if image.identify_target_marker(false).is_none() || last_target_hp_update > config.obstacle_avoidance_cooldown() {
                 if image.client_stats.target_hp.value == 100 {
-                    if self.avoid_obstacle(image, 1) {
+                    if self.avoid_obstacle(image, 2) {
                         return State::SearchingForEnemy;
                     }
                 }else {
