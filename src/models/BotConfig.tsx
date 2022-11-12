@@ -91,14 +91,14 @@ export type FarmingConfigModel = Partial<{
     max_mobs_name_width: number,
 
     min_hp_attack: number,
-
-
+    on_death_disconnect: boolean,
 }>
 
 export type SupportConfigModel = Partial<{
     [key: string]: any;
     slot_bars: SlotBars,
     jump_cooldown: number,
+    on_death_disconnect: boolean,
 }>
 
 export type ShoutConfigModel = Partial<{

@@ -33,6 +33,7 @@ type Props = {
 const SupportConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState}: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
+    const onDeathModal = useModal()
 
     const defaultValues = {
         'jump_cooldown': 5000,
@@ -57,6 +58,16 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     />
                 </ConfigTable>
             }/>
+            <Modal isShowing={onDeathModal.isShown} hide={onDeathModal.close}
+            title={<h4>On death behavior</h4>} body={
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
+                        item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
+                    />
+                </ConfigTable>
+            }/>
             <ConfigPanel>
                 <ConfigTable>
                     <ConfigTableRow
@@ -77,7 +88,11 @@ const SupportConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <div className="row">
                         <div>Botting time: {botStopWatch?.toString()}</div>
                     </div>
-                    <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
+                    <div className="row">
+                        <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
+                        <button className="btn sm" onClick={onDeathModal.open}>On death</button>
+                    </div>
+
                 </div>
             )}
         </>

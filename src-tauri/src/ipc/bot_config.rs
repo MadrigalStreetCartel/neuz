@@ -155,9 +155,15 @@ pub struct FarmingConfig {
     max_mobs_name_width: Option<u32>,
 
     min_hp_attack: Option<u32>,
+    on_death_disconnect: Option<bool>,
 }
 
 impl FarmingConfig {
+
+    pub fn on_death_disconnect(&self) -> bool {
+        self.on_death_disconnect.unwrap_or(true)
+    }
+
     pub fn circle_pattern_rotation_duration(&self) -> u64 {
         self.circle_pattern_rotation_duration.unwrap_or(30)
     }
@@ -257,9 +263,15 @@ impl FarmingConfig {
 pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
     jump_cooldown: Option<u64>,
+    on_death_disconnect: Option<bool>,
 }
 
 impl SupportConfig {
+
+    pub fn on_death_disconnect(&self) -> bool {
+        self.on_death_disconnect.unwrap_or(true)
+    }
+
     pub fn jump_cooldown(&self) -> u128 {
         return self.jump_cooldown.unwrap_or(0).into();
     }

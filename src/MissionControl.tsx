@@ -210,7 +210,6 @@ export default styled(MissionControl)`
             display: flex;
             align-items: center;
             justify-content: space-around;
-            gap: 3rem;
         }
     }
 

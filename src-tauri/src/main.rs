@@ -312,7 +312,19 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
     drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
     //window.once_global("tauri://close-requested", move |_| app_handle.restart());
 }
-
+fn should_disconnect(config: &BotConfig) -> bool {
+    return match config.mode().unwrap() {
+        BotMode::Farming => {
+            config.farming_config().on_death_disconnect()
+        },
+        BotMode::Support => {
+            config.support_config().on_death_disconnect()
+        },
+        BotMode::AutoShout => {
+            true
+        }
+    }
+}
 #[tauri::command]
 fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let logger = state.logger.clone();
@@ -489,16 +501,27 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 if !is_alive  {
                     if frontend_info_mut.is_alive() {
+                        let should_disconnect = should_disconnect(config);
+                        if should_disconnect {
+                            app_handle.exit(0);
+                            return;
+                        }
+
                         frontend_info_mut.set_is_alive(false);
                         frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                         // Send infos to frontend
                         send_info(&*frontend_info.read());
                     } else {
                         eval_send_key(&window, "Enter", KeyMode::Press);
+                        std::thread::sleep(Duration::from_millis(500));
                     }
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);
+                    let should_disconnect = should_disconnect(config);
+                    if !should_disconnect {
+                        eval_send_key(&window, "Escape", KeyMode::Press);
+                    }
                 }
                 match mode {
                     BotMode::Farming => {

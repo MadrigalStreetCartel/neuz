@@ -30,6 +30,7 @@ type Props = {
 
 const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMode, botStopWatch, botState }: Props) => {
     const statsModal = useModal()
+    const onDeathModal = useModal()
     const debugModal = useModal()
     const mobsNameDebugModal = useModal(debugModal)
     const mobsColorsDebugModal = useModal(mobsNameDebugModal)
@@ -170,11 +171,16 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                 </ConfigTable>
             }/>
             {/* DEBUG END */}
-{/*             <ConfigPanel>
+            <Modal isShowing={onDeathModal.isShown} hide={onDeathModal.close}
+            title={<h4>On death behavior</h4>} body={
                 <ConfigTable>
-
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
+                        item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
+                    />
                 </ConfigTable>
-            </ConfigPanel> */}
+            }/>
             <Modal isShowing={statsModal.isShown} hide={statsModal.close}
             title={<h4>Stats - State: { botState }</h4>} body={
                 <div className="stats">
@@ -197,12 +203,6 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                         <div>Global kills stats(approx): {globalKPM === "NaN" || globalKPM === "Infinity" ? 0 : globalKPM}/min
                         | {globalKPH === "NaN" || globalKPH === "Infinity" ? 0 : globalKPH}/hour</div>
                     </div>
-
-
-
-
-
-
                 </div>
             }/>
             {info && (
@@ -213,12 +213,17 @@ const FarmingConfig = ({ className, info, config, onChange, running, isCurrentMo
                     <div className="row">
                         <div>Target's detection mode: { config.is_stop_fighting? "🛑" : "✅" }</div>
                     </div>
-                    <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
-                    <button className="btn sm"
-                        onClick={e => onChange?.({ ...config, is_stop_fighting: !config.is_stop_fighting })} >
-                        Detection 🎯
-                    </button>
-                    <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
+                    <div className="row">
+                        <button className="btn sm" onClick={statsModal.open}>Stats 📊</button>
+                        <button className="btn sm"
+                            onClick={e => onChange?.({ ...config, is_stop_fighting: !config.is_stop_fighting })} >
+                            Detection 🎯
+                        </button>
+                        <button className="btn sm" onClick={debugModal.open}>Debug ⚙️</button>
+                    </div>
+                    <div className="row">
+                        <button className="btn sm" onClick={onDeathModal.open}>On death</button>
+                    </div>
                 </div>
             )}
         </>
