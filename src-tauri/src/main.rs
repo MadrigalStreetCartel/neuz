@@ -30,7 +30,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    utils::Timer,
+    utils::Timer, platform::{KeyMode, eval_send_key},
 };
 
 struct AppState {
@@ -486,11 +486,16 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 // Stop bot in case of death
                 let is_alive = image_analyzer.client_stats.is_alive();
-                if !is_alive {
-                    frontend_info_mut.set_is_alive(false);
-                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                    // Send infos to frontend
-                    send_info(&*frontend_info.read());
+
+                if !is_alive  {
+                    if frontend_info_mut.is_alive() {
+                        frontend_info_mut.set_is_alive(false);
+                        frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                        // Send infos to frontend
+                        send_info(&*frontend_info.read());
+                    } else {
+                        eval_send_key(&window, "Enter", KeyMode::Press);
+                    }
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);

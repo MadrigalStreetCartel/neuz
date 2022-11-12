@@ -50,6 +50,11 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         self.update_slots_usage(config);
 
+        if image.client_stats.target_hp.value == 0 {
+            self.get_slot_for(config, None, SlotType::RezSkill, true);
+            self.slots_usage_last_time = [[None; 10]; 9];
+            return;
+        }
         self.check_restorations(config, image);
         if image.client_stats.target_hp.value > 0 {
             self.check_buffs(config);
@@ -59,6 +64,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             play!(self.movement => [
                 PressKey("Z"),
             ]);
+
             if config.jump_cooldown() > 0 {
                 if self.last_jump_time.elapsed().as_millis() > config.jump_cooldown() {
                     self.last_jump_time = Instant::now();

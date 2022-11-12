@@ -1,14 +1,15 @@
 import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import IconVitalDrink from '../assets/icon_vitaldrink.png'
 import IconRefresher from '../assets/icon_refresher.png'
-import HealSkill from '../assets/heal_spell.png'
+import IconHealSkill from '../assets/heal_spell.png'
+import IconRezSkill from '../assets/rez_spell.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "Flying"] as const;
+export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
 export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
 export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
-export const farmingSlotsBlacklist = ["HealSkill", "Flying"]
+export const farmingSlotsBlacklist = ["HealSkill", "Flying", "RezSkill"]
 export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill"]
 
 export type SlotType = typeof slotTypes[number];
@@ -24,13 +25,14 @@ export const translateType = (type: SlotType) => {
         case 'Unused': return ''
         case 'Food': return '🍔'
         case 'Pill': return '💊'
-        case 'HealSkill': return HealSkill
+        case 'HealSkill': return IconHealSkill
         case 'MpRestorer': return IconRefresher
         case 'FpRestorer': return IconVitalDrink
         case 'PickupPet': return '🐶'
         case 'PickupMotion': return IconMotionPickup
         case 'AttackSkill': return '🗡️'
         case 'BuffSkill': return '🪄'
+        case 'RezSkill': return IconRezSkill
         case 'Flying': return '✈️'
     }
 }
@@ -47,6 +49,7 @@ export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
         case 'PickupMotion': return ['Pickup', 'Pickup motion']
         case 'AttackSkill': return ['Attack', 'Attack skill']
         case 'BuffSkill': return ['Buff', 'Buff skill']
+        case 'RezSkill': return ['Rez', 'Resurection skill']
         case 'Flying': return ['Board', 'Board']
     }
 }

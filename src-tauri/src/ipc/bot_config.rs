@@ -14,6 +14,7 @@ pub enum SlotType {
     PickupMotion,
     AttackSkill,
     BuffSkill,
+    RezSkill,
     Flying,
 }
 impl fmt::Display for SlotType {
@@ -26,6 +27,7 @@ impl fmt::Display for SlotType {
             SlotType::PickupPet => write!(f, "pickup pet"),
             SlotType::AttackSkill => write!(f, "attack skill"),
             SlotType::BuffSkill => write!(f, "buff skill"),
+            SlotType::RezSkill => write!(f, "rez skill"),
             SlotType::Flying => write!(f, "fly"),
             _ => write!(f, "??none??"),
         }
