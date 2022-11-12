@@ -106,6 +106,7 @@ impl<'a> SupportBehavior<'_> {
             Wait(dur::Fixed(500)),
             ReleaseKeys(vec!["Space", "W"]),
             HoldKeyFor("S", dur::Fixed(50)),
+            PressKey("Z"),
             Wait(dur::Fixed(300)),
         ]);
 
