@@ -9,7 +9,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{eval_mob_click, send_slot_eval},
+    platform::{eval_mob_click, send_slot_eval, eval_avoid_mob_click},
     play,
     utils::DateTime,
 };
@@ -233,7 +233,7 @@ impl<'a> FarmingBehavior<'_> {
         config: &FarmingConfig,
         image: &mut ImageAnalyzer,
     ) -> State {
-        if config.is_stop_fighting() {
+        if config.is_stop_fighting()/*  || image.client_stats.hp.value > 0 || image.identify_target_marker(false).is_some() */ {
             return State::Attacking(Target::default());
         }
         let mobs = image.identify_mobs(bot_config);
@@ -290,7 +290,7 @@ impl<'a> FarmingBehavior<'_> {
                         if bot_config.match_whitelist(*mob) {
                             State::EnemyFound(*mob)
                         } else {
-                            // RUN THE OPPOSITE WAY
+                            eval_avoid_mob_click(self.window, mob.get_active_avoid_coords(100));
                             State::SearchingForEnemy
                         }
 
@@ -298,7 +298,6 @@ impl<'a> FarmingBehavior<'_> {
                         // Transition to next state
                         State::EnemyFound(*mob)
                     }
-
                 } else {
                     // Transition to next state
                     State::SearchingForEnemy

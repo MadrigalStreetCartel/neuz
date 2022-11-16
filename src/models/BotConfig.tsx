@@ -83,6 +83,7 @@ export type FarmingConfigModel = Partial<{
 
     obstacle_avoidance_max_try: number,
     mobs_timeout: number,
+    active_avoid_aggressive: boolean,
 }>
 
 export type SupportConfigModel = Partial<{

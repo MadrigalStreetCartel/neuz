@@ -11,9 +11,11 @@ Date format: `DD/MM/YYYY`
 - Support
   - Buffs are now only triggered if character is close enought from target
   - Adds movement pattern, will try to move after a given time (obstacle_avoidance_cooldown)
+  - Fix an issue where resurection skill was infinitely called
 - Farming 
   - Improve obstacle avoidance by detecting the target marker
   - Fix an issue where the buffs were not fired (only for farming)
+  - Fix an issue where revive action could let chatbox open
 - Misc
   - Adds choice between disconnect/revive **on death** and timeout if no mobs were found for farming mode
   - Our good old debug is now Settings with a debug enable slider to get access to everything!

@@ -147,8 +147,8 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 50;
-        let max_distance_y: u32 = 3;
+        let max_distance_x: u32 = 200;
+        let max_distance_y: u32 = 5;
 
         // Cluster coordinates in x-direction
         let x_clusters = cloud.cluster_by_distance(max_distance_x, point_selector::x_axis);
@@ -306,20 +306,11 @@ impl ImageAnalyzer {
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
+
     pub fn get_target_marker_distance(&self,  mob: Target) -> i32 {
-        let image = self.image.as_ref().unwrap();
-
-        // Calculate middle point of player
-        let mid_x = (image.width() / 2) as i32;
-        let mid_y = (image.height() / 2) as i32;
-
-        // Calculate 2D euclidian distances to player
-        let point = mob.get_attack_coords();
-        let distance = (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2))
-            as f64)
-            .sqrt() as i32;
-        distance
+        mob.get_distance()
     }
+
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'a>(
         &self,
@@ -331,20 +322,10 @@ impl ImageAnalyzer {
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
 
-        let image = self.image.as_ref().unwrap();
-
-        // Calculate middle point of player
-        let mid_x = (image.width() / 2) as i32;
-        let mid_y = (image.height() / 2) as i32;
-
         // Calculate 2D euclidian distances to player
         let mut distances = Vec::default();
         for mob in mobs {
-            let point = mob.get_attack_coords();
-            let distance = (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2))
-                as f64)
-                .sqrt() as i32;
-            distances.push((mob, distance));
+            distances.push((mob, mob.get_distance()));
         }
 
         // Sort by distance

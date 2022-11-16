@@ -45,6 +45,11 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                 <ConfigTable>
                     <ConfigTableRow
                         layout="v"
+                        label={<ConfigLabel name="Actively avoid aggressives" helpText="Will try to run the opposite way of an aggressive target" />}
+                        item={<BooleanSlider value={config.active_avoid_aggressive ?? false} onChange={value => onChange?.({ ...config, active_avoid_aggressive: value })} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
                         label={<ConfigLabel name="Avoid attacked monster" helpText="Check whether a mob is already attacked and avoid it if so. Must be disabled if you play in party" />}
                         item={<BooleanSlider value={config.prevent_already_attacked ?? true} onChange={value => onChange?.({ ...config, prevent_already_attacked: value })} />}
                     />
