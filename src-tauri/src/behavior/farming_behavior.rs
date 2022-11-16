@@ -289,8 +289,10 @@ impl<'a> FarmingBehavior<'_> {
                     if bot_config.whitelist_enabled() {
                         if bot_config.match_whitelist(*mob) {
                             State::EnemyFound(*mob)
-                        } else {
+                        } else if mob.target_type == TargetType::Mob(MobType::Aggressive) {
                             eval_avoid_mob_click(self.window, mob.get_active_avoid_coords(100));
+                            State::SearchingForEnemy
+                        } else {
                             State::SearchingForEnemy
                         }
 
