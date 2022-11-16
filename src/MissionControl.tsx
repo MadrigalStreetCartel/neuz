@@ -1,6 +1,6 @@
 import styled from "styled-components"
 import { listen, emit } from '@tauri-apps/api/event'
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { isNil } from 'lodash'
 
 import TabControl from "./components/TabControl"
@@ -8,16 +8,15 @@ import Tab from "./components/Tab"
 
 import ImageFarm from './assets/btn_leveling.png'
 import ImageSupport from './assets/btn_full_support.png'
-import ImageShout from './assets/btn_shout.png'
 
 import { BotConfigModel, ModeModel } from './models/BotConfig'
 import FarmingConfig from "./components/behaviors/FarmingConfig"
 import SupportConfig from "./components/behaviors/SupportConfig"
-import ShoutConfig from "./components/behaviors/ShoutConfig"
 import Footer from "./components/Footer"
 import { FrontendInfoModel } from "./models/FrontendInfo"
 import { invoke } from "@tauri-apps/api"
 import { useStopWatch } from "./components/utils/StopWatch"
+import Settings from "./components/behaviors/Settings"
 
 //type Bounds = {x: number, y: number, w: number, h: number}
 
@@ -31,6 +30,13 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
     //const [imageData, setImageData] = useState({ data: '', width: 0, height: 0 })
     const [info, setInfo] = useState<FrontendInfoModel | null>(null);
     const [config, setConfig] = useState<BotConfigModel | null>(null);
+    const [selectedMode, setSelectedMode] = useState<ModeModel | null>(null);
+
+    useEffect(() => {
+        if(selectedMode === null) {
+            setSelectedMode(config?.mode ?? null)
+        }
+    }, [config])
 
     useEffect(() => {
         listen<string>('bot_visualizer_update', event => {
@@ -51,6 +57,7 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
             const payload = event.payload as BotConfigModel
             setConfig(payload)
         })
+
     }, [])
 
     const setRunningToggle = () => {
@@ -62,14 +69,18 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
     const handleToggle = () => {
         if (!config) return
         const newConfig = { ...config }
-        newConfig.farming_config.is_stop_fighting = !newConfig.farming_config.is_stop_fighting
+        if (newConfig.farming_config) {
+            newConfig.farming_config.is_stop_fighting = !newConfig.farming_config?.is_stop_fighting
+        }
         emit('bot_config_c2s', newConfig)
     }
 
-
     const handleTabSelect = (mode: ModeModel) => {
-        const newConfig = { ...config, mode }
-        emit('bot_config_c2s', newConfig)
+        if (mode !== "Settings") {
+            const newConfig = { ...config, mode }
+            emit('bot_config_c2s', newConfig)
+        }
+        setSelectedMode(mode)
     }
 
     const makeConfigUpdater = (key: string) => <T,>(patchedConfig: T) => {
@@ -92,15 +103,21 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
             {!lightMode && <div className={`vstack`}>
                 {config && (
                     <>
-                        <TabControl activeMode={config.mode} onSelect={handleTabSelect}>
+                        <TabControl activeMode={selectedMode} onSelect={handleTabSelect}>
                             <Tab mode="Farming" image={ImageFarm} />
                             <Tab mode="Support" image={ImageSupport} />
-                            <Tab mode="AutoShout" image={ImageShout} />
+                            <Tab mode="Settings" text="Settings ⚙️" />
                         </TabControl>
                         <div className="config-container">
-                            {config?.mode === 'Farming' && (<FarmingConfig botState={farmingState} botStopWatch={farmStopWatch.watch} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
-                            {config?.mode === 'Support' && (<SupportConfig botState={supportState} botStopWatch={suppStopWatch.watch} info={info} config={config.support_config} onChange={makeConfigUpdater('support_config')} />)}
-                            {config?.mode === 'AutoShout' && (<ShoutConfig config={config.shout_config} onChange={makeConfigUpdater('shout_config')} />)}
+                            {(selectedMode === 'Farming'  && config.farming_config) && (<FarmingConfig botState={farmingState} botStopWatch={farmStopWatch.watch} info={info} config={config.farming_config} onChange={makeConfigUpdater('farming_config')} />)}
+                            {(selectedMode === 'Support' && config.support_config) && (<SupportConfig botState={supportState} botStopWatch={suppStopWatch.watch} info={info} config={config.support_config} onChange={makeConfigUpdater('support_config')} />)}
+                            {selectedMode === "Settings" && (<Settings
+                                info={info}
+                                config={config}
+                                onChange={(newConfig: BotConfigModel) => {
+                                    emit('bot_config_c2s', newConfig)
+                                }}
+                            />)}
                         </div>
                     </>
                 )}
@@ -118,13 +135,13 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
 
             {lightMode &&
                 <div className="lightmode">
-                       {config?.mode !== "AutoShout" && <div className={"stateDisplay"}>
+                       <div className={"stateDisplay"}>
                             State: {config?.mode === "Farming"? farmingState : supportState}
-                        </div>}
+                        </div>
                     <div className="btn sm" id="back" onClick={toogleLightMode}>{"<-"}</div>
                     <div className="btn sm" onClick={() => {invoke("focus_client")}}>Focus</div>
                     {config?.mode === "Farming" && <div className="btn sm" onClick={handleToggle}>
-                    {config?.farming_config.is_stop_fighting? "🛑" : "✅" }🎯
+                    {config?.farming_config?.is_stop_fighting? "🛑" : "✅" }🎯
                     </div>}
                     <div className="btn sm" onClick={setRunningToggle}>{config?.is_running ? 'Disengage' : 'Engage'}</div>
                 </div>

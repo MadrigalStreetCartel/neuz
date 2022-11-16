@@ -11,7 +11,7 @@ use tauri::{Window};
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
-    ipc::FarmingConfig,
+    ipc::{FarmingConfig, BotConfig},
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
@@ -139,7 +139,7 @@ impl ImageAnalyzer {
     }
 
     fn merge_cloud_into_mobs(
-        config: Option<&FarmingConfig>,
+        config: Option<&BotConfig>,
         cloud: &PointCloud,
         mob_type: TargetType,
         //ignore_size: bool,
@@ -195,7 +195,7 @@ impl ImageAnalyzer {
         perm.iter().all(|&(a, b)| matches_inner(a, b))
     }
 
-    pub fn identify_mobs(&self, config: &FarmingConfig) -> Vec<Target> {
+    pub fn identify_mobs(&self, config: &BotConfig) -> Vec<Target> {
         let _timer = Timer::start_new("identify_mobs");
 
         // Create collections for passive and aggro mobs

@@ -12,6 +12,8 @@ pub struct FrontendInfo {
     is_attacking: bool,
     is_running: bool,
     is_alive: bool,
+    last_mob_width: u32,
+    last_mob_height: u32
 }
 
 impl FrontendInfo {
@@ -23,6 +25,10 @@ impl FrontendInfo {
            self.active_enemy_bounds = Some(active_enemy_bounds);
        }
     */
+    pub fn set_last_mob_bounds(&mut self, width: u32, height: u32) {
+        self.last_mob_width = width;
+        self.last_mob_height = height;
+    }
 
     pub fn set_kill_count(&mut self, enemy_kill_count: u32) {
         self.enemy_kill_count = enemy_kill_count;

@@ -26,7 +26,7 @@ use slog::{Drain, Level, Logger};
 use tauri::{LogicalSize, Manager, Size, Window};
 
 use crate::{
-    behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
+    behavior::{Behavior, FarmingBehavior, SupportBehavior},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
@@ -312,19 +312,7 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
     drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
     //window.once_global("tauri://close-requested", move |_| app_handle.restart());
 }
-fn should_disconnect(config: &BotConfig) -> bool {
-    return match config.mode().unwrap() {
-        BotMode::Farming => {
-            config.farming_config().on_death_disconnect()
-        },
-        BotMode::Support => {
-            config.support_config().on_death_disconnect()
-        },
-        BotMode::AutoShout => {
-            true
-        }
-    }
-}
+
 #[tauri::command]
 fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let logger = state.logger.clone();
@@ -393,7 +381,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
         // Instantiate behaviors
         let mut farming_behavior = FarmingBehavior::new(&logger, &movement, &window);
-        let mut shout_behavior = ShoutBehavior::new(&logger, &movement, &window);
         let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
@@ -425,7 +412,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 // Update behaviors
                 farming_behavior.update(config);
-                shout_behavior.update(config);
                 support_behavior.update(config);
             }
 
@@ -472,13 +458,11 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     // Stop all behaviors
                     farming_behavior.stop(&config);
                     support_behavior.stop(&config);
-                    shout_behavior.stop(&config);
 
                     // Start the current behavior
                     match mode {
                         BotMode::Farming => farming_behavior.start(&config),
                         BotMode::Support => support_behavior.start(&config),
-                        BotMode::AutoShout => shout_behavior.start(&config),
                     }
                 }
             }
@@ -501,7 +485,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 if !is_alive  {
                     if frontend_info_mut.is_alive() {
-                        let should_disconnect = should_disconnect(config);
+                        let should_disconnect = config.on_death_disconnect();
                         if should_disconnect {
                             app_handle.exit(0);
                             return;
@@ -518,7 +502,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {
                     frontend_info_mut.set_is_alive(true);
-                    let should_disconnect = should_disconnect(config);
+                    let should_disconnect = config.on_death_disconnect();
                     if !should_disconnect {
                         eval_send_key(&window, "Escape", KeyMode::Press);
                     }
@@ -526,13 +510,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 match mode {
                     BotMode::Farming => {
                         farming_behavior.run_iteration(
-                            &mut frontend_info_mut,
-                            config,
-                            &mut image_analyzer,
-                        );
-                    }
-                    BotMode::AutoShout => {
-                        shout_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
                             &mut image_analyzer,

@@ -285,6 +285,10 @@ export default styled(Launcher)`
         height: 100vh;
     }
 
+    & ::-webkit-scrollbar {
+        display: none;  /* Safari and Chrome */
+    }
+
     & .logo-container {
         display: flex;
         justify-content: center;

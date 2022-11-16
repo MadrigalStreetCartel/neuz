@@ -5,7 +5,7 @@ import { ModeModel } from '../models/BotConfig'
 
 type Props = React.PropsWithChildren<{
     className?: string,
-    activeMode?: ModeModel,
+    activeMode?: ModeModel | null,
     onSelect: (mode: ModeModel) => void,
 }>
 

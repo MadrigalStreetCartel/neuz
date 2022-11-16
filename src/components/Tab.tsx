@@ -4,16 +4,18 @@ import { ModeModel } from '../models/BotConfig'
 
 type Props = {
     className?: string,
-    image: string,
+    image?: string,
+    text?: string,
     mode: ModeModel,
     activeMode?: ModeModel,
     onSelect?: (mode: ModeModel) => void,
 }
 
-const Tab = ({ className, image, mode, activeMode, onSelect }: Props) => {
+const Tab = ({ className, image, text, mode, activeMode, onSelect }: Props) => {
     return (
         <div className={[className, activeMode === mode ? `${className}--active` : ''].join(' ').trim()} onClick={() => onSelect?.(mode)}>
-            <img src={image} alt="" />
+            {image && <img src={image} alt="" />}
+            {text && text}
         </div>
     )
 }
@@ -26,21 +28,27 @@ export default styled(Tab)`
     transition: all .25s ease;
     filter: grayscale(100%);
     opacity: 0.9;
-    
+    background-color: black;
+    color: white;
+    width: 146px;
+    height: 75px;
+    line-height: 75px;
+    text-align: center;
+
     &--active {
         filter: grayscale(0%);
-        
-        img {
-            border: 2px solid white;
-            border-radius: .25rem;
-        }
+
+
+        border: 2px solid white;
+        border-radius: .25rem;
+
     }
-    
+
     &:hover {
         transform: scale(1.05);
         filter: grayscale(0%);
     }
-    
+
     & img {
         width: 100%;
         height: 75px;

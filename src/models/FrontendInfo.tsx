@@ -10,4 +10,8 @@ export type FrontendInfoModel = {
     kill_min_avg: number,
     kill_hour_avg: number,
     version: number[],
+
+    last_mob_width: number,
+    last_mob_height: number,
+
 }

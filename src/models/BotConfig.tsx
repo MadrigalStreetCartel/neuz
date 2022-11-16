@@ -6,9 +6,9 @@ import IconRezSkill from '../assets/rez_spell.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
+export const slotTypes = ["Unused", "ChatMessage","Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
 export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
+export const cooldownSlotTypes = ["ChatMessage", "Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
 export const farmingSlotsBlacklist = ["HealSkill", "Flying", "RezSkill"]
 export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill"]
 
@@ -23,6 +23,7 @@ export const SLOT_SIZE_PX = 40;
 export const translateType = (type: SlotType) => {
     switch (type) {
         case 'Unused': return ''
+        case 'ChatMessage': return '💬'
         case 'Food': return '🍔'
         case 'Pill': return '💊'
         case 'HealSkill': return IconHealSkill
@@ -40,6 +41,7 @@ export const translateType = (type: SlotType) => {
 export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
     switch (type) {
         case 'Unused': return [defaultUnused, defaultUnused]
+        case 'ChatMessage': return ['Chat','Chat message']
         case 'Food': return ['Food','Food']
         case 'Pill': return ['Pill','Pill']
         case 'HealSkill': return ["Heal",'Heal skill']
@@ -66,7 +68,7 @@ export type SlotBarHolder = {
 type SlotBarModel = FixedArray<SlotModel, 10>
 export type SlotBars = FixedArray<SlotBarHolder, 9>
 
-export type ModeModel = "Farming" | "Support" | "AutoShout"
+export type ModeModel = "Farming" | "Support" | "Settings"
 
 export type FarmingConfigModel = Partial<{
     [key: string]: any;
@@ -76,47 +78,42 @@ export type FarmingConfigModel = Partial<{
     slot_bars: SlotBars,
     circle_pattern_rotation_duration: number,
 
-    passive_mobs_colors: number[];
-    passive_tolerence: number;
-    aggressive_mobs_colors: number[];
-    aggressive_tolerence: number;
-
     is_stop_fighting: boolean;
     prevent_already_attacked: boolean;
 
-    obstacle_avoidance_cooldown: number,
     obstacle_avoidance_max_try: number,
-
-    min_mobs_name_width: number,
-    max_mobs_name_width: number,
-
-    min_hp_attack: number,
-    on_death_disconnect: boolean,
-    interval_between_buffs: number,
     mobs_timeout: number,
 }>
 
 export type SupportConfigModel = Partial<{
     [key: string]: any;
     slot_bars: SlotBars,
-    obstacle_avoidance_cooldown: number,
-    on_death_disconnect: boolean,
-    interval_between_buffs: number,
 }>
 
-export type ShoutConfigModel = Partial<{
+export type BotConfigModel = Partial<{
     [key: string]: any;
-    shout_interval: number,
-    shout_messages: string[],
-}>
-
-export type BotConfigModel = {
     change_id: number,
     is_running: boolean,
     mode?: ModeModel,
     farming_config: FarmingConfigModel,
     support_config: SupportConfigModel,
-    shout_config: ShoutConfigModel,
-}
 
-export type AnyConfig = FarmingConfigModel | SupportConfigModel | ShoutConfigModel
+    passive_mobs_colors: number[];
+    passive_tolerence: number;
+    aggressive_mobs_colors: number[];
+    aggressive_tolerence: number;
+
+    min_mobs_name_width: number,
+    max_mobs_name_width: number,
+
+    interval_between_buffs: number,
+
+    on_death_disconnect: boolean,
+    inactivity_timeout: number,
+
+    obstacle_avoidance_cooldown: number,
+    whitelist_enabled: boolean,
+    whitelist: [number, number, string][],
+}>
+
+export type AnyConfig = BotConfigModel | FarmingConfigModel | SupportConfigModel

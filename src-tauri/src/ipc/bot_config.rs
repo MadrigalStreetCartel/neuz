@@ -2,9 +2,12 @@ use std::{fmt, fs::File, time::Instant};
 
 use serde::{Deserialize, Serialize};
 
+use crate::data::Target;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlotType {
     Unused,
+    ChatMessage,
     Food,
     Pill,
     HealSkill,
@@ -114,7 +117,6 @@ impl Slot {
 pub enum BotMode {
     Farming,
     Support,
-    AutoShout,
 }
 
 impl ToString for BotMode {
@@ -122,7 +124,6 @@ impl ToString for BotMode {
         match self {
             BotMode::Farming => "farming",
             BotMode::Support => "support",
-            BotMode::AutoShout => "auto_shout",
         }
         .to_string()
     }
@@ -143,75 +144,17 @@ pub struct FarmingConfig {
 
     is_stop_fighting: Option<bool>,
 
-    passive_mobs_colors: Option<[Option<u8>; 3]>,
-    passive_tolerence: Option<u8>,
-    aggressive_mobs_colors: Option<[Option<u8>; 3]>,
-    aggressive_tolerence: Option<u8>,
-
-    obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
-
-    min_mobs_name_width: Option<u32>,
-    max_mobs_name_width: Option<u32>,
-
-    min_hp_attack: Option<u32>,
-    on_death_disconnect: Option<bool>,
-    interval_between_buffs: Option<u64>,
-    mobs_timeout: Option<u64>,
 }
 
 impl FarmingConfig {
-
-    pub fn mobs_timeout(&self) -> u128 {
-        self.mobs_timeout.unwrap_or(0).into()
-    }
-
-    pub fn interval_between_buffs(&self) -> u128 {
-        self.interval_between_buffs.unwrap_or(2000).into()
-    }
-
-    pub fn on_death_disconnect(&self) -> bool {
-        self.on_death_disconnect.unwrap_or(true)
-    }
 
     pub fn circle_pattern_rotation_duration(&self) -> u64 {
         self.circle_pattern_rotation_duration.unwrap_or(30)
     }
 
-    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
-        self.obstacle_avoidance_cooldown.unwrap_or(5000).into()
-    }
-
     pub fn obstacle_avoidance_max_try(&self) -> u32 {
         self.obstacle_avoidance_max_try.unwrap_or(5)
-    }
-
-    pub fn min_mobs_name_width(&self) -> u32 {
-        self.min_mobs_name_width.unwrap_or(11)
-    }
-
-    pub fn max_mobs_name_width(&self) -> u32 {
-        self.max_mobs_name_width.unwrap_or(180)
-    }
-
-    pub fn min_hp_attack(&self) -> u32 {
-        self.min_hp_attack.unwrap_or(0)
-    }
-
-    pub fn passive_mobs_colors(&self) -> [Option<u8>; 3] {
-        self.passive_mobs_colors.unwrap_or([None, None, None])
-    }
-
-    pub fn passive_tolerence(&self) -> u8 {
-        self.passive_tolerence.unwrap_or(5)
-    }
-
-    pub fn aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
-        self.aggressive_mobs_colors.unwrap_or([None, None, None])
-    }
-
-    pub fn aggressive_tolerence(&self) -> u8 {
-        self.aggressive_tolerence.unwrap_or(10)
     }
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {
@@ -272,24 +215,9 @@ impl FarmingConfig {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
-    obstacle_avoidance_cooldown: Option<u64>,
-    on_death_disconnect: Option<bool>,
-    interval_between_buffs: Option<u64>,
 }
 
 impl SupportConfig {
-
-    pub fn interval_between_buffs(&self) -> u128 {
-        self.interval_between_buffs.unwrap_or(2000).into()
-    }
-
-    pub fn on_death_disconnect(&self) -> bool {
-        self.on_death_disconnect.unwrap_or(true)
-    }
-
-    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
-        return self.obstacle_avoidance_cooldown.unwrap_or(0).into();
-    }
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {
         self.slot_bars
@@ -327,22 +255,6 @@ impl SupportConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ShoutConfig {
-    shout_interval: Option<u64>,
-    shout_messages: Option<Vec<String>>,
-}
-
-impl ShoutConfig {
-    pub fn shout_interval(&self) -> u64 {
-        self.shout_interval.unwrap_or(30000)
-    }
-
-    pub fn shout_messages(&self) -> Vec<String> {
-        self.shout_messages.clone().unwrap_or_default()
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BotConfig {
     /// Change id to sync changes between frontend and backend
@@ -356,7 +268,22 @@ pub struct BotConfig {
 
     farming_config: FarmingConfig,
     support_config: SupportConfig,
-    shout_config: ShoutConfig,
+
+    passive_mobs_colors: Option<[Option<u8>; 3]>,
+    passive_tolerence: Option<u8>,
+    aggressive_mobs_colors: Option<[Option<u8>; 3]>,
+    aggressive_tolerence: Option<u8>,
+
+    min_mobs_name_width: Option<u32>,
+    max_mobs_name_width: Option<u32>,
+
+    interval_between_buffs: Option<u64>,
+    on_death_disconnect: Option<bool>,
+    inactivity_timeout: Option<u64>,
+    obstacle_avoidance_cooldown: Option<u64>,
+    whitelist_enabled: Option<bool>,
+    whitelist: Option<Vec<(u32, u32, String)>>
+
 }
 
 impl Default for BotConfig {
@@ -367,12 +294,28 @@ impl Default for BotConfig {
             is_running: false,
             farming_config: FarmingConfig::default(),
             support_config: SupportConfig::default(),
-            shout_config: ShoutConfig::default(),
+
+            passive_mobs_colors: Some([None, None, None]),
+            passive_tolerence: Some(5),
+            aggressive_mobs_colors: Some([None, None, None]),
+            aggressive_tolerence: Some(10),
+
+            min_mobs_name_width: Some(11),
+            max_mobs_name_width: Some(180),
+
+            interval_between_buffs:Some(2000),
+
+            on_death_disconnect: Some(false),
+            inactivity_timeout: Some(0),
+            obstacle_avoidance_cooldown: Some(0),
+            whitelist_enabled: Some(false),
+            whitelist: None,
         }
     }
 }
 
 impl BotConfig {
+
     pub fn toggle_active(&mut self) {
         self.is_running = !self.is_running;
     }
@@ -398,13 +341,71 @@ impl BotConfig {
         &self.support_config
     }
 
-    pub fn shout_config(&self) -> &ShoutConfig {
-        &self.shout_config
-    }
-
     pub fn mode(&self) -> Option<BotMode> {
         self.mode.clone()
     }
+
+    pub fn min_mobs_name_width(&self) -> u32 {
+        self.min_mobs_name_width.unwrap_or(11)
+    }
+
+    pub fn max_mobs_name_width(&self) -> u32 {
+        self.max_mobs_name_width.unwrap_or(180)
+    }
+
+    pub fn passive_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.passive_mobs_colors.unwrap_or([None, None, None])
+    }
+
+    pub fn passive_tolerence(&self) -> u8 {
+        self.passive_tolerence.unwrap_or(5)
+    }
+
+    pub fn aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.aggressive_mobs_colors.unwrap_or([None, None, None])
+    }
+
+    pub fn aggressive_tolerence(&self) -> u8 {
+        self.aggressive_tolerence.unwrap_or(10)
+    }
+
+    pub fn interval_between_buffs(&self) -> u128 {
+        self.interval_between_buffs.unwrap_or(2000).into()
+    }
+
+    pub fn on_death_disconnect(&self) -> bool {
+        self.on_death_disconnect.unwrap_or(false)
+    }
+
+    pub fn inactivity_timeout(&self) -> u128 {
+        self.inactivity_timeout.unwrap_or(0).into()
+    }
+
+    pub fn obstacle_avoidance_cooldown(&self) -> u128 {
+        return self.obstacle_avoidance_cooldown.unwrap_or(0).into();
+    }
+
+    pub fn whitelist_enabled(&self) -> bool {
+        return self.whitelist_enabled.unwrap_or(false);
+    }
+
+    pub fn match_whitelist(&self, target: Target) -> bool {
+        if let Some(whitelist) = self.whitelist.clone() {
+            let mut result = false;
+            for mob in whitelist.iter() {
+                if mob.0 == target.bounds.w && mob.1 == target.bounds.h {
+                    result = true;
+                    break;
+                }
+            };
+            return result;
+        } else {
+            return true
+        }
+
+    }
+
+
 
     /// Serialize config to disk
     pub fn serialize(&self, path: String) {
