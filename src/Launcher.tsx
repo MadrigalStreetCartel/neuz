@@ -114,22 +114,43 @@ const Launcher = ({ className }: Props) => {
 
     if (currentVersion === "NaN") {
         getVersion().then((value) => {
-            setCurrentVersion(value)
+            setCurrentVersion("ALPHA"/* value */)
         })
 
     }
 
     const refreshProfiles = () => {
+        setPID("")
         invoke('get_profiles').then((value: any)=> {
             if(value) setList(value);
         })
     }
 
     useEffect(() => {
-        getData()
+        //getData()
         refreshProfiles()
 
     },[currentVersion])
+
+
+    const [brwsrCb, setBrwsrCb] = useState(true)
+    const [botCb, setBotCb] = useState(true)
+
+    const checkboxSettings = () => {
+        return (
+            <>
+                <h4>Make a choice</h4>
+                <div style={{display: "flex", flexDirection: "column"}}>
+                    <label htmlFor="chbBrowser">Browser settings</label>
+                    <input type="checkbox" name="Browser settings" id="" checked={brwsrCb} onChange={(value)=> {setBrwsrCb(value.target.checked)}}/>
+                    <label htmlFor="chbBot">Bot settings</label>
+                    <input type="checkbox" name="Bot settings" id="" checked={botCb} onChange={(value)=> {setBotCb(value.target.checked)}}/>
+                </div>
+            </>
+        )
+    }
+
+    const resetCheckBoxes = () => {setBrwsrCb(true); setBotCb(true)}
 
     return (
             <div className={className}>
@@ -176,15 +197,20 @@ const Launcher = ({ className }: Props) => {
                 <YesNoModal isShowing={copyProfileModal.isShown} hide={copyProfileModal.close}
                     title={<h4>Profile {profileId?.replaceAll("profile_", "")} will be copied</h4>}
                     body={
-                        <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
+                        <>
+                            {checkboxSettings()}
+                            <TextInput unit='#' value={newProfile} onChange={(value) => {setNewProfile(value) }} />
+                        </>
                     }
                     onYes={() => {
                         if (!idList.includes("profile_" + newProfile.toUpperCase())){
-                            invoke('copy_profile', {profileId: profileId, newProfileId: newProfile})
+                            invoke('copy_profile', {profileId: profileId, newProfileId: newProfile, browserSettings: brwsrCb, botSettings: botCb})
                             setList((oldValue) => [...oldValue, "profile_" + newProfile.toUpperCase()])
+                            resetCheckBoxes()
                         }
                         setNewProfile("")
                     }}
+                    onNo={resetCheckBoxes}
                 />
 
                 <YesNoModal isShowing={delProfileModal.isShown} hide={delProfileModal.close}
@@ -203,11 +229,15 @@ const Launcher = ({ className }: Props) => {
                 <YesNoModal isShowing={resetProfileModal.isShown} hide={resetProfileModal.close}
                     title={<h4>Do you want to reset this profile ?</h4>}
                     body={
-                       <h3>This action cant be undone</h3>
+                        <>
+                            <h3>This action cant be undone</h3>
+                            {checkboxSettings()}
+                       </>
                     }
                     onYes={() => {
-                        invoke('reset_profile', {profileId: profileId})
+                        invoke('reset_profile', {profileId: profileId, browserSettings: brwsrCb, botSettings: botCb}).then(resetCheckBoxes)
                     }}
+                    onNo={resetCheckBoxes}
                 />
 
                 {!isLaunched && (
@@ -225,10 +255,10 @@ const Launcher = ({ className }: Props) => {
                                         <>
                                             <div style={{display: "inline"}}>
                                                 <div className="btn m" onClick={newProfileModal.open}>New</div>
-                                                <div className="btn m" onClick={()=> {profileId !== null && renameProfileModal.open()}}>Rename</div>
-                                                <div className="btn m" onClick={()=> {profileId !== null && copyProfileModal.open()}}>Copy</div>
-                                                <div className="btn m" onClick={()=> {profileId !== null && delProfileModal.open()}}>Remove</div>
-                                                <div className="btn m" onClick={()=> {profileId !== null && resetProfileModal.open()}}>Reset</div>
+                                                <div className="btn m" onClick={()=> {profileId !== "" && renameProfileModal.open()}}>Rename</div>
+                                                <div className="btn m" onClick={()=> {profileId !== "" && copyProfileModal.open()}}>Copy</div>
+                                                <div className="btn m" onClick={()=> {profileId !== "" && delProfileModal.open()}}>Remove</div>
+                                                <div className="btn m" onClick={()=> {profileId !== "" && resetProfileModal.open()}}>Reset</div>
                                                 <div className="btn m" onClick={refreshProfiles}>Refresh</div>
                                             </div>
 

@@ -105,7 +105,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         self.state = match self.state {
             State::NoEnemyFound => self.on_no_enemy_found(bot_config),
             State::SearchingForEnemy => self.on_searching_for_enemy(bot_config, config, image),
-            State::EnemyFound(mob) => self.on_enemy_found(mob, frontend_info),
+            State::EnemyFound(mob) => self.on_enemy_found(bot_config, image, mob, frontend_info),
             State::Attacking(mob) => self.on_attacking(bot_config, config, mob, image),
             State::AfterEnemyKill(_) => self.after_enemy_kill(frontend_info),
         };
@@ -233,13 +233,15 @@ impl<'a> FarmingBehavior<'_> {
         config: &FarmingConfig,
         image: &mut ImageAnalyzer,
     ) -> State {
-        if config.is_stop_fighting()/*  || image.client_stats.hp.value > 0 || image.identify_target_marker(false).is_some() */ {
-            return State::Attacking(Target::default());
-        }
         let mobs = image.identify_mobs(bot_config);
         if mobs.is_empty() {
-            // Transition to next state
-            State::NoEnemyFound
+            if config.is_manual_targetting() {
+                // Transition to next state
+                State::SearchingForEnemy
+            } else {
+                // Transition to next state
+                State::NoEnemyFound
+            }
         } else {
             // Calculate max distance of mobs
             let max_distance = match config.circle_pattern_rotation_duration() == 0 {
@@ -286,27 +288,19 @@ impl<'a> FarmingBehavior<'_> {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                     }
                 } {
-                    if bot_config.whitelist_enabled() {
-                        if bot_config.match_whitelist(*mob) {
-                            State::EnemyFound(*mob)
-                        } else if mob.target_type == TargetType::Mob(MobType::Aggressive) {
-                            eval_avoid_mob_click(self.window, mob.get_active_avoid_coords(100));
-                            State::SearchingForEnemy
-                        } else {
-                            State::SearchingForEnemy
-                        }
-
-                    } else {
-                        // Transition to next state
-                        State::EnemyFound(*mob)
-                    }
+                    State::EnemyFound(*mob)
                 } else {
                     // Transition to next state
                     State::SearchingForEnemy
                 }
             } else {
-                // Transition to next state
-                State::NoEnemyFound
+                if config.is_manual_targetting() {
+                    // Transition to next state
+                    State::SearchingForEnemy
+                } else {
+                    // Transition to next state
+                    State::NoEnemyFound
+                }
             }
         }
     }
@@ -322,9 +316,25 @@ impl<'a> FarmingBehavior<'_> {
         }
     }
 
-    fn on_enemy_found(&mut self, mob: Target, frontend_info: &mut FrontendInfo) -> State {
+    fn on_enemy_found(&mut self, bot_config: &BotConfig, image: &ImageAnalyzer, mob: Target, frontend_info: &mut FrontendInfo) -> State {
 
         frontend_info.set_last_mob_bounds(mob.bounds.w, mob.bounds.h);
+        if bot_config.whitelist_enabled() && !bot_config.farming_config().is_manual_targetting() {
+            if !bot_config.match_whitelist(mob) {
+                if mob.target_type == TargetType::Mob(MobType::Aggressive) {
+                    eval_avoid_mob_click(self.window, mob.get_active_avoid_coords(100));
+                    return State::SearchingForEnemy;
+                } else {
+                    return State::SearchingForEnemy;
+                }
+            }
+        }else if bot_config.farming_config().is_manual_targetting()  {
+            if image.client_stats.target_hp.value > 0 {
+                return State::Attacking(mob);
+            } else {
+                return State::SearchingForEnemy;
+            }
+        }
         self.last_no_ennemy_time = None;
         // Transform attack coords into local window coords
         let point = mob.get_attack_coords();
@@ -345,7 +355,7 @@ impl<'a> FarmingBehavior<'_> {
 
         if self.already_attack_count > 0 {
             // Target marker found
-            if let Some(marker) = image.identify_target_marker(false) {
+            if let Some(marker) = image.client_stats.target_marker {
                 self.avoided_bounds.push((
                     marker.bounds.grow_by(self.already_attack_count * 10),
                     Instant::now(),
@@ -409,9 +419,9 @@ impl<'a> FarmingBehavior<'_> {
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
         let is_mob =
             image.client_stats.target_hp.value > 0 && image.client_stats.target_mp.value > 0;
-        let is_mob_alive = image.identify_target_marker(false).is_some() || image.client_stats.target_mp.value > 0 || image.client_stats.target_hp.value > 0 ;
+        let is_mob_alive = image.client_stats.target_marker.is_some() || image.client_stats.target_mp.value > 0 || image.client_stats.target_hp.value > 0 ;
 
-        if !self.is_attacking && !config.is_stop_fighting() {
+        if !self.is_attacking && !config.is_manual_targetting() {
             if is_npc {
                 self.avoid_last_click();
                 return State::SearchingForEnemy;
@@ -436,9 +446,9 @@ impl<'a> FarmingBehavior<'_> {
                 self.avoid_last_click();
                 return State::SearchingForEnemy;
             }
-        } else if !self.is_attacking && config.is_stop_fighting() {
+        } else if !self.is_attacking && config.is_manual_targetting() {
             if !is_mob {
-                return self.state;
+                return State::SearchingForEnemy;
             }
         }
 
@@ -450,8 +460,6 @@ impl<'a> FarmingBehavior<'_> {
                 self.is_attacking = true;
                 self.already_attack_count = 0;
             }
-            // Use buffs only when target is found so we don't waste them
-            self.slots_usage.check_buffs();
 
             let last_target_hp_update = image
                 .client_stats
@@ -462,17 +470,24 @@ impl<'a> FarmingBehavior<'_> {
                 .as_millis();
 
             // Obstacle avoidance
-            if image.identify_target_marker(false).is_none() || last_target_hp_update > bot_config.obstacle_avoidance_cooldown() {
-                if image.client_stats.target_hp.value == 100 {
-                    if self.avoid_obstacle(image, 2) {
-                        return State::SearchingForEnemy;
+            if !config.is_manual_targetting() {
+                if image.client_stats.target_marker.is_none() || last_target_hp_update > bot_config.obstacle_avoidance_cooldown() {
+                    if image.client_stats.target_hp.value == 100 {
+                        if self.avoid_obstacle(image, 2) {
+                            return State::SearchingForEnemy;
+                        }
+                    }else {
+                        if self.avoid_obstacle(image, config.obstacle_avoidance_max_try()) {
+                            return State::SearchingForEnemy;
+                        }
                     }
-                }else {
-                    if self.avoid_obstacle(image, config.obstacle_avoidance_max_try()) {
-                        return State::SearchingForEnemy;
-                    }
+                } else {
+                    self.obstacle_avoidance_count = 0;
                 }
             }
+
+            // Use buffs only when target is found so we don't waste them
+            self.slots_usage.check_buffs();
 
             // Try to use attack skill if at least one is selected in slot bar
             self.slots_usage.get_slot_for(None, SlotType::AttackSkill, true);

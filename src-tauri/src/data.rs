@@ -10,7 +10,7 @@ pub use self::point::Point;
 mod point_cloud;
 pub use self::point_cloud::{point_selector, PointCloud};
 
-mod stats_info;
+pub(crate) mod stats_info;
 pub use self::stats_info::{ClientStats, StatInfo, StatusBarConfig, StatusBarKind};
 
 mod pixel_detection;

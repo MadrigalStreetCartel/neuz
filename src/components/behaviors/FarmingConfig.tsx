@@ -14,16 +14,16 @@ import { FrontendInfoModel } from '../../models/FrontendInfo'
 import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
-import { MsFormat, StopWatchValues } from '../utils/StopWatch'
 import TimeInput from '../config/TimeInput'
 import useDefaultValue from '../utils/useDefaultValues'
+import { Time } from '../utils/Time'
 
 type Props = {
     className?: string,
     info: FrontendInfoModel | null,
     config: FarmingConfigModel,
     onChange: (config: FarmingConfigModel) => void,
-    botStopWatch: StopWatchValues | null,
+    botStopWatch: Time | null,
     botState: string,
 }
 
@@ -32,10 +32,10 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     const settingsModal = useModal()
 
     // StopWatchs
-    const searchMobStopWatch = MsFormat(info?.last_search_duration ?? 0),
-    fightStopWatch = MsFormat(info?.last_search_duration ?? 0)
+    const searchMobStopWatch = new Time(info?.last_search_duration ?? 0).toString(),
+    fightStopWatch = new Time(info?.last_search_duration ?? 0).toString()
 
-    const globalKPM = ((info?.enemy_kill_count?? 0) / Math.round(Number(botStopWatch?.timer ?? 0) / 60000)).toFixed(2)
+    const globalKPM = ((info?.enemy_kill_count?? 0) / Math.round(Number(botStopWatch?.time ?? 0) / 60000)).toFixed(2)
     const globalKPH = (Number(globalKPM) * 60).toFixed(2)
 
     return (
@@ -96,10 +96,10 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         <div>State: { botState }</div>
                     </div>
                     <div className="row">
-                        <div>Target's detection mode: { config.is_stop_fighting? "🛑" : "✅" }</div>
+                        <div>Target's detection mode: { config.is_manual_targetting? "🛑" : "✅" }</div>
                     </div>
                     <button className="btn sm"
-                            onClick={e => onChange?.({ ...config, is_stop_fighting: !config.is_stop_fighting })} >
+                            onClick={e => onChange?.({ ...config, is_manual_targetting: !config.is_manual_targetting })} >
                             Detection 🎯
                     </button>
                     <div className="row">

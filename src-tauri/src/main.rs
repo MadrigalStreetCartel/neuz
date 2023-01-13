@@ -15,13 +15,13 @@ use std::{
     fs::{self},
     io,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
 use guard::guard;
 use ipc::FrontendInfo;
-use parking_lot::RwLock;
+use parking_lot::{RwLock};
 use slog::{Drain, Level, Logger};
 use tauri::{LogicalSize, Manager, Size, Window};
 
@@ -35,6 +35,8 @@ use crate::{
 
 struct AppState {
     logger: Logger,
+    min_mode: Mutex<bool>,
+    test: Mutex<bool>,
 }
 
 fn main() {
@@ -71,7 +73,7 @@ fn main() {
     // Build app
     tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
-        .manage(AppState { logger })
+        .manage(AppState { logger, test: Mutex::new(true), min_mode: Mutex::new(false) })
         .invoke_handler(tauri::generate_handler![
             start_bot,
             create_window,
@@ -92,15 +94,10 @@ fn main() {
 fn toggle_main_size(
     size: [u32; 2],
     should_not_toggle: Option<bool>,
-    _state: tauri::State<AppState>,
+    state: tauri::State<AppState>,
     app_handle: tauri::AppHandle,
-) -> bool {
+) {
     let window = app_handle.get_window("main").unwrap();
-    let win_size = window.inner_size();
-    if win_size.is_err() {
-        return false;
-    }
-    let win_size = win_size.unwrap().clone();
 
     let default_width = 550;
     let default_height = 630;
@@ -114,17 +111,17 @@ fn toggle_main_size(
         }
     }
 
-    if win_size.width == min_width && win_size.height == min_height {
+    if state.min_mode.lock().unwrap().to_owned() {
         resize_window(window, default_width, default_height, should_not_toggle);
-        return false;
+        *state.min_mode.lock().unwrap() = false;
     } else {
         resize_window(window, min_width, min_height, should_not_toggle);
-        return true;
+        *state.min_mode.lock().unwrap() = true;
     }
 }
 
 #[tauri::command]
-fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+fn focus_client(state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let window = app_handle.get_window("client");
     drop(window.clone().unwrap().unminimize());
     drop(window.unwrap().set_focus());
@@ -179,19 +176,7 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
     profiles
 }
 
-fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
-    fs::create_dir_all(&dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
-        }
-    }
-    Ok(())
-}
+
 fn config_folder_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
     format!(
         r"{}\profile_{}",
@@ -218,17 +203,37 @@ fn config_file_path(app_handle: &tauri::AppHandle, profile_id: &String) -> Strin
 fn copy_profile(
     profile_id: String,
     new_profile_id: String,
+    browser_settings: bool,
+    bot_settings: bool,
     _state: tauri::State<AppState>,
     app_handle: tauri::AppHandle,
 ) {
-    drop(fs::copy(
-        config_file_path(&app_handle, &profile_id),
-        config_file_path(&app_handle, &new_profile_id).clone(),
-    ));
-    drop(copy_dir_all(
-        config_folder_path(&app_handle, &profile_id),
-        config_folder_path(&app_handle, &new_profile_id),
-    ));
+    if bot_settings {
+        drop(fs::copy(
+            config_file_path(&app_handle, &profile_id),
+            config_file_path(&app_handle, &new_profile_id).clone(),
+        ));
+    }
+
+    if browser_settings {
+        fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+            fs::create_dir_all(&dst)?;
+            for entry in fs::read_dir(src)? {
+                let entry = entry?;
+                let ty = entry.file_type()?;
+                if ty.is_dir() {
+                    copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+                } else {
+                    fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+                }
+            }
+            Ok(())
+        }
+        drop(copy_dir_all(
+            config_folder_path(&app_handle, &profile_id),
+            config_folder_path(&app_handle, &new_profile_id),
+        ));
+    }
 }
 
 #[tauri::command]
@@ -271,21 +276,32 @@ fn rename_profile(
 }
 
 #[tauri::command]
-fn reset_profile(profile_id: String, _state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
-    drop(fs::remove_dir_all(config_folder_path(
-        &app_handle,
-        &profile_id,
-    )));
-    drop(fs::remove_file(
-        config_file_path(&app_handle, &profile_id).clone(),
-    ));
-    drop(fs::create_dir(
-        config_folder_path(&app_handle, &profile_id).clone(),
-    ));
+fn reset_profile(profile_id: String, browser_settings: bool, bot_settings: bool, _state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+    if browser_settings {
+        drop(fs::remove_dir_all(config_folder_path(
+            &app_handle,
+            &profile_id,
+        )));
+    }
+
+    if bot_settings {
+        drop(fs::remove_file(
+            config_file_path(&app_handle, &profile_id).clone(),
+        ));
+    }
+
+    if browser_settings {
+        drop(fs::create_dir(
+            config_folder_path(&app_handle, &profile_id).clone(),
+        ));
+    }
 }
 
 #[tauri::command]
 async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
+    create_window_rs(profile_id, app_handle)
+}
+fn create_window_rs(profile_id: String, app_handle: tauri::AppHandle) {
     let window = tauri::WindowBuilder::new(
         &app_handle,
         "client",
@@ -300,7 +316,6 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
             .to_string_lossy(),
         profile_id
     )))
-    //.resizable(false)
     .center()
     .inner_size(800.0, 600.0)
     .title(format!("{} | Flyff Universe", profile_id))
@@ -313,9 +328,11 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
     //window.once_global("tauri://close-requested", move |_| app_handle.restart());
 }
 
+
 #[tauri::command]
-fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
+fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle) {
     let logger = state.logger.clone();
+    //*state.test.lock().unwrap() = false;
     let config_path = format!(
         r"{}\.botconfig_{}",
         app_handle
@@ -327,13 +344,13 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
     )
     .clone();
 
+    let char_stats_tray_timeout = Mutex::new(0);
+    let char_is_dead_timeout = Mutex::new(0);
     std::thread::spawn(move || {
         let logger = logger.clone();
-
         let mut last_config_change_id = 0;
         let config: Arc<RwLock<BotConfig>> =
             Arc::new(RwLock::new(BotConfig::deserialize_or_default(config_path)));
-
         // Listen for config changes from the UI
         let local_config = config.clone();
         let logger_botconfig_c2s = logger.clone();
@@ -431,7 +448,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 continue;
             }
 
-            if !config.farming_config().is_stop_fighting() {
+            if !config.farming_config().is_manual_targetting() {
                 drop(window.set_size(Size::Logical(LogicalSize {
                     width: 800.0,
                     height: 600.0,
@@ -475,13 +492,38 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 // Update stats
                 image_analyzer
                     .client_stats
-                    .update(&image_analyzer.clone(), &logger);
+                    .update(&mut image_analyzer.clone(), &logger);
 
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
                 // Stop bot in case of death
                 let is_alive = image_analyzer.client_stats.is_alive();
+
+                if !is_alive.0 {
+                    *char_stats_tray_timeout.lock().unwrap() +=1;
+                    if *char_stats_tray_timeout.lock().unwrap() == 5 {
+                        eval_send_key(&window, "T", KeyMode::Press);
+                    } else if *char_stats_tray_timeout.lock().unwrap() == 10 {
+                        eval_send_key(&window, "T", KeyMode::Press);
+                    } else {
+                        // error maybe restart client
+                        thread::spawn(||
+                        {
+                            thread::sleep(Duration::from_secs(1))};
+                            window
+                        );
+                        window.close()
+
+                    }
+
+                }
+                if !is_alive.1 {
+                    *char_is_dead_timeout.lock().unwrap() +=1;
+
+                }
+
+
 
                 if !is_alive  {
                     if frontend_info_mut.is_alive() {
@@ -497,7 +539,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         send_info(&*frontend_info.read());
                     } else {
                         eval_send_key(&window, "Enter", KeyMode::Press);
-                        std::thread::sleep(Duration::from_millis(500));
+                        std::thread::sleep(Duration::from_millis(2000));
                     }
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {

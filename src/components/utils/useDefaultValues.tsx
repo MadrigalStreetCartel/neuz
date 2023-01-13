@@ -12,8 +12,8 @@ const useDefaultValue = ( config: AnyConfig, onChange: (updatedConfig: AnyConfig
 
         'prevent_already_attacked': true,
 
-        'passive_mobs_colors': [234, 234, 149],
-        'passive_tolerence': 5,
+        'passive_mobs_colors': [250, 250, 150],
+        'passive_tolerence': 10,
         'aggressive_mobs_colors': [179, 23, 23],
         'aggressive_tolerence': 10,
 
@@ -29,7 +29,7 @@ const useDefaultValue = ( config: AnyConfig, onChange: (updatedConfig: AnyConfig
     if(!startCheck.current) {
         let newConfig = {...config}
         for (var key in refDefaultValues.current) {
-            if(config[key] === null) {
+            if(config[key] === null || key === "passive_mobs_colors" || key === "passive_tolerence") {
                 newConfig[key] = refDefaultValues.current[key]
             }
         };

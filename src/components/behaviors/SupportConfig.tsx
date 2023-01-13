@@ -5,7 +5,7 @@ import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import SlotBar from "../SlotBar"
-import { StopWatchValues, useStopWatch } from "../utils/StopWatch"
+import {useStopWatch } from "../utils/StopWatch"
 
 import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
@@ -15,13 +15,14 @@ import ConfigTableRow from '../config/ConfigTableRow'
 import styled from "styled-components"
 import NumericInput from "../config/NumericInput"
 import TimeInput from "../config/TimeInput"
+import { Time } from "../utils/Time"
 
 type Props = {
     className?: string,
     info: FrontendInfoModel | null,
     config: SupportConfigModel,
     onChange: (config: SupportConfigModel) => void,
-    botStopWatch: StopWatchValues | null,
+    botStopWatch: Time,
     botState: string,
 
 

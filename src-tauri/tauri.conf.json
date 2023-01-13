@@ -3,12 +3,12 @@
   "build": {
     "beforeBuildCommand": "yarn build",
     "beforeDevCommand": "yarn start",
-    "devPath": "http://localhost:3000",
+    "devPath": "http://192.168.1.5:3000",
     "distDir": "../build"
   },
   "package": {
     "productName": "Neuz",
-    "version": "0.16.2"
+    "version": "0.16.333"
   },
   "tauri": {
     "allowlist": {

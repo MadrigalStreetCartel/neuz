@@ -1,35 +1,18 @@
 import styled from "styled-components"
 import { useRef, useState } from 'react';
 import ConfigTable from "./ConfigTable";
+import ItemList from "./ItemList";
 
 type Props = {
     className?: string,
-    whitelist: [number, number, string][],
-    onChange: (value: [number, number, string][]) => void,
+    whitelist: (any)[][],
+    onChange: (value: (any)[][]) => void,
+    onAdd: () => void,
 }
 
-const WhiteList = ({ className, whitelist, onChange }: Props) => {
-    const [whiteListValues, setWhiteListValues] = useState(whitelist ?? []);
-    //const removeID = useRef<number | null>(null)
-    const [removeID, setRemoveID] = useState<number | null>(null)
+const WhiteList = ({ className, whitelist, onChange, onAdd }: Props) => {
     return (
-        <div className={className}>
-            <table>
-                <tr>
-                    <th>Width</th>
-                    <th>Height</th>
-                    <th>Name (optionnal)</th>
-                </tr>
-                {whitelist.map((val, key) => (
-                    <tr key={key} className={`${removeID === key? "selected" : ""}`} onClick={() => setRemoveID(key)}>
-                        <td>{val[0]}</td>
-                        <td>{val[1]}</td>
-                        <td>{val[2]}</td>
-                    </tr>
-                ))}
-            </table>
-            <div className="btn" onClick={() => onChange?.(whitelist.filter((value, key)=> key !== removeID  ))}>Remove</div>
-        </div>
+       <ItemList items={whitelist} onChange={onChange} onAdd={onAdd} headers={["Width", "Height", "Name (optionnal)"]} />
     )
 }
 

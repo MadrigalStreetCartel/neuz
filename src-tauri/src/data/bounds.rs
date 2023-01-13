@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::Point;
 
 /// A bounding box in 2D space.
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct Bounds {
     pub x: u32,
     pub y: u32,

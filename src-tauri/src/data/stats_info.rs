@@ -1,5 +1,6 @@
 use std::{fmt, time::Instant};
 
+use palette::Hsv;
 use slog::Logger;
 use tauri::Window;
 
@@ -8,7 +9,7 @@ use crate::{
     platform::{eval_send_key, KeyMode},
 };
 
-use super::PointCloud;
+use super::{PointCloud, Target};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
@@ -30,17 +31,22 @@ impl fmt::Display for StatusBarKind {
         }
     }
 }
-
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum TargetMarkerType {
+    #[default]
+    None,
+    Aggressive,
+    Passive
+}
+#[derive(Debug, Clone, Default)]
 pub struct ClientStats {
     pub hp: StatInfo,
     pub mp: StatInfo,
     pub fp: StatInfo,
     pub target_hp: StatInfo,
     pub target_mp: StatInfo,
-    is_alive: bool,
-    pub stat_try_not_detected_count: i32,
-    window: Window,
+    pub target_marker_type: TargetMarkerType,
+    pub target_marker: Option<Target>,
 }
 impl ClientStats {
     pub fn new(window: Window) -> Self {
@@ -48,63 +54,61 @@ impl ClientStats {
             hp: StatInfo::new(0, 100, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 100, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 100, StatusBarKind::Fp, None),
-            target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
-            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
-            is_alive: true,
-            stat_try_not_detected_count: 0,
-            window,
+            target_hp: StatInfo::new(0, 100, StatusBarKind::TargetHP, None),
+            target_mp: StatInfo::new(0, 100, StatusBarKind::TargetMP, None),
+            target_marker_type: TargetMarkerType::None,
+            target_marker: None,
         }
     }
 
     // update all bars values at once
-    pub fn update(&mut self, image: &ImageAnalyzer, logger: &Logger) {
+    pub fn update(&mut self, image: &mut ImageAnalyzer, logger: &Logger) {
         let should_debug = [
             self.hp.update_value(image),
             self.mp.update_value(image),
             self.fp.update_value(image),
             self.target_hp.update_value(image),
             self.target_mp.update_value(image),
+            self.update_target_marker(image),
+
         ];
+
+        #[cfg(debug_assertions)]
         if should_debug.contains(&true) && false {
             self.debug_print(logger);
         }
     }
 
+    pub fn update_target_marker(&mut self, image: &mut ImageAnalyzer) -> bool {
+        let tm = image.identify_target_marker(false);
+
+        let mut changed = false;
+        if tm.0 != self.target_marker_type {
+            self.target_marker_type = tm.0;
+            changed = true;
+        }
+
+        if tm.1 != self.target_marker {
+            self.target_marker = tm.1;
+            changed = true;
+        }
+        changed
+    }
+
     // Detect whether we can read or not stat_tray and open it if needed
     pub fn detect_stat_tray(&mut self) -> bool {
         // Since HP/MP/FP are 0 we know bar should be hidden
-        if self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0 {
-            self.stat_try_not_detected_count += 1;
-            if self.stat_try_not_detected_count == 5 {
-                self.stat_try_not_detected_count = 0;
-
-                // Try to open char stat tray
-                eval_send_key(&self.window, "T", KeyMode::Press);
-            }
-            return false;
-        } else {
-            self.stat_try_not_detected_count = 0;
-            return true;
-        }
+        return !(self.hp.value == 0 && self.mp.value == 0 && self.fp.value == 0);
     }
 
     // bot died
-    pub fn is_alive(&mut self) -> bool {
-        // We need to be sure that char tray is open before
-        if self.detect_stat_tray() {
-            // Obfviously
-            if self.hp.value == 0 {
-                self.is_alive = false
-            } else {
-                self.is_alive = true
-            }
-        }
-        return self.is_alive
-
-
-
+    /// Detects bot current state : 1:stats_tray_state 2:hp_state
+    pub fn is_alive(&mut self) -> (bool, bool) {
+        let stats_tray_state = self.detect_stat_tray();
+        let hp_state = !self.hp.value == 0;
+        return (stats_tray_state, !self.hp.value == 0);
     }
-
+    #[cfg(debug_assertions)]
     pub fn debug_print(&mut self, logger: &Logger) {
         // Stringify is_alive
         let alive_str = {
@@ -114,7 +118,12 @@ impl ClientStats {
                 "dead"
             }
         };
-        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.target_hp.value, "Character is" => alive_str);
+        let target_marker_type = match self.target_marker_type {
+            TargetMarkerType::Aggressive => "red",
+            TargetMarkerType::Passive => "white",
+            TargetMarkerType::None => "None",
+        };
+        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Target marker type" => target_marker_type, "Target HP" => self.target_hp.value, "Target MP" => self.target_mp.value, "Character is" => alive_str);
     }
 }
 
@@ -172,14 +181,14 @@ impl StatInfo {
             status_bar_config.min_y,
             status_bar_config.max_x,
             status_bar_config.max_y,
-            Some(2),
+            None,
         );
 
         // Receive points from channel
         let cloud = {
             let mut cloud = PointCloud::default();
             while let Ok(point) = recv.recv() {
-                cloud.push(point);
+                cloud.push(point.0);
             }
             cloud
         };
@@ -213,16 +222,13 @@ pub struct StatusBarConfig {
     pub max_y: u32,
     pub min_x: u32,
     pub min_y: u32,
-    pub refs: Vec<Color>,
+    pub refs: Vec<Hsv>,
 }
 
 impl StatusBarConfig {
-    pub fn new(colors: [[u8; 3]; 4]) -> Self {
+    pub fn new(colors: [Hsv; 4]) -> Self {
         Self {
-            refs: colors
-                .iter()
-                .map(|v| Color::new(v[0], v[1], v[2]))
-                .collect(),
+            refs: colors.to_vec(),
             ..Default::default()
         }
     }
@@ -233,26 +239,34 @@ impl From<StatusBarKind> for StatusBarConfig {
         use StatusBarKind::*;
 
         match kind {
-            Hp => {
-                StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]])
-            }
+            Hp => StatusBarConfig::new([
+                Hsv::new(346.0, 0.87, 0.74),
+                Hsv::new(346.0, 0.49, 0.76),
+                Hsv::new(347.0, 0.81, 0.79),
+                Hsv::new(345.0, 0.90, 0.58)
+            ]),
 
             Mp => StatusBarConfig::new([
-                [20, 84, 196],
-                [36, 132, 220],
-                [44, 164, 228],
-                [56, 188, 232],
+                Hsv::new(219.0, 0.89, 0.76),
+                Hsv::new(214.0, 0.85, 0.80),
+                Hsv::new(208.0, 0.82, 0.85),
+                Hsv::new(219.0, 0.88, 0.65)
             ]),
             Fp => {
-                StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
+                StatusBarConfig::new([
+                    Hsv::new(121.0, 0.86, 0.51),
+                    Hsv::new(119.0, 0.86, 0.63),
+                    Hsv::new(118.0, 0.86, 0.66),
+                    Hsv::new(121.0, 0.86, 0.55)
+                ])
             }
 
             TargetHP => {
                 let mut target_hp_bar = StatusBarConfig::new([
-                    [174, 18, 55],
-                    [188, 24, 62],
-                    [204, 30, 70],
-                    [220, 36, 78],
+                    Hsv::new(346.0, 0.87, 0.74),
+                    Hsv::new(346.0, 0.49, 0.76),
+                    Hsv::new(347.0, 0.81, 0.79),
+                    Hsv::new(345.0, 0.90, 0.58)
                 ]);
                 target_hp_bar.min_x = 300;
                 target_hp_bar.min_y = 30;
@@ -265,10 +279,10 @@ impl From<StatusBarKind> for StatusBarConfig {
 
             TargetMP => {
                 let mut target_mp_bar = StatusBarConfig::new([
-                    [20, 84, 196],
-                    [36, 132, 220],
-                    [44, 164, 228],
-                    [56, 188, 232],
+                    Hsv::new(219.0, 0.89, 0.76),
+                    Hsv::new(214.0, 0.85, 0.80),
+                    Hsv::new(208.0, 0.82, 0.85),
+                    Hsv::new(219.0, 0.88, 0.65)
                 ]);
                 target_mp_bar.min_x = 300;
                 target_mp_bar.min_y = 50;

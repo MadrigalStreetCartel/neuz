@@ -142,7 +142,7 @@ pub struct FarmingConfig {
 
     prevent_already_attacked: Option<bool>,
 
-    is_stop_fighting: Option<bool>,
+    is_manual_targetting: Option<bool>,
 
     obstacle_avoidance_max_try: Option<u32>,
 }
@@ -203,8 +203,8 @@ impl FarmingConfig {
         None
     }
 
-    pub fn is_stop_fighting(&self) -> bool {
-        self.is_stop_fighting.unwrap_or(false)
+    pub fn is_manual_targetting(&self) -> bool {
+        self.is_manual_targetting.unwrap_or(false)
     }
 
     pub fn prevent_already_attacked(&self) -> bool {

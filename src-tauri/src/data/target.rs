@@ -23,7 +23,7 @@ pub enum DirectionType {
 }
 
 /// A target in 2D space.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Target {
     pub target_type: TargetType,
     pub bounds: Bounds,

@@ -70,7 +70,7 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
         if (!config) return
         const newConfig = { ...config }
         if (newConfig.farming_config) {
-            newConfig.farming_config.is_stop_fighting = !newConfig.farming_config?.is_stop_fighting
+            newConfig.farming_config.is_manual_targetting = !newConfig.farming_config?.is_manual_targetting
         }
         emit('bot_config_c2s', newConfig)
     }
@@ -91,7 +91,7 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
     const [lightMode, setLightMode] = useState(false)
     const minSizeFarm = [250, 200]
     const minSize = [250, 160]
-    const toogleLightMode = () => invoke("toggle_main_size", {size: config?.mode === "Farming"? minSizeFarm : minSize}).then((value) => setLightMode(value as boolean))
+    const toogleLightMode = () => invoke("toggle_main_size", {size: config?.mode === "Farming"? minSizeFarm : minSize}).then(() => setLightMode((prev) => !prev))
 
     const farmingState = config?.is_running? info?.is_running? !info?.is_alive? "dead" : info.is_attacking? "fighting" : "searching" : "ready" : "idle"
     const farmStopWatch = useStopWatch(farmingState === "searching" || farmingState === "fighting")
@@ -141,7 +141,7 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
                     <div className="btn sm" id="back" onClick={toogleLightMode}>{"<-"}</div>
                     <div className="btn sm" onClick={() => {invoke("focus_client")}}>Focus</div>
                     {config?.mode === "Farming" && <div className="btn sm" onClick={handleToggle}>
-                    {config?.farming_config?.is_stop_fighting? "🛑" : "✅" }🎯
+                    {config?.farming_config?.is_manual_targetting? "🛑" : "✅" }🎯
                     </div>}
                     <div className="btn sm" onClick={setRunningToggle}>{config?.is_running ? 'Disengage' : 'Engage'}</div>
                 </div>

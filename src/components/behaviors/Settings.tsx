@@ -5,7 +5,7 @@ import Modal from '../Modal'
 import useModal from '../utils/UseModal'
 import YesNoModal from '../YesNoModal'
 import SlotBar from "../SlotBar"
-import { StopWatchValues, useStopWatch } from "../utils/StopWatch"
+import { useStopWatch } from "../utils/StopWatch"
 
 import BooleanSlider from '../config/BooleanSlider'
 import ConfigLabel from '../config/ConfigLabel'
@@ -21,7 +21,15 @@ import useDefaultValue from "../utils/useDefaultValues"
 import StringList from "../config/StringList"
 import WhiteList from "../config/WhiteList"
 import TextInput from "../config/TextInput"
+import ItemList from "../config/ItemList"
 
+import worldJson from "../../assets/json/worlds.json"
+import mobsJsonList from "../../assets/json/mobs.json"
+import toBeMerged from "../../assets/json/toBeMerged.json"
+
+import { clipboard } from "@tauri-apps/api"
+
+let mobsJson = mobsJsonList
 type Props = {
     className?: string,
     info: FrontendInfoModel | null,
@@ -42,15 +50,37 @@ const Settings = ({ className, info, config, onChange}: Props) => {
 
     const resetSlotMode = useRef("farming")
 
-    const addWhitelistWidth = useRef(0)
-    const addWhitelistHeight = useRef(0)
-    const addWhitelistName = useRef("")
+    const [addWhitelistWidth, setWhiteListWidth] = useState(0)
+    const [addWhitelistHeight, setWhiteListHeight] = useState(0)
+    const [addWhitelistName, setNewWhitelistName] = useState("")
 
     useEffect(() => {
-        addWhitelistWidth.current = info?.last_mob_width ?? 0
-        addWhitelistHeight.current = info?.last_mob_height ?? 0
+        setWhiteListWidth(info?.last_mob_width ?? 0)
+        setWhiteListHeight(info?.last_mob_height ?? 0)
     }, [info?.last_mob_height, info?.last_mob_width])
 
+        useEffect(() => {
+            if(toBeMerged.length === 0) {
+                return
+            }
+            let changes = 0
+            toBeMerged.forEach((mobToBeMerged) => {
+                let mob = mobsJson.find(mobsList=> mobsList.name === mobToBeMerged.name)
+                if(mob === undefined) {
+                    return
+                }
+                if(mob.width !== mobToBeMerged.width || mob.height !== mobToBeMerged.height) {
+                    changes += 1
+                    mob.width = mobToBeMerged.width
+                    mob.height = mobToBeMerged.height
+                }
+            })
+            if(changes > 0) {
+                clipboard.writeText(JSON.stringify(mobsJson)); console.log(mobsJson)
+                alert(`${changes} mobs data merged data are in your clipboard`)
+            }
+        }
+        , [])
 
     const selectedMobType = useRef(0)
 
@@ -62,7 +92,41 @@ const Settings = ({ className, info, config, onChange}: Props) => {
     ]
 
     const setIsStopFighting = (value: boolean) => {
-        onChange?.({ ...config, farming_config: {...config.farming_config, is_stop_fighting: value} })
+        onChange?.({ ...config, farming_config: {...config.farming_config, is_manual_targetting: value} })
+    }
+
+    const [selectedWorld, setSelectedWorld] = useState("")
+    const [selectedRegion, setSelecteRegion] = useState("")
+
+    const worldNames = worldJson.map(world => [world.name])
+
+    const [mobsPrefilter, setMobsFilter] = useState("")
+
+    const getMobsByRegion = () => {
+        const worldID = worldJson.find(world => world.name === selectedWorld)?.id
+        let json = mobsJson
+        if (mobsPrefilter !== "") {
+            json = json.filter(mob => mob.name.toLowerCase().includes(mobsPrefilter))
+        }
+        let result = json.filter(mob => {
+            if (selectedRegion === "") {
+                return mob.world === worldID
+            } else {
+                return mob.world === worldID && mob.continent === selectedRegion
+            }
+        })
+
+        return result
+    }
+
+    const getMobsDisplay = () => getMobsByRegion().map(mob =>  [mob.name, mob.width, mob.height, () => {mob.width = addWhitelistWidth; mob.height = addWhitelistHeight}])
+
+    const getMobByBounds = () =>  getMobsByRegion().find(mob => mob.width === info?.last_mob_width && mob.height === info?.last_mob_height)?.name ?? "Unknown"
+
+    const getRegionsByWorld = () => {
+        const worldID = worldJson.find(world => world.name === selectedWorld)?.id
+        const regionsJson = worldJson.filter(world => world.id === worldID).map(world => world.continents/* .filter(world => world.town !== true) */)
+        return regionsJson.map(regions => regions.map(region => [region.name]))[0]
     }
 
     return (
@@ -91,7 +155,7 @@ const Settings = ({ className, info, config, onChange}: Props) => {
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Passive mob detection" helpText="" />}
-                        item={<button onClick={() => {
+                        item={<button className="btn sm" onClick={() => {
                             selectedMobType.current = 0
                             mobsColorsDebugModal.open()
                         }}>⚙️</button>}
@@ -99,7 +163,7 @@ const Settings = ({ className, info, config, onChange}: Props) => {
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Agressive mob detection" helpText="" />}
-                        item={<button onClick={() => {
+                        item={<button className="btn sm" onClick={() => {
                             selectedMobType.current = 1
                             mobsColorsDebugModal.open()
                         }}>⚙️</button>}
@@ -175,38 +239,78 @@ const Settings = ({ className, info, config, onChange}: Props) => {
                 <ConfigTable>
                     <ConfigTableRow
                         label={<ConfigLabel name="Width" helpText="" />}
-                        item={<NumericInput unit='px' value={addWhitelistWidth.current ?? 0} onChange={value => addWhitelistWidth.current = value} />}
+                        item={<NumericInput unit='px' value={addWhitelistWidth ?? 0} onChange={value => setWhiteListWidth(value)} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Height" helpText="" />}
-                        item={<NumericInput unit='px' value={addWhitelistHeight.current ?? 0} onChange={value => addWhitelistHeight.current = value} />}
+                        item={<NumericInput unit='px' value={addWhitelistHeight ?? 0} onChange={value => setWhiteListHeight(value)} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Name" helpText="" />}
-                        item={<TextInput value={addWhitelistName.current ?? ""} onChange={value => addWhitelistName.current = value} />}
+                        item={<TextInput value={addWhitelistName ?? ""} onChange={value => setNewWhitelistName(value)} />}
                     />
-                    <button className="btn sm" onClick={() => {onChange({...config, whitelist: [...config.whitelist ?? [], [addWhitelistWidth.current, addWhitelistHeight.current, addWhitelistName.current] ]});addWhitelistModal.close(); setIsStopFighting(false); addWhitelistName.current = ""}}>Add</button>
+                    <button className="btn sm" onClick={() => {onChange({...config, whitelist: [...config.whitelist ?? [], [addWhitelistWidth, addWhitelistHeight, addWhitelistName] ]});addWhitelistModal.close(); setIsStopFighting(false); setNewWhitelistName("")}}>Add</button>
                 </ConfigTable>
             }/>
             <Modal isShowing={mobsAvoidanceModal.isShown} hide={mobsAvoidanceModal.close}
                 title={<h4>Mobs whitelist</h4>} body={
                 <ConfigTable>
-                    <h4 style={{textAlign: "center"}}>Last targetted mob bounds:<br />width: {info?.last_mob_width ?? 0}px height: {info?.last_mob_height ?? 0}px</h4>
-                    <button className="btn m" onClick={() => {setIsStopFighting(true); addWhitelistModal.open()}}>Add</button>
-                    <ConfigTableRow
+                    <h4 style={{textAlign: "center"}}>Last targetted mob:<br />
+                        width: {info?.last_mob_width ?? 0}px height: {info?.last_mob_height ?? 0}px<br />
+                        Name: {selectedRegion === ""? "Select a region first !" : getMobByBounds()}
+                    </h4>
+
+
+                   {/*  <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="White list" helpText="" />}
-                        item={<WhiteList whitelist={config.whitelist ?? []} onChange={ value => onChange({...config, whitelist: value})} />}
+                        item={<WhiteList onAdd={() => {setIsStopFighting(true); addWhitelistModal.open()}} whitelist={config.whitelist ?? []} onChange={ value => onChange({...config, whitelist: value})} />}
+                    /> */}
+                    {selectedWorld === "" &&
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name={`World selector`} helpText="" />}
+                            item={<ItemList onDoubleClick={val => setSelectedWorld(val[0] as unknown as string)} canRemove={false} headers={["World's name"]} items={worldNames as any[]} onChange={ value => onChange({...config, whitelist: value})} />}
+                        />
+                    }
+                    {( selectedWorld === "Madrigal" && selectedRegion === "") &&
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name={`Region selector -> ${selectedWorld}`} helpText="" />}
+                            item={<ItemList onBack={()=> setSelectedWorld("")} onDoubleClick={val => setSelecteRegion(val[0] as unknown as string)} canRemove={false} headers={["Region's name"]} items={getRegionsByWorld() as any[]} onChange={ value => onChange({...config, whitelist: value})} />}
+                        />
+                    }
+                    {( selectedWorld !== "" && selectedWorld !== "Madrigal" || selectedWorld === "Madrigal" && selectedRegion !== "") &&
+                        <><ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Search for mob" helpText="" />}
+                            item={<TextInput value={mobsPrefilter.toLowerCase()} onChange={(value) => {setMobsFilter(value) }} />}
+                        />
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name={`Mobs selector -> ${selectedWorld} -> ${selectedRegion}`} helpText="" />}
+                            item={<ItemList onBack={()=> {setSelectedWorld(prev => prev !== "Madrigal"? "": prev); setSelecteRegion("")}} canRemove={false} headers={["Mob's name", "width", "height", "Add"]} items={getMobsDisplay() as any[]} onChange={ value => onChange({...config, whitelist: value})} />}
+                        /></>
+                    }
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Output log" helpText="" />}
+                        item={<button onClick={() => {clipboard.writeText(JSON.stringify(mobsJson)); console.log(mobsJson)}} className="btn sm">Save</button>}
                     />
                     <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Output log" helpText="" />}
+                        item={<button onClick={() => {clipboard.readText().then(text => {if (text) mobsJson = JSON.parse(text)}) ; console.log(mobsJson)}} className="btn sm">Import</button>}
+                    />
+                    {/* <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Enable white list" helpText="Will target all mobs if disabled" />}
                         item={<BooleanSlider value={config.whitelist_enabled ?? false} onChange={value => onChange?.({ ...config, whitelist_enabled: value })} />}
-                    />
+                    /> */}
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Mob detection" helpText="Just the same that farming page but helps a lot here" />}
-                        item={<BooleanSlider value={!config.farming_config?.is_stop_fighting ?? false} onChange={value => setIsStopFighting(!value)} />}
+                        item={<BooleanSlider value={!config.farming_config?.is_manual_targetting ?? false} onChange={value => setIsStopFighting(!value)} />}
                     />
                 </ConfigTable>
             }/>

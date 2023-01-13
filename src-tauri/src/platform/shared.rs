@@ -104,23 +104,36 @@ pub fn eval_mouse_move(window: &Window, pos: Point) {
 }
 
 pub fn eval_mob_click(window: &Window, pos: Point) {
-    eval_mouse_move(window, pos);
-    std::thread::sleep(Duration::from_millis(25));
+    //eval_mouse_move(window, pos);
+    //std::thread::sleep(Duration::from_millis(25));
     drop(
         window.eval(
             format!(
                 "
-                    if (document.body.style.cursor.indexOf('curattack') > 0) {{
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
+                    document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
+                        clientX: {0},
+                        clientY: {1}
+                    }}))
+                    setTimeout(()=>{{
+                        if (document.body.style.cursor.indexOf('curattack') > 0) {{
+                            document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
+                                clientX: {0},
+                                clientY: {1}
+                            }}))
 
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
-                    }}
+                            document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
+                                clientX: {0},
+                                clientY: {1}
+                            }}))
+                        }}
+                        setTimeout(()=>{{
+                            document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
+                                clientX: 0,
+                                clientY: 0
+                            }}))
+                        }}, 20)
+
+                    }}, 15)
                     global.gc();;",
                 pos.x, pos.y
             )

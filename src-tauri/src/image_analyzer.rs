@@ -1,17 +1,19 @@
+use palette::rgb::Rgb;
+use palette::{FromColor, Hsv, Srgb};
 use std::{
     sync::mpsc::{sync_channel, Receiver},
     time::Instant,
 };
-
 //use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
-use tauri::{Window};
+use tauri::Window;
 
+use crate::data::stats_info::TargetMarkerType;
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
-    ipc::{FarmingConfig, BotConfig},
+    ipc::{BotConfig, FarmingConfig},
     platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
@@ -25,11 +27,24 @@ impl Color {
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { refs: [r, g, b] }
     }
+
+    pub fn to_hsv(&self) -> Hsv {
+        let red = self.refs[0];
+        let green = self.refs[1];
+        let blue = self.refs[2];
+
+        let rgb = Rgb::new(
+            red as f32 / 255.0,
+            green as f32 / 255.0,
+            blue as f32 / 255.0,
+        );
+        Hsv::from_color(rgb)
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ImageAnalyzer {
-    image: Option<ImageBuffer>,
+    image: ImageBuffer,
     pub window_id: u64,
     pub client_stats: ClientStats,
 }
@@ -55,39 +70,24 @@ impl ImageAnalyzer {
 
         if let Some(provider) = libscreenshot::get_window_capture_provider() {
             if let Ok(image) = provider.capture_window(self.window_id) {
-                self.image = Some(image);
+                self.image = Some(image.clone());
             } else {
                 slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
             }
         }
     }
 
-/*     pub fn capture_window_area(&mut self, logger: &Logger, _config: &FarmingConfig, area: Area) {
-        let _timer = Timer::start_new("capture_window_area");
-        if self.window_id == 0 {
-            return;
-        }
-
-        if let Some(provider) = libscreenshot::get_window_capture_provider() {
-            if let Ok(image) = provider.capture_window_area(self.window_id, area) {
-                self.image = Some(image);
-            } else {
-                slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
-            }
-        }
-    } */
-
     pub fn pixel_detection(
         &self,
-        colors: Vec<Color>,
+        colors: Vec<Hsv>,
         min_x: u32,
         min_y: u32,
         mut max_x: u32,
         mut max_y: u32,
-        tolerence: Option<u8>,
-    ) -> Receiver<Point> {
-        let (snd, recv) = sync_channel::<Point>(4096);
-        let image = self.image.as_ref().unwrap();
+        tolerence: Option<Hsv>,
+    ) -> Receiver<(Point, Hsv)> {
+        let (snd, recv) = sync_channel::<(Point, Hsv)>(4096);
+        let image = self.image.clone().unwrap();
 
         if max_x == 0 {
             max_x = image.width();
@@ -97,44 +97,47 @@ impl ImageAnalyzer {
             max_y = image.height();
         }
 
-        image
-            .enumerate_rows()
-            .par_bridge()
-            .for_each(move |(y, row)| {
-                // Skip this row if it's in an ignored area
-                let image_height = image.height();
-                #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP
-                    || y > image_height
-                        .checked_sub(IGNORE_AREA_BOTTOM)
-                        .unwrap_or(image_height)
-                    || y > IGNORE_AREA_TOP + max_y
-                    || y > max_y
-                    || y < min_y
-                {
+        let image_height = image.height();
+
+        image.enumerate_rows().par_bridge().for_each(|(y, row)| {
+            #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
+            if y <= IGNORE_AREA_TOP
+                || y > image_height
+                    .checked_sub(IGNORE_AREA_BOTTOM)
+                    .unwrap_or(image_height)
+                || y > IGNORE_AREA_TOP + max_y
+                || y > max_y
+                || y < min_y
+            {
+                return;
+            }
+
+            // Loop over columns
+            'outer: for (x, _, px) in row {
+                if px.0[3] != 255 || x >= max_x {
                     return;
+                } else if x < min_x {
+                    continue;
                 }
 
-                // Loop over columns
-                'outer: for (x, _, px) in row {
-                    if px.0[3] != 255 || x >= max_x {
-                        return;
-                    } else if x < min_x {
-                        continue;
-                    }
+                for ref_color in colors.iter() {
+                    // Check if the pixel matches any of the reference colors
+                    let current_pixel_color = Color::new(px.0[0], px.0[1], px.0[2]);
+                    let default_tol = Hsv::new(1.0, 0.10, 0.3);
+                    if Self::pixel_matches_hsv(
+                        current_pixel_color,
+                        *ref_color,
+                        tolerence.unwrap_or(default_tol),
+                    ) {
+                        #[allow(clippy::drop_copy)]
+                        drop(snd.send((Point::new(x, y), current_pixel_color.to_hsv())));
 
-                    for ref_color in colors.iter() {
-                        // Check if the pixel matches any of the reference colors
-                        if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
-                            #[allow(clippy::drop_copy)]
-                            drop(snd.send(Point::new(x, y)));
-
-                            // Continue to next column
-                            continue 'outer;
-                        }
+                        // Continue to next column
+                        continue 'outer;
                     }
                 }
-            });
+            }
+        });
         recv
     }
 
@@ -182,17 +185,49 @@ impl ImageAnalyzer {
             .collect()
     }
 
-    /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
-    #[inline(always)]
-    fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
-        let matches_inner = |a: u8, b: u8| match (a, b) {
-            (a, b) if a == b => true,
-            (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-            (a, b) if a < b => b.saturating_sub(a) <= tolerance,
-            _ => false,
-        };
-        let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
-        perm.iter().all(|&(a, b)| matches_inner(a, b))
+    fn pixel_matches_hsv(currentPixelColorRGB: Color, search_hsv: Hsv, tolerance_hsv: Hsv) -> bool {
+        let current_pixel_hsv = currentPixelColorRGB.to_hsv();
+
+        let current_pixel_hsv_hue = current_pixel_hsv.hue.to_positive_degrees();
+        let search_hsv_hue = search_hsv.hue.to_positive_degrees();
+        let tolerance_hsv_hue = tolerance_hsv.hue.to_positive_degrees();
+        // HUE
+        let hue_too_low = current_pixel_hsv_hue < (search_hsv_hue - tolerance_hsv_hue);
+        if hue_too_low {
+            return false;
+        }
+
+        let hue_too_high = current_pixel_hsv_hue > (search_hsv_hue + tolerance_hsv_hue);
+        if hue_too_high {
+            return false;
+        }
+
+        // Saturation
+        let saturation_too_low =
+            current_pixel_hsv.saturation < (search_hsv.saturation - tolerance_hsv.saturation);
+        if saturation_too_low {
+            return false;
+        }
+
+        let saturation_too_high =
+            current_pixel_hsv.saturation > (search_hsv.saturation + tolerance_hsv.saturation);
+        if saturation_too_high {
+            return false;
+        }
+
+        // Value
+        let value_too_low = current_pixel_hsv.value < (search_hsv.value - tolerance_hsv.value);
+        if value_too_low {
+            return false;
+        }
+
+        let value_too_high = current_pixel_hsv.value > (search_hsv.value + tolerance_hsv.value);
+        if value_too_high {
+            return false;
+        }
+
+        // Color match
+        return true;
     }
 
     pub fn identify_mobs(&self, config: &BotConfig) -> Vec<Target> {
@@ -203,18 +238,11 @@ impl ImageAnalyzer {
         let mut mob_coords_agg: Vec<Point> = Vec::default();
 
         // Reference colors
-        let ref_color_pas_wrapped: [Option<u8>; 3] = config.passive_mobs_colors(); // Passive mobs 234, 234, 149
-        let ref_color_agg_wrapped: [Option<u8>; 3] = config.aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
-        let ref_color_pas: [u8; 3] = [
-            ref_color_pas_wrapped[0].unwrap_or(234),
-            ref_color_pas_wrapped[1].unwrap_or(234),
-            ref_color_pas_wrapped[2].unwrap_or(149),
-        ];
-        let ref_color_agg: [u8; 3] = [
-            ref_color_agg_wrapped[0].unwrap_or(179),
-            ref_color_agg_wrapped[1].unwrap_or(23),
-            ref_color_agg_wrapped[2].unwrap_or(23),
-        ];
+        let ref_color_agg = Hsv::new(0.0, 0.98, 0.918);
+        let tol_color_agg = Hsv::new(0.03, 0.10, 0.2);
+
+        let ref_color_pas = Hsv::new(60.0, 0.37, 1.00);
+        let tol_color_pas = Hsv::new(0.01, 0.10, 0.2);
 
         // Collect pixel clouds
         struct MobPixel(u32, u32, TargetType);
@@ -235,12 +263,13 @@ impl ImageAnalyzer {
                         // avoid detect the health bar as a monster
                         continue;
                     }
-                    if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
+                    let current_pixel_color = Color::new(px.0[0], px.0[1], px.0[2]);
+                    if Self::pixel_matches_hsv(current_pixel_color, ref_color_pas, tol_color_pas) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(
-                        &px.0,
-                        &ref_color_agg,
-                        config.aggressive_tolerence(),
+                    } else if Self::pixel_matches_hsv(
+                        current_pixel_color,
+                        ref_color_agg,
+                        tol_color_agg,
                     ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
@@ -270,45 +299,152 @@ impl ImageAnalyzer {
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
     }
 
-    pub fn identify_target_marker(&self, blank_target: bool) -> Option<Target> {
+    pub fn identify_target_marker(
+        &self,
+        blank_target: bool,
+    ) -> (crate::data::stats_info::TargetMarkerType, Option<Target>) {
         let _timer = Timer::start_new("identify_target_marker");
         let mut coords = Vec::default();
 
         // Reference color
-        let ref_color: Color = {
+        let ref_color: Hsv = {
             if !blank_target {
-                Color::new(246, 90, 106)
+                Hsv::new(355.06848, 0.6293103, 0.9098039)
             } else {
-                Color::new(164, 180, 226)
+                Hsv::new(240.0, 0.36923078, 0.25490198)
             }
         };
 
+        let default_tol: Hsv = Hsv::new(0.0, 0.0, 0.0);
+
+        let wanted_bounds = self.get_centered_bound_of(0, 0);
 
         // Collect pixel clouds
-        let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
+        let recv = self.pixel_detection(
+            vec![ref_color],
+            wanted_bounds.x,
+            wanted_bounds.y,
+            wanted_bounds.w,
+            wanted_bounds.h,
+            Some(default_tol),
+        );
 
         // Receive points from channel
         while let Ok(point) = recv.recv() {
-            coords.push(point);
+            coords.push(point.0);
+            #[cfg(debug_assertions)]
+            if true {
+                Self::debug_color_pixel(
+                    "target marker",
+                    point.0,
+                    point.1,
+                    ref_color,
+                    default_tol,
+                    true,
+                );
+            }
         }
-
         // Identify target marker entities
-        let target_markers = Self::merge_cloud_into_mobs(
-            None,
-            &PointCloud::new(coords),
-            TargetType::TargetMarker,
-        );
-
-        if !blank_target && target_markers.is_empty() {
-            return self.identify_target_marker(true);
-        }
+        let target_markers =
+            Self::merge_cloud_into_mobs(None, &PointCloud::new(coords), TargetType::TargetMarker);
 
         // Find biggest target marker
-        target_markers.into_iter().max_by_key(|x| x.bounds.size())
+        let res = target_markers.into_iter().max_by_key(|x| x.bounds.size());
+        if !blank_target && res.is_none() {
+            // Not a red target gotta try white used in farming mode only
+            return self.clone().identify_target_marker(true);
+        }
+
+        if res.is_some() {
+            if blank_target {
+                return (TargetMarkerType::Passive, res);
+            } else {
+                return (TargetMarkerType::Aggressive, res);
+            }
+        } else {
+            return (TargetMarkerType::None, None);
+        }
+    }
+    /// Helps determining the correct searched pixel value
+    #[cfg(debug_assertions)]
+    pub fn debug_color_pixel(
+        label: &str,
+        pos: Point,
+        current_hsv: Hsv,
+        searched_hsv: Hsv,
+        tolerance_hsv: Hsv,
+        hide_optimised: bool,
+    ) {
+        let current_hue = current_hsv.hue.to_positive_degrees();
+        let current_saturation = current_hsv.saturation;
+        let current_value = current_hsv.value;
+        let current_obj = (current_hue, current_saturation, current_value);
+
+        let searched_hue = searched_hsv.hue.to_positive_degrees();
+        let searched_saturation = searched_hsv.saturation;
+        let searched_value = searched_hsv.value;
+        let searched_obj = (searched_hue, searched_saturation, searched_value);
+
+        let tol_hue = tolerance_hsv.hue.to_positive_degrees();
+        let tol_saturation = tolerance_hsv.saturation;
+        let tol_value = tolerance_hsv.value;
+        let tol_obj = (tol_hue, tol_saturation, tol_value);
+
+        let optimised_hue = {
+            if current_hue > searched_hue {
+                current_hue - searched_hue
+            } else {
+                searched_hue - current_hue
+            }
+        };
+
+        let optimised_saturation = {
+            if current_saturation > searched_saturation {
+                current_saturation - searched_saturation
+            } else {
+                searched_saturation - current_saturation
+            }
+        };
+        let optimised_value = {
+            if current_value > searched_value {
+                current_value - searched_value
+            } else {
+                searched_value - current_value
+            }
+        };
+        let optimised_obj = (optimised_hue, optimised_saturation, optimised_value);
+        if tol_obj != optimised_obj {
+            println!("Found maching pixel for {} at coords X{} Y{} : {:?} reference : {:?} optimised tolerance {:?} current tolerance {:?}", label, pos.x, pos.y, current_obj, searched_obj, optimised_obj,tol_obj)
+        } else if !hide_optimised {
+            println!("Found maching pixel for {} at coords X{} Y{} : {:?} reference : {:?} already optimised tolerance {:?}", label, pos.x, pos.y, current_obj, searched_obj, tol_obj)
+        }
     }
 
-    pub fn get_target_marker_distance(&self,  mob: Target) -> i32 {
-        mob.get_distance()
+    pub fn get_centered_bound_of(&self, mut width: u32, mut height: u32) -> Bounds {
+        let image = self.image.as_ref().unwrap();
+        let mid_width = image.width() / 2;
+        let mid_height = image.height() / 2;
+
+        if width == 0 {
+            width = image.width();
+        }
+        if height == 0 {
+            height = image.height();
+        }
+
+        let wanted_width = width / 2;
+        let wanted_height = height / 2;
+
+        let min_x = mid_width - wanted_width;
+        let min_y = mid_height - wanted_height;
+        let max_x = mid_height + wanted_width;
+        let max_y = mid_height + wanted_height;
+        Bounds {
+            x: min_x,
+            y: min_y,
+            w: max_x,
+            h: max_y,
+        }
     }
 
     /// Distance: `[0..=500]`

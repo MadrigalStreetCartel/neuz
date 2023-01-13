@@ -1,0 +1,98 @@
+[
+    {
+      "continents": [
+        {
+          "id": 1018,
+          "name": "Flaris",
+          "town": false
+        },
+        {
+          "id": 8641,
+          "name": "Saint Morning",
+          "town": false
+        },
+        {
+          "id": 9143,
+          "name": "Garden of Rhisis",
+          "town": false
+        },
+        {
+          "id": 2155,
+          "name": "Darkon 1, 2",
+          "town": false
+        },
+        {
+          "id": 7493,
+          "name": "Darkon 3",
+          "town": false
+        },
+        {
+          "id": 4357,
+          "name": "Darken",
+          "town": true
+        },
+        {
+          "id": 8859,
+          "name": "Flarine",
+          "town": true
+        },
+        {
+          "id": 525,
+          "name": "Saint City",
+          "town": true
+        },
+        {
+          "id": 9774,
+          "name": "Azria",
+          "town": false
+        }
+      ],
+      "id": 6063,
+      "name": "Madrigal"
+    },
+    {
+        "continents": [],
+      "id": 615,
+      "name": "Iblis Temple"
+    },
+    {
+      "continents": [],
+      "id": 1098,
+      "name": "Volkane"
+    },
+    {
+      "continents": [],
+      "id": 1595,
+      "name": "Big Muscle"
+    },
+    {
+      "continents": [],
+      "id": 1873,
+      "name": "Krrr"
+    },
+    {
+      "continents": [],
+      "id": 2927,
+      "name": "Dekane Mine"
+    },
+    {
+      "continents": [],
+      "id": 4015,
+      "name": "Mars Dungeon"
+    },
+    {
+      "continents": [],
+      "id": 4839,
+      "name": "Kebaras"
+    },
+    {
+      "continents": [],
+      "id": 7782,
+      "name": "Mushmoot"
+    },
+    {
+      "continents": [],
+      "id": 8346,
+      "name": "Iblis Leanes"
+    }
+  ]

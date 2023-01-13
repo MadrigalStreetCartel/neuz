@@ -78,7 +78,7 @@ export type FarmingConfigModel = Partial<{
     slot_bars: SlotBars,
     circle_pattern_rotation_duration: number,
 
-    is_stop_fighting: boolean;
+    is_manual_targetting: boolean;
     prevent_already_attacked: boolean;
 
     obstacle_avoidance_max_try: number,
@@ -114,7 +114,7 @@ export type BotConfigModel = Partial<{
 
     obstacle_avoidance_cooldown: number,
     whitelist_enabled: boolean,
-    whitelist: [number, number, string][],
+    whitelist: (any)[][],
 }>
 
 export type AnyConfig = BotConfigModel | FarmingConfigModel | SupportConfigModel

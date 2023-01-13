@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styled from "styled-components"
-import { StopWatchValues } from "../utils/StopWatch";
+import { Time } from "../utils/Time";
 
 type Props = {
     className?: string,
@@ -10,7 +10,7 @@ type Props = {
 }
 
 const TimeInput = ({ className, value, onChange }: Props) => {
-    let stopWatch = new StopWatchValues(value ?? 0)
+    let stopWatch = new Time(value ?? 0)
     const [newValue, setNewValue] = useState(stopWatch.toString())
 
     return (
@@ -18,13 +18,13 @@ const TimeInput = ({ className, value, onChange }: Props) => {
             <input type="text" value={newValue?.toString() ?? ""}
                 onChange={(e)=>{
                     stopWatch.fromString(e.target.value)
-                        if (stopWatch.timer > 0 || e.target.value == stopWatch.toString() ) {
-                        onChange(stopWatch.timer)
+                        if (stopWatch.time > 0 || e.target.value == stopWatch.toString() ) {
+                        onChange(stopWatch.time)
                     }
                     setNewValue(e.target.value)
                 }}
             />
-            {!stopWatch.validStringFormat(newValue) ?
+            {!stopWatch.isValidTimeFormat(newValue) ?
                 <span className="unit" style={{color:"red"}} onClick={() => {setNewValue(stopWatch.toString())}}>Invalid</span> : <span className="unit" style={{color:"green"}}>Valid</span>
             }
         </div>
