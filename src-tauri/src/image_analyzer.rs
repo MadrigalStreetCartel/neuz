@@ -62,21 +62,6 @@ impl ImageAnalyzer {
         }
     }
 
-/*     pub fn capture_window_area(&mut self, logger: &Logger, _config: &FarmingConfig, area: Area) {
-        let _timer = Timer::start_new("capture_window_area");
-        if self.window_id == 0 {
-            return;
-        }
-
-        if let Some(provider) = libscreenshot::get_window_capture_provider() {
-            if let Ok(image) = provider.capture_window_area(self.window_id, area) {
-                self.image = Some(image);
-            } else {
-                slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
-            }
-        }
-    } */
-
     pub fn pixel_detection(
         &self,
         colors: Vec<Color>,
