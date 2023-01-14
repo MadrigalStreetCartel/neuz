@@ -13,7 +13,7 @@
 # Download
 
 - Latest version: [Download][download]
-- Older versions: [Release Archive](./releases)
+- Older versions (Windows only): [Release Archive](./releases)
 
 Take a look at the [changelog][changelog]!
 
