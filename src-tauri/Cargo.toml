@@ -35,7 +35,7 @@ sentry-slog = "0.27.0"
 
 # Platform access
 raw-window-handle = "0.4.3"
-libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot", branch = "area-capture" }
+libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot"}
 
 [features]
 # by default Tauri runs in production mode
