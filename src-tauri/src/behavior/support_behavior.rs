@@ -7,14 +7,15 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    play,
+    play, platform::KeyManager,
 };
 
 use super::{Behavior, SlotsUsage};
 
 pub struct SupportBehavior<'a> {
     movement: &'a MovementAccessor,
-    slots_usage: SlotsUsage,
+    slots_usage: SlotsUsage<'a>,
+    key_manager: &'a KeyManager,
     avoid_obstacle_direction: String,
     last_far_from_target: Option<Instant>,
     target_die_time: Option<Instant>,
@@ -22,12 +23,13 @@ pub struct SupportBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
-    fn new(_logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
+    fn new(_logger: &'a Logger, movement: &'a MovementAccessor, key_manager: &'a KeyManager) -> Self {
         Self {
             movement,
             avoid_obstacle_direction: "D".to_owned(),
             last_far_from_target: None,
-            slots_usage: SlotsUsage::new(window.clone(), "Support".to_string()),
+            slots_usage: SlotsUsage::new(key_manager, "Support".to_string()),
+            key_manager: key_manager,
             target_die_time: None,
             //is_on_flight: false,
         }

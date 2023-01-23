@@ -2,11 +2,9 @@ use std::{fmt, time::Instant};
 
 use palette::Hsv;
 use slog::Logger;
-use tauri::Window;
 
 use crate::{
-    image_analyzer::{Color, ImageAnalyzer},
-    platform::{eval_send_key, KeyMode},
+    image_analyzer::{ ImageAnalyzer},
 };
 
 use super::{PointCloud, Target};
@@ -38,7 +36,7 @@ pub enum TargetMarkerType {
     Aggressive,
     Passive
 }
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClientStats {
     pub hp: StatInfo,
     pub mp: StatInfo,
@@ -49,7 +47,7 @@ pub struct ClientStats {
     pub target_marker: Option<Target>,
 }
 impl ClientStats {
-    pub fn new(window: Window) -> Self {
+    pub fn new() -> Self {
         Self {
             hp: StatInfo::new(0, 100, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 100, StatusBarKind::Mp, None),
@@ -104,26 +102,16 @@ impl ClientStats {
     // bot died
     /// Detects bot current state : 1:stats_tray_state 2:hp_state
     pub fn is_alive(&mut self) -> (bool, bool) {
-        let stats_tray_state = self.detect_stat_tray();
-        let hp_state = !self.hp.value == 0;
-        return (stats_tray_state, !self.hp.value == 0);
+        return (self.detect_stat_tray(), self.hp.value > 0);
     }
     #[cfg(debug_assertions)]
     pub fn debug_print(&mut self, logger: &Logger) {
-        // Stringify is_alive
-        let alive_str = {
-            if self.is_alive() {
-                "alive"
-            } else {
-                "dead"
-            }
-        };
         let target_marker_type = match self.target_marker_type {
             TargetMarkerType::Aggressive => "red",
             TargetMarkerType::Passive => "white",
             TargetMarkerType::None => "None",
         };
-        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Target marker type" => target_marker_type, "Target HP" => self.target_hp.value, "Target MP" => self.target_mp.value, "Character is" => alive_str);
+        slog::debug!(logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Target marker type" => target_marker_type, "Target HP" => self.target_hp.value, "Target MP" => self.target_mp.value);
     }
 }
 

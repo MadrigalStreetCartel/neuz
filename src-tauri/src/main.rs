@@ -16,12 +16,13 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    time::Duration,
+    time::Duration, thread,
 };
 
 use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::{RwLock};
+use platform::KeyManager;
 use slog::{Drain, Level, Logger};
 use tauri::{LogicalSize, Manager, Size, Window};
 
@@ -30,7 +31,7 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    utils::Timer, platform::{KeyMode, eval_send_key},
+    utils::Timer, platform::{KeyMode},
 };
 
 struct AppState {
@@ -302,6 +303,9 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
     create_window_rs(profile_id, app_handle)
 }
 fn create_window_rs(profile_id: String, app_handle: tauri::AppHandle) {
+    if let Some(window) = app_handle.get_window("client") {
+        window.close();
+    }
     let window = tauri::WindowBuilder::new(
         &app_handle,
         "client",
@@ -332,6 +336,7 @@ fn create_window_rs(profile_id: String, app_handle: tauri::AppHandle) {
 #[tauri::command]
 fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle) {
     let logger = state.logger.clone();
+    let profile_id = Arc::new(profile_id);
     //*state.test.lock().unwrap() = false;
     let config_path = format!(
         r"{}\.botconfig_{}",
@@ -340,7 +345,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
             .app_dir()
             .unwrap()
             .to_string_lossy(),
-        profile_id
+        profile_id.clone()
     )
     .clone();
 
@@ -389,22 +394,31 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
         // Send initial config to frontend
         send_config(&*config.read());
 
-        let window = app_handle.get_window("client").unwrap();
-        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
-        image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
+        let key_manager = KeyManager {handle: app_handle.clone()};
+        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new();
+        image_analyzer.window_id = key_manager.get_window_id().unwrap_or(0);
 
         // Create movement accessor
-        let movement = MovementAccessor::new(window.clone() /*&accessor*/);
+        let movement = MovementAccessor::new(key_manager.clone() /*&accessor*/);
 
         // Instantiate behaviors
-        let mut farming_behavior = FarmingBehavior::new(&logger, &movement, &window);
-        let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
+        let mut farming_behavior = FarmingBehavior::new(&logger, &movement, &key_manager);
+        let mut support_behavior = SupportBehavior::new(&logger, &movement, &key_manager);
 
         let mut last_mode: Option<BotMode> = None;
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
             Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
         send_info(&*frontend_info.read());
         // Enter main loop
+        let botconfig_path = format!(
+            r"{}\.botconfig_{}",
+            app_handle
+                .path_resolver()
+                .app_dir()
+                .unwrap()
+                .to_string_lossy(),
+            profile_id
+        );
         loop {
             let timer = Timer::start_new("main_loop");
             let config = &*config.read();
@@ -413,16 +427,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
             // Send changed config to frontend if needed
             if config.change_id() > last_config_change_id {
                 config.serialize(
-                    format!(
-                        r"{}\.botconfig_{}",
-                        app_handle
-                            .path_resolver()
-                            .app_dir()
-                            .unwrap()
-                            .to_string_lossy(),
-                        profile_id
-                    )
-                    .clone(),
+                    botconfig_path.clone(),
                 );
                 send_config(config);
                 last_config_change_id = config.change_id();
@@ -431,12 +436,12 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                 farming_behavior.update(config);
                 support_behavior.update(config);
             }
-
-            // Client window is closed
-            if window.is_resizable().is_err() {
+            let window = app_handle.get_window("client");
+            if window.is_none() || window.unwrap().is_resizable().is_err() {
                 app_handle.restart();
-                break;
+                return;
             }
+            let window = app_handle.get_window("client").unwrap();
 
             // Continue early if the bot is not engaged
             if !config.is_running() {
@@ -499,56 +504,56 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
 
                 // Stop bot in case of death
                 let is_alive = image_analyzer.client_stats.is_alive();
-
-                if !is_alive.0 {
+                println!("{:?},stats {} dead {}", is_alive, *char_stats_tray_timeout.lock().unwrap(), *char_is_dead_timeout.lock().unwrap());
+                if is_alive.0 && *char_stats_tray_timeout.lock().unwrap() > 0 {
+                    *char_stats_tray_timeout.lock().unwrap() = 0;
+                }
+                if !is_alive.0 && *char_is_dead_timeout.lock().unwrap() == 0 {
                     *char_stats_tray_timeout.lock().unwrap() +=1;
-                    if *char_stats_tray_timeout.lock().unwrap() == 5 {
-                        eval_send_key(&window, "T", KeyMode::Press);
-                    } else if *char_stats_tray_timeout.lock().unwrap() == 10 {
-                        eval_send_key(&window, "T", KeyMode::Press);
-                    } else {
+                    if *char_stats_tray_timeout.lock().unwrap() <= 5 {
+                        key_manager.eval_send_key("T", KeyMode::Press);
+                        thread::sleep(Duration::from_millis(500));
+                    } else if *char_stats_tray_timeout.lock().unwrap() > 5 {
+                        key_manager.eval_send_key("T", KeyMode::Press);
+                        thread::sleep(Duration::from_millis(1000));
+                    } else if *char_stats_tray_timeout.lock().unwrap() == 10{
                         // error maybe restart client
-                        thread::spawn(||
-                        {
-                            thread::sleep(Duration::from_secs(1))};
-                            window
-                        );
-                        window.close()
-
+                        app_handle.restart();
+                        return
                     }
 
-                }
-                if !is_alive.1 {
+                } else if is_alive.0 && !is_alive.1 {
                     *char_is_dead_timeout.lock().unwrap() +=1;
-
-                }
-
-
-
-                if !is_alive  {
-                    if frontend_info_mut.is_alive() {
-                        let should_disconnect = config.on_death_disconnect();
-                        if should_disconnect {
-                            app_handle.exit(0);
-                            return;
+                    if *char_is_dead_timeout.lock().unwrap() <= 5 {
+                        thread::sleep(Duration::from_millis(200));
+                    } else if *char_is_dead_timeout.lock().unwrap() > 10 {
+                        // Character's death
+                        if frontend_info_mut.is_alive() {
+                            frontend_info_mut.set_is_alive(false);
+                            frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                            send_info(&*frontend_info.read());
                         }
 
-                        frontend_info_mut.set_is_alive(false);
+                        if config.on_death_disconnect() {
+                            app_handle.exit(0);
+                            ()
+                        } else {
+                            key_manager.eval_send_key("Enter", KeyMode::Press);
+                            thread::sleep(Duration::from_millis(1000));
+                        }
+                    }
+                } else if is_alive.1 && *char_is_dead_timeout.lock().unwrap() > 10 {
+                    *char_is_dead_timeout.lock().unwrap() = 0;
+                    key_manager.eval_send_key("Escape", KeyMode::Press);
+                    // Character's revived
+                    if frontend_info_mut.is_alive() {
+                        frontend_info_mut.set_is_alive(true);
                         frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                        // Send infos to frontend
                         send_info(&*frontend_info.read());
-                    } else {
-                        eval_send_key(&window, "Enter", KeyMode::Press);
-                        std::thread::sleep(Duration::from_millis(2000));
                     }
-                    continue;
-                } else if is_alive && !frontend_info_mut.is_alive() {
-                    frontend_info_mut.set_is_alive(true);
-                    let should_disconnect = config.on_death_disconnect();
-                    if !should_disconnect {
-                        eval_send_key(&window, "Escape", KeyMode::Press);
-                    }
+
                 }
+
                 match mode {
                     BotMode::Farming => {
                         farming_behavior.run_iteration(

@@ -9,9 +9,8 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
     movement::MovementAccessor,
-    platform::{eval_mob_click, send_slot_eval, eval_avoid_mob_click},
     play,
-    utils::DateTime,
+    utils::DateTime, platform::KeyManager,
 };
 
 use super::{Behavior, SlotsUsage};
@@ -29,9 +28,9 @@ pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
     movement: &'a MovementAccessor,
-    window: &'a Window,
     state: State,
-    slots_usage: SlotsUsage,
+    slots_usage: SlotsUsage<'a>,
+    key_manager: &'a KeyManager,
     last_initial_attack_time: Instant,
     last_kill_time: Instant,
     avoided_bounds: Vec<(Bounds, Instant, u128)>,
@@ -49,14 +48,14 @@ pub struct FarmingBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
-    fn new(logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
+    fn new(logger: &'a Logger, movement: &'a MovementAccessor, key_manager: &'a KeyManager) -> Self {
         Self {
             logger,
             movement,
-            window,
             rng: rand::thread_rng(),
             state: State::SearchingForEnemy,
-            slots_usage: SlotsUsage::new(window.clone(), "Farming".to_string()),
+            key_manager,
+            slots_usage: SlotsUsage::new(key_manager, "Farming".to_string()),
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
             avoided_bounds: vec![],
@@ -144,8 +143,7 @@ impl<'a> FarmingBehavior<'_> {
                         .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
                         .unwrap_or(3000) as u128
                 {
-                    send_slot_eval(
-                        self.window,
+                    self.key_manager.send_slot_eval(
                         pickup_pet_slot_index.0,
                         pickup_pet_slot_index.1,
                     );
@@ -161,7 +159,7 @@ impl<'a> FarmingBehavior<'_> {
         if slot.is_some() {
             let index = slot.unwrap();
             if self.last_summon_pet_time.is_none() {
-                send_slot_eval(self.window, index.0, index.1);
+                self.key_manager.send_slot_eval( index.0, index.1);
                 self.last_summon_pet_time = Some(Instant::now());
             } else {
                 // if pet is already out, just reset it's timer
@@ -173,7 +171,7 @@ impl<'a> FarmingBehavior<'_> {
                 let index = slot.unwrap();
 
                 for _i in 1..7 {
-                    send_slot_eval(self.window, index.0, index.1);
+                    self.key_manager.send_slot_eval( index.0, index.1);
                 }
             }
         }
@@ -182,7 +180,7 @@ impl<'a> FarmingBehavior<'_> {
     fn on_no_enemy_found(&mut self, config: &BotConfig) -> State {
         if let Some (last_no_ennemy_time) = self.last_no_ennemy_time {
             if config.inactivity_timeout() > 0 && last_no_ennemy_time.elapsed().as_millis() > config.inactivity_timeout() {
-                self.window.app_handle().exit(0);
+                self.key_manager.handle.exit(0);
             }
         }else {
             self.last_no_ennemy_time = Some(Instant::now());
@@ -322,7 +320,7 @@ impl<'a> FarmingBehavior<'_> {
         if bot_config.whitelist_enabled() && !bot_config.farming_config().is_manual_targetting() {
             if !bot_config.match_whitelist(mob) {
                 if mob.target_type == TargetType::Mob(MobType::Aggressive) {
-                    eval_avoid_mob_click(self.window, mob.get_active_avoid_coords(100));
+                    self.key_manager.eval_avoid_mob_click(mob.get_active_avoid_coords(100));
                     return State::SearchingForEnemy;
                 } else {
                     return State::SearchingForEnemy;
@@ -342,7 +340,7 @@ impl<'a> FarmingBehavior<'_> {
         self.last_click_pos = Some(point);
 
         // Set cursor position and simulate a click
-        eval_mob_click(self.window, point);
+        self.key_manager.eval_mob_click(point);
 
         // Wait a few ms before transitioning state
         std::thread::sleep(Duration::from_millis(500));
@@ -493,7 +491,7 @@ impl<'a> FarmingBehavior<'_> {
             self.slots_usage.get_slot_for(None, SlotType::AttackSkill, true);
 
             return self.state;
-        } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
+        } else if !is_mob_alive && self.is_attacking { // removed check is_alive
             // Mob's dead
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,

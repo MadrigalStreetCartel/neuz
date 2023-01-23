@@ -6,13 +6,13 @@ use tauri::{Window};
 use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType},
-    movement::MovementAccessor, platform::send_slot_eval,
+    movement::MovementAccessor, platform::{KeyManager},
 };
 
 pub trait Behavior<'a> {
 
     /// Runs on initialization
-    fn new(logger: &'a Logger, movement_accessor: &'a MovementAccessor, window: &'a Window)
+    fn new(logger: &'a Logger, movement_accessor: &'a MovementAccessor, key_manager: &'a KeyManager)
         -> Self;
 
     /// Runs on activation
@@ -33,18 +33,18 @@ pub trait Behavior<'a> {
     );
 }
 
-pub struct SlotsUsage {
-    window: Window,
+pub struct SlotsUsage <'a> {
+    key_manager: &'a KeyManager,
     bot_config: Option<BotConfig>,
     config_type: String,
     last_usage: [[Option<Instant>; 10]; 9],
     last_buff_usage: Instant,
 }
 
-impl SlotsUsage {
-    pub fn new(window: Window, config_type: String) -> Self {
+impl<'a> SlotsUsage <'a> {
+    pub fn new(key_manager: &'a KeyManager, config_type: String) -> Self {
         Self {
-            window,
+            key_manager,
             bot_config: None,
             config_type,
             last_usage: [[None; 10]; 9],
@@ -116,7 +116,7 @@ impl SlotsUsage {
 
     pub fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
-        send_slot_eval(&self.window, slot_index.0, slot_index.1);
+        self.key_manager.send_slot_eval(slot_index.0, slot_index.1);
         // Update usage last time
         self.last_usage[slot_index.0][slot_index.1] = Some(Instant::now());
     }

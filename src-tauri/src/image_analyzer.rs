@@ -8,7 +8,6 @@ use std::{
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
-use tauri::Window;
 
 use crate::data::stats_info::TargetMarkerType;
 use crate::{
@@ -42,19 +41,19 @@ impl Color {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ImageAnalyzer {
-    image: ImageBuffer,
+    image: Option<ImageBuffer>,
     pub window_id: u64,
     pub client_stats: ClientStats,
 }
 
 impl ImageAnalyzer {
-    pub fn new(window: &Window) -> Self {
+    pub fn new() -> Self {
         Self {
             window_id: 0,
             image: None,
-            client_stats: ClientStats::new(window.to_owned()),
+            client_stats: ClientStats::new(),
         }
     }
 

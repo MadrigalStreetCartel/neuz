@@ -3,6 +3,8 @@ use tauri::Window;
 
 //use crate::platform::PlatformAccessor;
 
+use crate::platform::KeyManager;
+
 use super::MovementCoordinator;
 
 pub struct MovementAccessor /*<'a>*/ {
@@ -10,9 +12,9 @@ pub struct MovementAccessor /*<'a>*/ {
 }
 
 impl<'a> MovementAccessor /*<'a>*/ {
-    pub fn new(window: Window /*platform: &'a PlatformAccessor<'a>*/) -> Self {
+    pub fn new(key_manager: KeyManager /*platform: &'a PlatformAccessor<'a>*/) -> Self {
         Self {
-            coordinator: Mutex::new(MovementCoordinator::new(window /*platform*/)),
+            coordinator: Mutex::new(MovementCoordinator::new(key_manager /*platform*/)),
         }
     }
 
