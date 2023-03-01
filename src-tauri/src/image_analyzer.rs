@@ -230,7 +230,7 @@ impl ImageAnalyzer {
     }
 
     pub fn identify_mobs(&self, config: &BotConfig) -> Vec<Target> {
-        let _timer = Timer::start_new("identify_mobs");
+        let timer = Instant::now();
 
         // Create collections for passive and aggro mobs
         let mut mob_coords_pas: Vec<Point> = Vec::default();
@@ -274,6 +274,7 @@ impl ImageAnalyzer {
                     }
                 }
             });
+
         while let Ok(px) = recv.recv() {
             match px.2 {
                 TargetType::Mob(MobType::Passive) => mob_coords_pas.push(Point::new(px.0, px.1)),
@@ -293,7 +294,6 @@ impl ImageAnalyzer {
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
         );
-
         // Return all mobs
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
     }

@@ -16,7 +16,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    time::Duration, thread,
+    time::{Duration, Instant}, thread,
 };
 
 use guard::guard;
@@ -419,8 +419,15 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                 .to_string_lossy(),
             profile_id
         );
+        let frame_rate = Duration::from_millis(1000 / 10);
+        let mut last_iteration: Instant = Instant::now();
         loop {
-            let timer = Timer::start_new("main_loop");
+            if !(last_iteration.elapsed() >= frame_rate) {
+                thread::sleep(last_iteration.elapsed().saturating_sub(frame_rate));
+                continue;
+            }
+            last_iteration = Instant::now();
+            let main_timer = Timer::start_new("main_loop");
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
 
@@ -449,7 +456,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                     drop(window.set_resizable(true));
                 }
                 std::thread::sleep(std::time::Duration::from_millis(250));
-                timer.silence();
+                main_timer.silence();
                 continue;
             }
 
@@ -468,7 +475,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
             // Make sure an operation mode is set
             guard!(let Some(mode) = config.mode() else {
                 std::thread::sleep(std::time::Duration::from_millis(100));
-                timer.silence();
+                main_timer.silence();
                 continue;
             });
 
@@ -488,13 +495,12 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                     }
                 }
             }
-
             // Capture client window
             image_analyzer.capture_window(&logger, config.farming_config());
-
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
                 // Update stats
+
                 image_analyzer
                     .client_stats
                     .update(&mut image_analyzer.clone(), &logger);
@@ -504,7 +510,6 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
 
                 // Stop bot in case of death
                 let is_alive = image_analyzer.client_stats.is_alive();
-                println!("{:?},stats {} dead {}", is_alive, *char_stats_tray_timeout.lock().unwrap(), *char_is_dead_timeout.lock().unwrap());
                 if is_alive.0 && *char_stats_tray_timeout.lock().unwrap() > 0 {
                     *char_stats_tray_timeout.lock().unwrap() = 0;
                 }
@@ -552,8 +557,11 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                         send_info(&*frontend_info.read());
                     }
 
+                } else {
+                    frontend_info_mut.set_is_alive(true);
+                    frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                    send_info(&*frontend_info.read());
                 }
-
                 match mode {
                     BotMode::Farming => {
                         farming_behavior.run_iteration(
@@ -570,6 +578,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
                         );
                     }
                 }
+
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend
                 send_info(&*frontend_info.read());
@@ -577,6 +586,7 @@ fn start_bot(profile_id: String, state: tauri::State<'_, AppState>, app_handle: 
 
             // Update last mode
             last_mode = config.mode();
+            //println!("Loop tooks {:?}", main_timer.elapsed());
         }
     });
 }

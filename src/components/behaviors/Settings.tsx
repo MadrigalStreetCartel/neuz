@@ -82,14 +82,7 @@ const Settings = ({ className, info, config, onChange}: Props) => {
         }
         , [])
 
-    const selectedMobType = useRef(0)
-
     const settingsReseter = useDefaultValue(config, onChange)
-
-    const colorsRefResetter = [
-        () => settingsReseter.reset(['passive_mobs_colors', 'passive_tolerence']),
-        () => settingsReseter.reset(['aggressive_mobs_colors', 'aggressive_tolerence'])
-    ]
 
     const setIsStopFighting = (value: boolean) => {
         onChange?.({ ...config, farming_config: {...config.farming_config, is_manual_targetting: value} })
@@ -131,43 +124,8 @@ const Settings = ({ className, info, config, onChange}: Props) => {
 
     return (
         <div className={className}>
-            <Modal isShowing={mobsColorsDebugModal.isShown} hide={mobsColorsDebugModal.close} title={(selectedMobType.current === 0)? <h4>Passive mob detection</h4> : <h4>Aggressive mob detection</h4>} body={
-                <ConfigTable>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Colors" helpText="Monster's name color reference. Edit these values if you are sure what you are doing." />}
-                        item={<ColorSelector value={(selectedMobType.current === 0)? config.passive_mobs_colors ?? [] : config.aggressive_mobs_colors ?? []} onChange={value => onChange?.((selectedMobType.current === 0)?{ ...config, passive_mobs_colors: value}: { ...config, aggressive_mobs_colors: value})} />}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Tolerence" helpText="Monster's name color tolerence. Edit these values if you are sure what you are doing." />}
-                        item={<NumericInput min={0} max={255} unit="#" value={(selectedMobType.current === 0)? config.passive_tolerence : config.aggressive_tolerence} onChange={value => onChange?.((selectedMobType.current === 0)? { ...config, passive_tolerence: value } : { ...config, aggressive_tolerence: value })} />}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="" helpText="" />}
-                        item={<button className="btn sm" onClick={()=>colorsRefResetter[selectedMobType.current]()}>Reset</button>}
-                    />
-                </ConfigTable>
-            }/>
             <Modal isShowing={mobsDetectionModal.isShown} hide={mobsDetectionModal.close} title={<h4>Mobs detection</h4>} body={
                 <ConfigTable>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Passive mob detection" helpText="" />}
-                        item={<button className="btn sm" onClick={() => {
-                            selectedMobType.current = 0
-                            mobsColorsDebugModal.open()
-                        }}>⚙️</button>}
-                    />
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Agressive mob detection" helpText="" />}
-                        item={<button className="btn sm" onClick={() => {
-                            selectedMobType.current = 1
-                            mobsColorsDebugModal.open()
-                        }}>⚙️</button>}
-                    />
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Min mobs name width" helpText="" />}
@@ -325,9 +283,9 @@ const Settings = ({ className, info, config, onChange}: Props) => {
                 <div className="row">
                     <button className="btn sm" onClick={autoDisconnectModal.open}>Auto disconnect</button>
                 </div>
-                <div className="row">
+{/*                 <div className="row">
                     <button className="btn sm" onClick={mobsAvoidanceModal.open}>Mobs whitelist</button>
-                </div>
+                </div> */}
                 <div className="row">
                     <button className="btn sm" onClick={resetSlotModal.open}>Reset slots</button>
                 </div>

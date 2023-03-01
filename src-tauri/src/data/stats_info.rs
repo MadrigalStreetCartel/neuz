@@ -72,7 +72,7 @@ impl ClientStats {
         ];
 
         #[cfg(debug_assertions)]
-        if should_debug.contains(&true) && false {
+        if should_debug.contains(&true) && false  {
             self.debug_print(logger);
         }
     }
@@ -88,7 +88,6 @@ impl ClientStats {
 
         if tm.1 != self.target_marker {
             self.target_marker = tm.1;
-            changed = true;
         }
         changed
     }

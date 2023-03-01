@@ -45,6 +45,7 @@ pub struct FarmingBehavior<'a> {
     last_click_pos: Option<Point>,
     stealed_target_count: u32,
     last_no_ennemy_time: Option<Instant>,
+    targetting_cooldown: Option<Instant>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -70,6 +71,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_click_pos: None,
             stealed_target_count: 0,
             last_no_ennemy_time: None,
+            targetting_cooldown: None,
         }
     }
 
@@ -343,7 +345,8 @@ impl<'a> FarmingBehavior<'_> {
         self.key_manager.eval_mob_click(point);
 
         // Wait a few ms before transitioning state
-        std::thread::sleep(Duration::from_millis(500));
+        //std::thread::sleep(Duration::from_millis(500));
+        self.targetting_cooldown = Some(Instant::now());
         State::Attacking(mob)
     }
 
@@ -441,8 +444,14 @@ impl<'a> FarmingBehavior<'_> {
                 }
             } else {
                 // Not a mob we go search for another
-                self.avoid_last_click();
-                return State::SearchingForEnemy;
+                if self.targetting_cooldown.unwrap().elapsed().as_millis() > 1000 {
+                    self.avoid_last_click();
+                    self.targetting_cooldown = None;
+                    return State::SearchingForEnemy;
+                } else {
+                    return self.state;
+                }
+
             }
         } else if !self.is_attacking && config.is_manual_targetting() {
             if !is_mob {
