@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 
-import { SlotType, slotTypes, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
+import { SlotModel, SlotType, slotTypes, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 
 type Props = {
     className?: string,
@@ -8,20 +8,25 @@ type Props = {
     index: number,
     indexName: string,
     onChange?: (type: SlotType) => void,
-    toggleSlotModal: () => void,
+    toggleSlotModal: (event:any,targetSlot: SlotModel) => void,
+    slot: SlotModel,
 }
 
-const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName }: Props) => {
+const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName,slot }: Props) => {
     const handleChange = () => {
         const nextType: SlotType = slotTypes[(slotTypes.indexOf(type) + 1) % slotTypes.length];
         onChange?.(nextType)
     }
     const symbolOrIcon = translateType(type)
     const useIcon = symbolOrIcon.startsWith('data:') || symbolOrIcon.includes('static');
-
+    var styleInline = {border: '1px solid hsl(48,58%,43%)'};
+    if(slot){
+        styleInline = slot.slot_enabled === true ? {border: '1px solid green'} : {border: '1px solid red'};
+    }
+    // const styleClassName = slot.slot_enabled === true ? 'enabled_slot' : 'disabled_slot'
     return (
 
-        <div className={className} onClick={toggleSlotModal} >
+        <div style={styleInline} className={className} onClick={(e) => toggleSlotModal(e,slot)} >
             <div className="index">{indexName}</div>
             <div className='slot' onClick={handleChange}>
                 {useIcon && (
@@ -62,6 +67,14 @@ export default styled(Slot)`
         height:100%;
         width: 100%;
         text-align: center;
+    }
+
+    & .enabled_slot {
+        border: 1px solid green;
+    }
+
+    & .disabled_slot {
+        border: 1px solid red;
     }
 
     & .index {
