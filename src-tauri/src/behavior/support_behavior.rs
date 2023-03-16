@@ -157,6 +157,10 @@ impl<'a> SupportBehavior<'_> {
             if send {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);
+                if slot_type == SlotType::HealSkill {
+                    // Set last buff usage to now so that a buff doesn't try and happen immediately after a heal
+                    self.last_buff_usage = Instant::now();
+                }
             }
 
             return Some(slot_index);
