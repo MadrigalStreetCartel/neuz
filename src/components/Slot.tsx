@@ -21,7 +21,9 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, in
     const useIcon = symbolOrIcon.startsWith('data:') || symbolOrIcon.includes('static');
     var styleInline = {border: '1px solid hsl(48,58%,43%)'};
     if(slot){
-        styleInline = slot.slot_enabled === true ? {border: '1px solid green'} : {border: '1px solid red'};
+        if(slot.slot_type != "Unused"){
+            styleInline = slot.slot_enabled === true ? {border: '1px solid green'} : {border: '1px solid red'};
+        }
     }
     // const styleClassName = slot.slot_enabled === true ? 'enabled_slot' : 'disabled_slot'
     return (
