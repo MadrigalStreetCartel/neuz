@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Neuz",
-    "version": "0.16.2"
+    "version": "0.16.3"
   },
   "tauri": {
     "allowlist": {
@@ -17,7 +17,7 @@
     "bundle": {
       "active": true,
       "category": "Productivity",
-      "copyright": "2022 MadrigalStreetCartel",
+      "copyright": "2023 MadrigalStreetCartel",
       "deb": {
         "depends": []
       },
