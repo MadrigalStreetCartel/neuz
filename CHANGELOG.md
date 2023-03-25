@@ -6,6 +6,14 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.16.3**
+> Released on 24.3.2023
+- Support
+  - Fixed issue where buffs would often be skipped.
+- Misc
+  - Added Red/Green outline to indicate if a slot is enabled/disabled
+  - You can now Shift+Click any slot to immediatly enable/disable it without having to open the menu for each of them.
+
 **0.16.2**
 > Released on 12.11.2022
 - Support

@@ -20,3 +20,8 @@ Contributions:
 
 Contributions:
 - Pill usage in farming behavior
+
+## [Credit-Score](https://github.com/Credit-Score)
+
+Contributions:
+- Support buff fix + small QOL feature.
