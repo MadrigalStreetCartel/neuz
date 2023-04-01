@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 
-import { SlotType, slotTypes, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
+import { SlotModel, SlotType, slotTypes, SLOT_SIZE_PX, translateDesc, translateType } from '../models/BotConfig'
 
 type Props = {
     className?: string,
@@ -8,10 +8,11 @@ type Props = {
     index: number,
     indexName: string,
     onChange?: (type: SlotType) => void,
-    toggleSlotModal: () => void,
+    toggleSlotModal: (event:any,targetSlot: SlotModel) => void,
+    slot: SlotModel,
 }
 
-const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName }: Props) => {
+const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, indexName,slot }: Props) => {
     const handleChange = () => {
         const nextType: SlotType = slotTypes[(slotTypes.indexOf(type) + 1) % slotTypes.length];
         onChange?.(nextType)
@@ -19,9 +20,17 @@ const Slot = ({ className, type = 'Unused', index, onChange, toggleSlotModal, in
     const symbolOrIcon = translateType(type)
     const useIcon = symbolOrIcon.startsWith('data:') || symbolOrIcon.includes('static');
 
+    var styleInline = {border: '1px solid hsl(48,58%,43%)'};
+    if(slot){
+        // CreditScore note: slot_type != Unused bit is completly untested, just added at request of Sly
+        if(slot.slot_type != "Unused"){
+            styleInline = slot.slot_enabled === true ? {border: '1px solid green'} : {border: '1px solid red'};
+        }
+    }
+
     return (
 
-        <div className={className} onClick={toggleSlotModal} >
+        <div style={styleInline} className={className} onClick={(e) => toggleSlotModal(e,slot)} >
             <div className="index">{indexName}</div>
             <div className='slot' onClick={handleChange}>
                 {useIcon && (

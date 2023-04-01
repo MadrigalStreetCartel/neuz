@@ -19,9 +19,14 @@ const SlotBar = ({ className, config, botMode, onChange }: Props) => {
     const { isShown, toggle } = useModal();
     const [currentSlotId, setCurrentSlotId] = useState(-1)
     const [currentBarIndex, setCurrentBarIndex] = useState(0)
-    const toogleSlot = (id: number) => {
-        setCurrentSlotId(id)
-        toggle()
+    const toogleSlot = (id: number, event: any,targetSlot: SlotModel ) => {
+        if(event.shiftKey){
+            targetSlot.slot_enabled = !targetSlot.slot_enabled;
+            handleSlotChange(currentBarIndex, id, targetSlot);
+        }else{
+            setCurrentSlotId(id)
+            toggle()
+        }
     }
     let slots = config.slot_bars ?? createSlotBars()
 
@@ -43,7 +48,7 @@ const SlotBar = ({ className, config, botMode, onChange }: Props) => {
 
                 <div className="slots">
                     {slots[currentBarIndex].slots.map((slot, index) =>  (
-                        <Slot key={index} type={slot.slot_type} index={index} toggleSlotModal={() => toogleSlot(index)} indexName={index +""} />
+                                                <Slot key={index} type={slot.slot_type} index={index} toggleSlotModal={(event: any,targetSlot: SlotModel) => toogleSlot(index,event,targetSlot)} indexName={index +""} slot={slots[currentBarIndex].slots[index]} />
 
                     ))}
                     <div className="slotIndexChanger">
