@@ -1,0 +1,44 @@
+# if the pull request is merged this workflow will run on pull request merge event and will publish release
+
+name: "PR build release"
+on:
+    pull_request:
+        types: [closed]
+        branches:
+            - main
+
+env:
+    CI: false
+jobs:
+    publish-tauri:
+        strategy:
+            fail-fast: false
+            matrix:
+                platform: [macos-latest, ubuntu-20.04, windows-latest]
+        runs-on: ${{ matrix.platform }}
+        if: github.event.pull_request.merged == true
+        steps:
+            - uses: actions/checkout@v3
+            - name: setup node
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 16
+            - name: install Rust stable
+              uses: dtolnay/rust-toolchain@stable
+            - name: install dependencies (ubuntu only)
+              if: matrix.platform == 'ubuntu-20.04'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+            - name: install app dependencies and build it
+              run: yarn && yarn build
+            - uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  tagName: Neuz-v__VERSION__ # this will be replaced by the version in your package.json
+                  releaseName: "Neuz v__VERSION__"
+                  releaseBody: "Join us on Discord and leave a ⭐ on GitHub if you like the project!"
+                  releaseDraft: true
+                  prerelease: false
+                  latest: true
