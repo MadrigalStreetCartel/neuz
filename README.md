@@ -12,8 +12,8 @@
 
 # Download
 
-- Latest version: [Download for Windows][download_msi]
-- Older versions: [Release Archive](./releases)
+- Latest version: [Download][download]
+- Older versions (Windows only): [Release Archive](./releases)
 
 Take a look at the [changelog][changelog]!
 
@@ -98,7 +98,7 @@ It's a client with semi-autonomous automation features.
 
 <!-- Links -->
 [banner]: ./banner.png
-[download_msi]: https://github.com/MadrigalStreetCartel/neuz/raw/main/releases/Neuz_0.16.2_x64_en-US.msi
+[download]: https://github.com/MadrigalStreetCartel/neuz/releases/
 [changelog]: https://github.com/MadrigalStreetCartel/neuz/blob/main/CHANGELOG.md
 
 <!-- Disclaimer -->
