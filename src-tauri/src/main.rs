@@ -30,7 +30,8 @@ use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    utils::Timer, platform::{KeyMode, eval_send_key},
+    platform::{eval_send_key, KeyMode},
+    utils::Timer,
 };
 
 struct AppState {
@@ -100,7 +101,7 @@ fn toggle_main_size(
     if win_size.is_err() {
         return false;
     }
-    let win_size = win_size.unwrap().clone();
+    let win_size = win_size.unwrap();
 
     let default_width = 550;
     let default_height = 630;
@@ -109,17 +110,17 @@ fn toggle_main_size(
     let min_height = size[1];
 
     fn resize_window(window: Window, width: u32, height: u32, should_not_toggle: Option<bool>) {
-        if should_not_toggle.unwrap_or(false) == false {
+        if !should_not_toggle.unwrap_or(false) {
             drop(window.set_size(LogicalSize { width, height }));
         }
     }
 
     if win_size.width == min_width && win_size.height == min_height {
         resize_window(window, default_width, default_height, should_not_toggle);
-        return false;
+        false
     } else {
         resize_window(window, min_width, min_height, should_not_toggle);
-        return true;
+        true
     }
 }
 
@@ -154,14 +155,12 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
     .unwrap();
     let mut profiles = vec![];
 
-    for path in paths {
-        if let Ok(entry) = path {
-            if entry.file_name().to_str().unwrap().starts_with("profile_") {
-                profiles.push(String::from(&*entry.file_name().to_str().unwrap()));
-            }
+    for entry in paths.flatten() {
+        if entry.file_name().to_str().unwrap().starts_with("profile_") {
+            profiles.push(String::from(entry.file_name().to_str().unwrap()));
         }
     }
-    if profiles.len() == 0 {
+    if profiles.is_empty() {
         drop(fs::create_dir(
             format!(
                 r"{}\profile_DEFAULT",
@@ -314,16 +313,10 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
 }
 fn should_disconnect(config: &BotConfig) -> bool {
     return match config.mode().unwrap() {
-        BotMode::Farming => {
-            config.farming_config().on_death_disconnect()
-        },
-        BotMode::Support => {
-            config.support_config().on_death_disconnect()
-        },
-        BotMode::AutoShout => {
-            true
-        }
-    }
+        BotMode::Farming => config.farming_config().on_death_disconnect(),
+        BotMode::Support => config.support_config().on_death_disconnect(),
+        BotMode::AutoShout => true,
+    };
 }
 #[tauri::command]
 fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
@@ -371,18 +364,18 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         });
 
         let send_config = |config: &BotConfig| {
-            drop(app_handle.emit_all("bot_config_s2c", &*config) as Result<(), _>)
+            drop(app_handle.emit_all("bot_config_s2c", config) as Result<(), _>)
         };
 
         let send_info = |config: &FrontendInfo| {
-            drop(app_handle.emit_all("bot_info_s2c", &*config) as Result<(), _>)
+            drop(app_handle.emit_all("bot_info_s2c", config) as Result<(), _>)
         };
 
         // Wait a second for frontend to become ready
         std::thread::sleep(Duration::from_secs(1));
 
         // Send initial config to frontend
-        send_config(&*config.read());
+        send_config(&config.read());
 
         let window = app_handle.get_window("client").unwrap();
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
@@ -399,7 +392,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut last_mode: Option<BotMode> = None;
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
             Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
-        send_info(&*frontend_info.read());
+        send_info(&frontend_info.read());
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -470,15 +463,15 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     slog::info!(logger, "Mode changed"; "old_mode" => last_mode.to_string(), "new_mode" => mode.to_string());
 
                     // Stop all behaviors
-                    farming_behavior.stop(&config);
-                    support_behavior.stop(&config);
-                    shout_behavior.stop(&config);
+                    farming_behavior.stop(config);
+                    support_behavior.stop(config);
+                    shout_behavior.stop(config);
 
                     // Start the current behavior
                     match mode {
-                        BotMode::Farming => farming_behavior.start(&config),
-                        BotMode::Support => support_behavior.start(&config),
-                        BotMode::AutoShout => shout_behavior.start(&config),
+                        BotMode::Farming => farming_behavior.start(config),
+                        BotMode::Support => support_behavior.start(config),
+                        BotMode::AutoShout => shout_behavior.start(config),
                     }
                 }
             }
@@ -499,7 +492,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 // Stop bot in case of death
                 let is_alive = image_analyzer.client_stats.is_alive();
 
-                if !is_alive  {
+                if !is_alive {
                     if frontend_info_mut.is_alive() {
                         let should_disconnect = should_disconnect(config);
                         if should_disconnect {
@@ -510,7 +503,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         frontend_info_mut.set_is_alive(false);
                         frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                         // Send infos to frontend
-                        send_info(&*frontend_info.read());
+                        send_info(&frontend_info.read());
                     } else {
                         eval_send_key(&window, "Enter", KeyMode::Press);
                         std::thread::sleep(Duration::from_millis(500));
@@ -548,7 +541,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 }
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend
-                send_info(&*frontend_info.read());
+                send_info(&frontend_info.read());
             }
 
             // Update last mode

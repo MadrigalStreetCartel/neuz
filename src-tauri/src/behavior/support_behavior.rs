@@ -1,8 +1,9 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 use slog::Logger;
 use tauri::Window;
 
+use super::Behavior;
 use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
@@ -10,8 +11,6 @@ use crate::{
     platform::send_slot_eval,
     play,
 };
-
-use super::Behavior;
 
 pub struct SupportBehavior<'a> {
     movement: &'a MovementAccessor,
@@ -82,14 +81,13 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
     }
 }
 
-impl<'a> SupportBehavior<'_> {
-
+impl SupportBehavior<'_> {
     fn avoid_obstacle(&mut self, config: &SupportConfig) {
         if let Some(last_far_from_target) = self.last_far_from_target {
             if last_far_from_target.elapsed().as_millis() > config.obstacle_avoidance_cooldown() {
-                    self.move_circle_pattern();
+                self.move_circle_pattern();
             }
-        } else{
+        } else {
             use crate::movement::prelude::*;
             play!(self.movement => [
                 PressKey("Z"),
@@ -122,26 +120,22 @@ impl<'a> SupportBehavior<'_> {
 
     /// Update slots cooldown timers
     fn update_slots_usage(&mut self, config: &SupportConfig) {
-        let mut slotbar_index = 0;
-        for slot_bars in self.slots_usage_last_time {
-            let mut slot_index = 0;
-            for last_time in slot_bars {
+        for (slotbar_index, slot_bars) in self.slots_usage_last_time.into_iter().enumerate() {
+            for (slot_index, last_time) in slot_bars.into_iter().enumerate() {
                 let cooldown = config
                     .get_slot_cooldown(slotbar_index, slot_index)
                     .unwrap_or(100)
                     .try_into();
-                if last_time.is_some() && cooldown.is_ok() {
-                    let slot_last_time = last_time.unwrap().elapsed().as_millis();
-                    if slot_last_time > cooldown.unwrap() {
-                        self.slots_usage_last_time[slotbar_index][slot_index] = None;
+                if let Some(last_time) = last_time {
+                    if let Ok(cooldown) = cooldown {
+                        let slot_last_time = last_time.elapsed().as_millis();
+                        if slot_last_time > cooldown {
+                            self.slots_usage_last_time[slotbar_index][slot_index] = None;
+                        }
                     }
                 }
-                slot_index += 1;
             }
-            slotbar_index += 1;
-            drop(slot_index);
         }
-        drop(slotbar_index);
     }
 
     fn get_slot_for(
@@ -165,7 +159,7 @@ impl<'a> SupportBehavior<'_> {
 
             return Some(slot_index);
         }
-        return None;
+        None
     }
 
     fn send_slot(&mut self, slot_index: (usize, usize)) {
@@ -186,13 +180,12 @@ impl<'a> SupportBehavior<'_> {
     fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
         // Check HP
         let stat = Some(image.client_stats.hp.value);
-        if image.client_stats.hp.value > 0 {
-            if self
+        if image.client_stats.hp.value > 0
+            && self
                 .get_slot_for(config, stat, SlotType::Pill, true)
                 .is_none()
-            {
-                self.get_slot_for(config, stat, SlotType::Food, true);
-            }
+        {
+            self.get_slot_for(config, stat, SlotType::Food, true);
         }
 
         //Check target HP

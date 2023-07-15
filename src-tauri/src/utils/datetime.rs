@@ -3,12 +3,9 @@ use std::time::Duration;
 pub struct DateTime {}
 impl DateTime {
     pub fn format_float(float: f32, precision: usize) -> f32 {
-        let result = format!("{:.prec$}", float, prec = precision).parse::<f32>();
-        if result.is_ok() {
-            result.unwrap()
-        } else {
-            0.0
-        }
+        format!("{:.prec$}", float, prec = precision)
+            .parse::<f32>()
+            .unwrap_or_default()
     }
 
     pub fn format_time(elapsed: Duration) -> String {

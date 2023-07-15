@@ -1,8 +1,6 @@
 use std::{fmt, time::Instant};
 
-use crate::image_analyzer::{Color,
-    //ImageAnalyzer
-};
+use crate::image_analyzer::Color;
 
 //use super::PointCloud;
 

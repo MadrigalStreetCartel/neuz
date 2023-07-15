@@ -3,12 +3,11 @@ use std::{fmt, time::Instant};
 use slog::Logger;
 use tauri::Window;
 
+use super::PointCloud;
 use crate::{
     image_analyzer::{Color, ImageAnalyzer},
     platform::{eval_send_key, KeyMode},
 };
-
-use super::PointCloud;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
@@ -57,17 +56,18 @@ impl ClientStats {
     }
 
     // update all bars values at once
-    pub fn update(&mut self, image: &ImageAnalyzer, logger: &Logger) {
-        let should_debug = [
+    pub fn update(&mut self, image: &ImageAnalyzer, _logger: &Logger) {
+        let _should_debug = [
             self.hp.update_value(image),
             self.mp.update_value(image),
             self.fp.update_value(image),
             self.target_hp.update_value(image),
             self.target_mp.update_value(image),
         ];
-        if should_debug.contains(&true) && false {
-            self.debug_print(logger);
-        }
+        // Debug is deactivated
+        /*if should_debug.contains(&true) {
+            self.debug_print(_logger);
+        }*/
     }
 
     // Detect whether we can read or not stat_tray and open it if needed
@@ -81,10 +81,10 @@ impl ClientStats {
                 // Try to open char stat tray
                 eval_send_key(&self.window, "T", KeyMode::Press);
             }
-            return false;
+            false
         } else {
             self.stat_try_not_detected_count = 0;
-            return true;
+            true
         }
     }
 
@@ -93,19 +93,12 @@ impl ClientStats {
         // We need to be sure that char tray is open before
         if self.detect_stat_tray() {
             // Obfviously
-            if self.hp.value == 0 {
-                self.is_alive = false
-            } else {
-                self.is_alive = true
-            }
+            self.is_alive = self.hp.value != 0;
         }
-        return self.is_alive
-
-
-
+        self.is_alive
     }
 
-    pub fn debug_print(&mut self, logger: &Logger) {
+    pub fn _debug_print(&mut self, logger: &Logger) {
         // Stringify is_alive
         let alive_str = {
             if self.is_alive() {
@@ -153,8 +146,8 @@ impl StatInfo {
             last_update_time: Some(Instant::now()),
             last_value: 100,
         };
-        if image.is_some() {
-            res.update_value(image.unwrap());
+        if let Some(image) = image {
+            res.update_value(image);
         }
 
         res
@@ -200,9 +193,9 @@ impl StatInfo {
         if updated_value != old_value {
             self.value = updated_value;
             self.last_update_time = Some(Instant::now());
-            return true;
+            true
         } else {
-            return false;
+            false
         }
     }
 }

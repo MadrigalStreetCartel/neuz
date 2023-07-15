@@ -12,6 +12,10 @@ pub struct Bounds {
 }
 
 impl Bounds {
+    pub fn new(x: u32, y: u32, w: u32, h: u32) -> Self {
+        Self { x, y, w, h }
+    }
+
     pub fn get_lowest_center_point(&self) -> Point {
         Point::new(self.x + self.w / 2, self.y + self.h)
     }

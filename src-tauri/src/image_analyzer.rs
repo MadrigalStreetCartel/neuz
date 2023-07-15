@@ -7,7 +7,7 @@ use std::{
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
-use tauri::{Window};
+use tauri::Window;
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
@@ -111,7 +111,7 @@ impl ImageAnalyzer {
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
                         if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
-                            #[allow(clippy::drop_copy)]
+                            #[allow(dropping_copy_types)]
                             drop(snd.send(Point::new(x, y)));
 
                             // Continue to next column
@@ -268,7 +268,6 @@ impl ImageAnalyzer {
             }
         };
 
-
         // Collect pixel clouds
         let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
 
@@ -278,11 +277,8 @@ impl ImageAnalyzer {
         }
 
         // Identify target marker entities
-        let target_markers = Self::merge_cloud_into_mobs(
-            None,
-            &PointCloud::new(coords),
-            TargetType::TargetMarker,
-        );
+        let target_markers =
+            Self::merge_cloud_into_mobs(None, &PointCloud::new(coords), TargetType::TargetMarker);
 
         if !blank_target && target_markers.is_empty() {
             return self.identify_target_marker(true);
@@ -291,7 +287,7 @@ impl ImageAnalyzer {
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
-    pub fn get_target_marker_distance(&self,  mob: Target) -> i32 {
+    pub fn get_target_marker_distance(&self, mob: Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
@@ -300,10 +296,8 @@ impl ImageAnalyzer {
 
         // Calculate 2D euclidian distances to player
         let point = mob.get_attack_coords();
-        let distance = (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2))
-            as f64)
-            .sqrt() as i32;
-        distance
+
+        (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2)) as f64).sqrt() as i32
     }
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'a>(
