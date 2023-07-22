@@ -1,8 +1,9 @@
 use std::{ops::Range, thread, time::Duration};
 
-use crate::platform::{eval_send_key, eval_send_message /* , PlatformAccessor*/, KeyMode};
 use rand::Rng;
 use tauri::Window;
+
+use crate::platform::{eval_send_key, eval_send_message /* , PlatformAccessor*/, KeyMode};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]

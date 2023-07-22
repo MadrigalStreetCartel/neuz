@@ -4,14 +4,13 @@ use guard::guard;
 use slog::Logger;
 use tauri::Window;
 
+use super::Behavior;
 use crate::{
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, ShoutConfig},
     movement::MovementAccessor,
     play,
 };
-
-use super::Behavior;
 
 #[allow(dead_code)]
 pub struct ShoutBehavior<'a> {
@@ -65,7 +64,7 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
     }
 }
 
-impl<'a> ShoutBehavior<'_> {
+impl ShoutBehavior<'_> {
     fn shout(&mut self, _config: &ShoutConfig) {
         use crate::movement::prelude::*;
 
