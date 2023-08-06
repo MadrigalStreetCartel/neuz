@@ -37,6 +37,7 @@ Prerequisites:
 - Install the latest stable Rust version via rustup: `rustup install stable`
 
 Building:
+- Create build folder in the root directory
 - Run `yarn` in the root directory to install dependencies
 - Run `yarn tauri dev` to start the app in development mode
 - Run `yarn tauri build` to build the app for production
