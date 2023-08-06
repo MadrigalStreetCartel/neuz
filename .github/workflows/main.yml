@@ -1,5 +1,9 @@
 name: 'Build release'
-on: workflow_dispatch
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 env:
   CI: false
 
