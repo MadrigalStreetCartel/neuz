@@ -2021,7 +2021,7 @@ dependencies = [
 [[package]]
 name = "libscreenshot"
 version = "0.3.1"
-source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#a528dda43e98b40d13e865b37758a0646784a856"
+source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#1a4e2b31530c639f04fa5d14f10057cd03bdfef2"
 dependencies = [
  "cocoa 0.25.0",
  "core-foundation",
@@ -2108,7 +2108,7 @@ dependencies = [
 [[package]]
 name = "macos-bindings"
 version = "0.1.0"
-source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#a528dda43e98b40d13e865b37758a0646784a856"
+source = "git+https://github.com/MadrigalStreetCartel/libscreenshot#1a4e2b31530c639f04fa5d14f10057cd03bdfef2"
 dependencies = [
  "bindgen",
  "objc",
