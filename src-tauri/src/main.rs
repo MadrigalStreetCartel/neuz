@@ -138,7 +138,7 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
             r"{}\",
             app_handle
                 .path_resolver()
-                .app_dir()
+                .app_data_dir()
                 .unwrap()
                 .to_string_lossy()
         )
@@ -148,7 +148,7 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
         r"{}\",
         app_handle
             .path_resolver()
-            .app_dir()
+            .app_data_dir()
             .unwrap()
             .to_string_lossy()
     ))
@@ -166,7 +166,7 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
                 r"{}\profile_DEFAULT",
                 app_handle
                     .path_resolver()
-                    .app_dir()
+                    .app_data_dir()
                     .unwrap()
                     .to_string_lossy()
             )
@@ -196,7 +196,7 @@ fn config_folder_path(app_handle: &tauri::AppHandle, profile_id: &String) -> Str
         r"{}\profile_{}",
         app_handle
             .path_resolver()
-            .app_dir()
+            .app_data_dir()
             .unwrap()
             .to_string_lossy(),
         profile_id
@@ -207,7 +207,7 @@ fn config_file_path(app_handle: &tauri::AppHandle, profile_id: &String) -> Strin
         r"{}\.botconfig_{}",
         app_handle
             .path_resolver()
-            .app_dir()
+            .app_data_dir()
             .unwrap()
             .to_string_lossy(),
         profile_id
@@ -294,7 +294,7 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
         r"{}\profile_{}",
         app_handle
             .path_resolver()
-            .app_dir()
+            .app_data_dir()
             .unwrap()
             .to_string_lossy(),
         profile_id
@@ -325,7 +325,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         r"{}\.botconfig_{}",
         app_handle
             .path_resolver()
-            .app_dir()
+            .app_data_dir()
             .unwrap()
             .to_string_lossy(),
         profile_id
@@ -406,7 +406,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         r"{}\.botconfig_{}",
                         app_handle
                             .path_resolver()
-                            .app_dir()
+                            .app_data_dir()
                             .unwrap()
                             .to_string_lossy(),
                         profile_id
