@@ -28,6 +28,23 @@ Planned Features for now:
 
 Join our Discord: https://discord.gg/cZr3X3mCnq
 
+# Development
+
+Prerequisites:
+- Install a recent `nodejs` version (should work fine with the latest version)
+- Install `yarn` (https://classic.yarnpkg.com/en/docs/install)
+- Install `rustup` (https://rust-lang.org/tools/install)
+- Install the latest stable Rust version via rustup: `rustup install stable`
+
+Building:
+- Run `yarn` in the root directory to install dependencies
+- Run `yarn tauri dev` to start the app in development mode
+- Run `yarn tauri build` to build the app for production
+
+Before pushing:
+- run `cargo clippy` in the `src-tauri` directory to check for linting errors
+- run `cargo fmt` in the `src-tauri` directory to format the code
+
 # Usage
 
 1. Start Neuz as an admin
