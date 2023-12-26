@@ -99,7 +99,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         // Check state machine
         self.state = match self.state {
-            State::Buffing=>self.full_buffing(config,image),
+            State::Buffing => self.full_buffing(config, image),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(mob),
@@ -138,8 +138,8 @@ impl FarmingBehavior<'_> {
             if let Some(last_time) = self.last_summon_pet_time {
                 if last_time.elapsed().as_millis()
                     > config
-                        .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
-                        .unwrap_or(3000) as u128
+                    .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
+                    .unwrap_or(3000) as u128
                 {
                     send_slot_eval(
                         self.window,
@@ -226,7 +226,7 @@ impl FarmingBehavior<'_> {
         if image.client_stats.hp.value > 0 {
             // Use a HealSkill if configured when health is under 85
 
-            if  image.client_stats.hp.value < 20 {
+            if image.client_stats.hp.value < 20 {
                 // Take a pill if health is less than 40, ideally should not be often
                 self.get_slot_for(config, health_stat, SlotType::Pill, true);
             }
@@ -238,24 +238,23 @@ impl FarmingBehavior<'_> {
                 // Eat food if health under 70
                 self.get_slot_for(config, health_stat, SlotType::Food, true);
             }
-
         }
 
         // Check MP
         let mp_stat = Some(image.client_stats.mp.value);
-        if image.client_stats.mp.value > 0 &&  image.client_stats.mp.value < 50 {
+        if image.client_stats.mp.value > 0 && image.client_stats.mp.value < 50 {
             self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
         }
 
         // Check FP
         let fp_stat = Some(image.client_stats.fp.value);
-        if image.client_stats.fp.value > 0 &&  image.client_stats.mp.value < 50 {
+        if image.client_stats.fp.value > 0 && image.client_stats.mp.value < 50 {
             self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
     }
 
-    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, ) -> State {
-        let all_buffs= config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
+    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
+        let all_buffs = config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
         for slot_index in all_buffs {
             std::thread::sleep(Duration::from_millis(2000));
             self.send_slot(slot_index);
@@ -263,18 +262,15 @@ impl FarmingBehavior<'_> {
         self.check_restorations(config, image);
         // Transition to next state
         // slog::debug!(self.logger, "End Full buffing.");
-       return State::NoEnemyFound
-     }
+        return State::NoEnemyFound;
+    }
 
-    fn check_buffs(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer ) {
-
+    fn check_buffs(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
         if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
+            self.full_buffing(config, image);
             self.last_buff_usage = Instant::now();
-
-            self.full_buffing(config,image);
         }
         std::thread::sleep(Duration::from_millis(100));
-
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
@@ -312,6 +308,18 @@ impl FarmingBehavior<'_> {
         }
         // Transition to next state
         State::SearchingForEnemy
+    }
+
+
+    fn walk_around_a_little(&self, rotation_duration: u64) {
+        use crate::movement::prelude::*;
+        play!(self.movement => [
+            HoldKeys(vec!["W", "D"]),
+            Wait(dur::Fixed(rotation_duration)),
+            ReleaseKey("D"),
+            Wait(dur::Fixed(20)),
+            ReleaseKeys(vec![ "W"]),
+        ]);
     }
 
     fn move_circle_pattern(&self, rotation_duration: u64) {
@@ -354,19 +362,13 @@ impl FarmingBehavior<'_> {
             if mob_list.is_empty() {
                 // Transition to next state
                 State::NoEnemyFound
-            }
-            else {
+            } else {
                 self.rotation_movement_tries = 0;
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
                     if !self.avoided_bounds.is_empty() {
-                        image.find_closest_mob(
-                            mob_list.as_slice(),
-                            Some(&self.avoided_bounds),
-                            max_distance,
-                            self.logger,
-                        )
+                        image.find_closest_mob(mob_list.as_slice(), Some(&self.avoided_bounds), max_distance, self.logger)
                     } else {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                     }
@@ -378,7 +380,6 @@ impl FarmingBehavior<'_> {
                     State::SearchingForEnemy
                 }
             }
-
         }
     }
 
@@ -430,7 +431,6 @@ impl FarmingBehavior<'_> {
     fn abort_attack(&mut self, image: &mut ImageAnalyzer) -> State {
         use crate::movement::prelude::*;
         self.is_attacking = false;
-
         if self.already_attack_count > 0 {
             // Target marker found
             if let Some(marker) = image.identify_target_marker(false) {
@@ -512,7 +512,10 @@ impl FarmingBehavior<'_> {
 
                 // Detect if mob was attacked
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
-                    // If we didn't took any damages abort attack
+                    // // If we didn't took any damages abort attack
+                    // if (config.max_aoe_farming() > 1 && self.concurrent_mobs_under_attack < config.max_aoe_farming() ){
+                    //     return self.abort_attack(image);
+                    // }
                     if hp_last_update.elapsed().as_millis() > 5000 {
                         return self.abort_attack(image);
                     } else if self.stealed_target_count > 5 {
@@ -530,7 +533,7 @@ impl FarmingBehavior<'_> {
         }
 
         if is_mob_alive {
-            // Engagin combat
+            // Engaging combat
             if !self.is_attacking {
                 self.obstacle_avoidance_count = 0;
                 self.last_initial_attack_time = Instant::now();
@@ -562,28 +565,17 @@ impl FarmingBehavior<'_> {
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
 
-            slog::debug!(self.logger, "Config Max AOE Farming {}", config.max_aoe_farming());
-
-            slog::debug!(self.logger, "Concurrent_mobs_under_attack {}", self.concurrent_mobs_under_attack);
-
-            if config.max_aoe_farming() > 1 {
-                if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
-                    self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
-                    self.is_attacking = false;
-
-                    use crate::movement::prelude::*;
-                    play!(self.movement => [
-                        PressKey("Escape"),
-                    ]);
-
-                    slog::debug!(self.logger, "Pressed ESC key");
-                    return State::SearchingForEnemy;
-                }
-                else{
-                    // Try to use attack skill if at least one is selected in slot bar
-                    self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
-                }
-            }
+            // if config.max_aoe_farming() > 1 {
+            //     slog::debug!(self.logger, "AOE mobs_under_attack {}", self.concurrent_mobs_under_attack);
+            //
+            //     if self.concurrent_mobs_under_attack >= config.max_aoe_farming() {
+            //         // Try to use attack skill if at least one is selected in slot bar
+            //         self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
+            //     }
+            //     else {
+            //         self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
+            //     }
+            // }
 
             self.check_restorations(config, image);
 
