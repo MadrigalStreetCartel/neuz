@@ -443,6 +443,8 @@ impl FarmingBehavior<'_> {
             }
         } else {
             self.obstacle_avoidance_count = 0;
+            use crate::movement::prelude::*;
+            self.is_attacking = false;
             self.avoid_last_click();
         }
         play!(self.movement => [
@@ -568,6 +570,13 @@ impl FarmingBehavior<'_> {
                 if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
                     self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
                     self.is_attacking = false;
+
+                    use crate::movement::prelude::*;
+                    play!(self.movement => [
+                        PressKey("Escape"),
+                    ]);
+
+                    slog::debug!(self.logger, "Pressed ESC key");
                     return State::SearchingForEnemy;
                 }
                 else{
@@ -657,7 +666,7 @@ impl FarmingBehavior<'_> {
 
         // Pickup items
         self.pickup_items(config);
-
+        self.concurrent_mobs_under_attack = 0;
         // Transition state
         State::SearchingForEnemy
     }

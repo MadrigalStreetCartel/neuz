@@ -65,6 +65,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         //This is where we heal the target
         self.check_restorations(config, image);
+        self.check_buffs(config, image);
         std::thread::sleep(Duration::from_millis(100));
 
         if image.client_stats.target_hp.value > 0 {
@@ -77,7 +78,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     self.avoid_obstacle(config);
                 } else {
                     self.last_far_from_target = None;
-                    self.check_buffs(config, image);
+
                 }
             } else {
                 self.avoid_obstacle(config);
@@ -156,10 +157,6 @@ impl SupportBehavior<'_> {
             if send {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);
-                if slot_type == SlotType::HealSkill {
-                    // Set last buff usage to now so that a buff doesn't try and happen immediately after a heal
-                    self.last_buff_usage = Instant::now();
-                }
             }
 
             return Some(slot_index);
@@ -176,9 +173,8 @@ impl SupportBehavior<'_> {
 
     fn check_buffs(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
         if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
-            self.last_buff_usage = Instant::now();
-
             self.full_buffing(config,image);
+            self.last_buff_usage = Instant::now();
         }
         std::thread::sleep(Duration::from_millis(100));
     }
@@ -205,6 +201,15 @@ impl SupportBehavior<'_> {
                 // Take a pill if health is less than 40, ideally should not be often
                 self.get_slot_for(config, health_stat, SlotType::Pill, true);
             }
+
+            if image.client_stats.hp.value < 70 {
+                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                std::thread::sleep(Duration::from_millis(100));
+                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                std::thread::sleep(Duration::from_millis(100));
+                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+            }
+
             if image.client_stats.hp.value < 85 {
                 self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
             }
@@ -214,13 +219,7 @@ impl SupportBehavior<'_> {
                 self.get_slot_for(config, health_stat, SlotType::Food, true);
             }
 
-            if image.client_stats.hp.value < 50 {
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-            }
+
 
         }
 
