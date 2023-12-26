@@ -52,6 +52,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
         'min_hp_attack': 30,
         'prevent_already_attacked': true,
         'interval_between_buffs': 2000,
+        'aoe_farming': 1,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
@@ -62,6 +63,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     ]
 
     const [debugMode, setDebugMode] = useState(false);
+
     useEffect(() => {
         if (debugMode) {
             debugWarningModal.open()
@@ -103,6 +105,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         label={<ConfigLabel name="Debug" />}
                         item={<BooleanSlider value={debugMode} onChange={value => setDebugMode(value)} />}
                     />
+
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
                         item={<button onClick={resetSlotYesNo.open}>⚙️</button>}
@@ -189,6 +192,14 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         label={<ConfigLabel name="Min HP percent to attack" helpText="Minimum required HP value to attack a monster (only for passive ones)" />}
                         item={<NumericInput unit='%' value={config.min_hp_attack} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
+
+
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Max number of mobs to attack" helpText="Max number of mobs to attack at the same time" />}
+                        item={<NumericInput value={config.aoe_farming} onChange={value => onChange?.({ ...config, aoe_farming: value })} />}
+                    />
+
 
                 </ConfigTable>
             }/>

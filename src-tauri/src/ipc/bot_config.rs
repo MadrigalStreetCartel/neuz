@@ -9,6 +9,7 @@ pub enum SlotType {
     Pill,
     HealSkill,
     AOEHealSkill,
+    AOEAttackSkill,
     MpRestorer,
     FpRestorer,
     PickupPet,
@@ -27,6 +28,7 @@ impl fmt::Display for SlotType {
             SlotType::FpRestorer => write!(f, "fp restorer"),
             SlotType::PickupPet => write!(f, "pickup pet"),
             SlotType::AttackSkill => write!(f, "attack skill"),
+            SlotType::AOEAttackSkill => write!(f, "aoe attack skill"),
             SlotType::BuffSkill => write!(f, "buff skill"),
             SlotType::RezSkill => write!(f, "rez skill"),
             SlotType::Flying => write!(f, "fly"),
@@ -178,6 +180,7 @@ pub struct FarmingConfig {
     on_death_disconnect: Option<bool>,
     interval_between_buffs: Option<u64>,
     mobs_timeout: Option<u64>,
+    aoe_farming: Option<u32>,
 }
 
 impl FarmingConfig {
@@ -215,6 +218,9 @@ impl FarmingConfig {
 
     pub fn min_hp_attack(&self) -> u32 {
         self.min_hp_attack.unwrap_or(0)
+    }
+    pub fn max_aoe_farming(&self) -> u32 {
+        self.aoe_farming.unwrap_or(1)
     }
 
     pub fn passive_mobs_colors(&self) -> [Option<u8>; 3] {

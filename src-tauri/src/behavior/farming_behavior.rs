@@ -47,6 +47,7 @@ pub struct FarmingBehavior<'a> {
     last_click_pos: Option<Point>,
     stealed_target_count: u32,
     last_no_ennemy_time: Option<Instant>,
+    concurrent_mobs_under_attack: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -73,6 +74,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             last_click_pos: None,
             stealed_target_count: 0,
             last_no_ennemy_time: None,
+            concurrent_mobs_under_attack: 0,
         }
     }
 
@@ -241,28 +243,21 @@ impl FarmingBehavior<'_> {
 
         // Check MP
         let mp_stat = Some(image.client_stats.mp.value);
-        if image.client_stats.mp.value > 0 &&  image.client_stats.mp.value < 60 {
+        if image.client_stats.mp.value > 0 &&  image.client_stats.mp.value < 50 {
             self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
         }
 
         // Check FP
         let fp_stat = Some(image.client_stats.fp.value);
-        if image.client_stats.fp.value > 0 &&  image.client_stats.mp.value < 60 {
+        if image.client_stats.fp.value > 0 &&  image.client_stats.mp.value < 50 {
             self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
     }
 
     fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, ) -> State {
-        // slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
-
-        //slog::debug!(self.logger, "Starting the Full buffing.");
-
         let all_buffs= config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
-
-        // slog::debug!(self.logger,"Found buffs"; "length:"=> all_buffs.len());
-
         for slot_index in all_buffs {
-            std::thread::sleep(Duration::from_millis(1000));
+            std::thread::sleep(Duration::from_millis(2000));
             self.send_slot(slot_index);
         }
         self.check_restorations(config, image);
@@ -351,29 +346,16 @@ impl FarmingBehavior<'_> {
                 false => 1000,
             };
 
-            // Get aggressive mobs to prioritize them
-            let mut mob_list = mobs
-                .iter()
-                .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
-                .cloned()
-                .collect::<Vec<_>>();
+            let mob_list = self.get_list_of_mobs(config, image, mobs);
 
-            // Check if there's aggressive mobs otherwise collect passive mobs
-            if (mob_list.is_empty()
-                || self.last_killed_type == MobType::Aggressive
-                    && mob_list.len() == 1
-                    && self.last_kill_time.elapsed().as_millis() < 5000)
-                && image.client_stats.hp.value >= config.min_hp_attack()
-            {
-                mob_list = mobs
-                    .iter()
-                    .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
-                    .cloned()
-                    .collect::<Vec<_>>();
+
+            // inverted conditionals to make it easier to read
+            // Check again if we have a list of mobs
+            if mob_list.is_empty() {
+                // Transition to next state
+                State::NoEnemyFound
             }
-
-            // Check again
-            if !mob_list.is_empty() {
+            else {
                 self.rotation_movement_tries = 0;
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
@@ -395,11 +377,33 @@ impl FarmingBehavior<'_> {
                     // Transition to next state
                     State::SearchingForEnemy
                 }
-            } else {
-                // Transition to next state
-                State::NoEnemyFound
             }
+
         }
+    }
+
+    fn get_list_of_mobs(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, mobs: Vec<Target>) -> Vec<Target> {
+// Get aggressive mobs to prioritize them
+        let mut mob_list = mobs
+            .iter()
+            .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        // Check if there's aggressive mobs otherwise collect passive mobs
+        if (mob_list.is_empty()
+            || self.last_killed_type == MobType::Aggressive
+            && mob_list.len() == 1
+            && self.last_kill_time.elapsed().as_millis() < 5000)
+            && image.client_stats.hp.value >= config.min_hp_attack()
+        {
+            mob_list = mobs
+                .iter()
+                .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
+                .cloned()
+                .collect::<Vec<_>>();
+        }
+        mob_list
     }
 
     fn avoid_last_click(&mut self) {
@@ -555,6 +559,23 @@ impl FarmingBehavior<'_> {
 
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
+
+            slog::debug!(self.logger, "Config Max AOE Farming {}", config.max_aoe_farming());
+
+            slog::debug!(self.logger, "Concurrent_mobs_under_attack {}", self.concurrent_mobs_under_attack);
+
+            if config.max_aoe_farming() > 1 {
+                if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
+                    self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
+                    self.is_attacking = false;
+                    return State::SearchingForEnemy;
+                }
+                else{
+                    // Try to use attack skill if at least one is selected in slot bar
+                    self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
+                }
+            }
+
             self.check_restorations(config, image);
 
 

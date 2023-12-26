@@ -53,6 +53,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         let target_marker = image.identify_target_marker(true);
         self.update_slots_usage(config);
 
+        //Res the target if it dies
         if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
             self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
@@ -62,7 +63,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         use crate::movement::prelude::*;
         PressKey("C");
 
-
+        //This is where we heal the target
         self.check_restorations(config, image);
         std::thread::sleep(Duration::from_millis(100));
 
@@ -185,7 +186,7 @@ impl SupportBehavior<'_> {
     fn full_buffing(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer, ) {
         let all_buffs= config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
         for slot_index in all_buffs {
-            std::thread::sleep(Duration::from_millis(1000));
+            std::thread::sleep(Duration::from_millis(1500));
             self.send_slot(slot_index);
         }
 
