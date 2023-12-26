@@ -8,6 +8,7 @@ pub enum SlotType {
     Food,
     Pill,
     HealSkill,
+    AOEHealSkill,
     MpRestorer,
     FpRestorer,
     PickupPet,
@@ -79,6 +80,25 @@ impl SlotBar {
             //.choose(rng)
             .map(|(index, _)| (slot_bar_index, index))
     }
+
+    /// Get all usable slots for an index
+    pub fn get_all_usable_slots_for_index(
+        &self,
+        slot_type: SlotType,
+        slot_bar_index: usize,
+    ) ->  Vec<(usize, usize)> {
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+
+        for (index,current_slot) in self.slots().iter().enumerate(){
+            if current_slot.slot_enabled && current_slot.slot_type == slot_type {
+
+                all_valid_slots.push( (slot_bar_index, index ) )
+            }
+        }
+        return all_valid_slots;
+    }
+
+
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -238,6 +258,23 @@ impl FarmingConfig {
         None
     }
 
+    ///Get a list of usable matching slot index types
+    pub fn get_all_usable_slot_for_type_index(&self, slot_type: SlotType) ->Vec< (usize, usize) >{
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+
+        for slot_bar_index in 0..9 {
+
+           let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index);
+
+           for found_skill in result {
+                all_valid_slots.push(  (slot_bar_index, found_skill.1) );
+           }
+
+        }
+        return all_valid_slots;
+    }
+
+
     /// Get a random usable matching slot index
     pub fn get_usable_slot_index(
         &self,
@@ -323,6 +360,24 @@ impl SupportConfig {
         }
         None
     }
+
+
+    ///Get a list of usable matching slot index types
+    pub fn get_all_usable_slot_for_type_index(&self, slot_type: SlotType) ->Vec< (usize, usize) >{
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+
+        for slot_bar_index in 0..9 {
+
+            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index);
+
+            for found_skill in result {
+                all_valid_slots.push(  (slot_bar_index, found_skill.1) );
+            }
+
+        }
+        return all_valid_slots;
+    }
+
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

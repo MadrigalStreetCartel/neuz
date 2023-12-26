@@ -17,6 +17,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy)]
 enum State {
+    Buffing,
     NoEnemyFound,
     SearchingForEnemy,
     EnemyFound(Target),
@@ -55,7 +56,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             movement,
             window,
             rng: rand::thread_rng(),
-            state: State::SearchingForEnemy,
+            state: State::Buffing, //Start with buff before attacking
             slots_usage_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
             last_kill_time: Instant::now(),
@@ -96,6 +97,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         // Check state machine
         self.state = match self.state {
+            State::Buffing=>self.full_buffing(config,image),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(mob),
@@ -218,34 +220,66 @@ impl FarmingBehavior<'_> {
 
     fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
         // Check HP
-        let stat = Some(image.client_stats.hp.value);
-        if image.client_stats.hp.value > 0
-            && self
-                .get_slot_for(config, stat, SlotType::Pill, true)
-                .is_none()
-        {
-            self.get_slot_for(config, stat, SlotType::Food, true);
+        let health_stat = Some(image.client_stats.hp.value);
+        if image.client_stats.hp.value > 0 {
+            // Use a HealSkill if configured when health is under 85
+
+            if  image.client_stats.hp.value < 20 {
+                // Take a pill if health is less than 40, ideally should not be often
+                self.get_slot_for(config, health_stat, SlotType::Pill, true);
+            }
+            if image.client_stats.hp.value < 85 {
+                self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
+            }
+
+            if image.client_stats.hp.value < 50 {
+                // Eat food if health under 70
+                self.get_slot_for(config, health_stat, SlotType::Food, true);
+            }
+
         }
 
         // Check MP
-        let stat = Some(image.client_stats.mp.value);
-        if image.client_stats.mp.value > 0 {
-            self.get_slot_for(config, stat, SlotType::MpRestorer, true);
+        let mp_stat = Some(image.client_stats.mp.value);
+        if image.client_stats.mp.value > 0 &&  image.client_stats.mp.value < 60 {
+            self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
         }
 
         // Check FP
-        let stat = Some(image.client_stats.fp.value);
-        if image.client_stats.fp.value > 0 {
-            self.get_slot_for(config, stat, SlotType::FpRestorer, true);
+        let fp_stat = Some(image.client_stats.fp.value);
+        if image.client_stats.fp.value > 0 &&  image.client_stats.mp.value < 60 {
+            self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
     }
 
-    fn check_buffs(&mut self, config: &FarmingConfig) {
+    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, ) -> State {
+        // slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
+
+        //slog::debug!(self.logger, "Starting the Full buffing.");
+
+        let all_buffs= config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
+
+        // slog::debug!(self.logger,"Found buffs"; "length:"=> all_buffs.len());
+
+        for slot_index in all_buffs {
+            std::thread::sleep(Duration::from_millis(1000));
+            self.send_slot(slot_index);
+        }
+        self.check_restorations(config, image);
+        // Transition to next state
+        // slog::debug!(self.logger, "End Full buffing.");
+       return State::NoEnemyFound
+     }
+
+    fn check_buffs(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer ) {
+
         if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.last_buff_usage = Instant::now();
-            self.get_slot_for(config, None, SlotType::BuffSkill, true);
-            std::thread::sleep(Duration::from_millis(100));
+
+            self.full_buffing(config,image);
         }
+        std::thread::sleep(Duration::from_millis(100));
+
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
@@ -450,6 +484,10 @@ impl FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
+        //Adding restoration checks in case health is low
+        self.check_restorations(config, image);
+
+
         let is_npc =
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
         let is_mob =
@@ -493,8 +531,6 @@ impl FarmingBehavior<'_> {
                 self.is_attacking = true;
                 self.already_attack_count = 0;
             }
-            // Use buffs only when target is found so we don't waste them
-            self.check_buffs(config);
 
             let last_target_hp_update = image
                 .client_stats
@@ -519,6 +555,8 @@ impl FarmingBehavior<'_> {
 
             // Try to use attack skill if at least one is selected in slot bar
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
+            self.check_restorations(config, image);
+
 
             self.state
         } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
@@ -530,6 +568,11 @@ impl FarmingBehavior<'_> {
             }
 
             self.is_attacking = false;
+            self.check_restorations(config, image);
+
+            // Use buffs after we kill the mob so we don't buff mid fight
+            self.check_buffs(config, image);
+
             return State::AfterEnemyKill(mob);
         } else {
             self.is_attacking = false;
@@ -538,6 +581,7 @@ impl FarmingBehavior<'_> {
     }
 
     fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
+
         // Let's introduce some stats
         let started_elapsed = self.start_time.elapsed();
         let started_formatted = DateTime::format_time(started_elapsed);

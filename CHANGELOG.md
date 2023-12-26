@@ -6,6 +6,10 @@ Date format: `DD/MM/YYYY`
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
 
+**0.16.4**
+> Released on 23.12.2023
+- Support
+
 **0.16.3**
 > Released on 24.3.2023
 - Support

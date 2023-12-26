@@ -2,14 +2,15 @@ import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import IconVitalDrink from '../assets/icon_vitaldrink.png'
 import IconRefresher from '../assets/icon_refresher.png'
 import IconHealSkill from '../assets/heal_spell.png'
+import IconAOEHealSkill from '../assets/icon_heal_rain.png'
 import IconRezSkill from '../assets/rez_spell.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
-export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
-export const farmingSlotsBlacklist = ["HealSkill", "Flying", "RezSkill"]
+export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
+export const thresholdSlotTypes = ["Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer", "FpRestorer"];
+export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
+export const farmingSlotsBlacklist = ["Flying", "RezSkill","AOEHealSkill"]
 export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill"]
 
 export type SlotType = typeof slotTypes[number];
@@ -26,6 +27,7 @@ export const translateType = (type: SlotType) => {
         case 'Food': return '🍔'
         case 'Pill': return '💊'
         case 'HealSkill': return IconHealSkill
+        case 'AOEHealSkill': return IconAOEHealSkill
         case 'MpRestorer': return IconRefresher
         case 'FpRestorer': return IconVitalDrink
         case 'PickupPet': return '🐶'
@@ -43,6 +45,7 @@ export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
         case 'Food': return ['Food','Food']
         case 'Pill': return ['Pill','Pill']
         case 'HealSkill': return ["Heal",'Heal skill']
+        case 'AOEHealSkill': return ["Heal",'AOE Heal skill']
         case 'MpRestorer': return ['MP', 'MP restorer']
         case 'FpRestorer': return ['FP', 'FP restorer']
         case 'PickupPet': return ['Pet', 'Pickup pet']
