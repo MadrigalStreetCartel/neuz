@@ -202,11 +202,7 @@ impl SupportBehavior<'_> {
                 self.get_slot_for(config, health_stat, SlotType::Pill, true);
             }
 
-            if image.client_stats.hp.value < 70 {
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
+            if image.client_stats.hp.value < 70 || (image.client_stats.target_hp.value > 0 && image.client_stats.target_hp.value < 85) {
                 self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
             }
 

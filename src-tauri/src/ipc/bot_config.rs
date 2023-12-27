@@ -162,6 +162,7 @@ pub struct FarmingConfig {
     farming_enabled: Option<bool>,
 
     prevent_already_attacked: Option<bool>,
+    prioritize_aggro: Option<bool>,
 
     is_stop_fighting: Option<bool>,
 
@@ -308,6 +309,9 @@ impl FarmingConfig {
 
     pub fn prevent_already_attacked(&self) -> bool {
         self.prevent_already_attacked.unwrap_or(true)
+    }
+    pub fn prioritize_aggro(&self) -> bool {
+        self.prioritize_aggro.unwrap_or(true)
     }
 }
 

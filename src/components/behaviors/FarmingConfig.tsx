@@ -51,6 +51,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
         'circle_pattern_rotation_duration': 30,
         'min_hp_attack': 30,
         'prevent_already_attacked': true,
+        'prioritize_aggro': true,
         'interval_between_buffs': 2000,
         'aoe_farming': 1,
     }
@@ -199,7 +200,11 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         label={<ConfigLabel name="Max number of mobs to attack" helpText="Max number of mobs to attack at the same time" />}
                         item={<NumericInput value={config.aoe_farming} onChange={value => onChange?.({ ...config, aoe_farming: value })} />}
                     />
-
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Prioritize Aggro" helpText="When selecting a target, give priorities to aggro" />}
+                        item={<BooleanSlider value={config.prioritize_aggro ?? true} onChange={value => onChange?.({ ...config, prioritize_aggro: value })} />}
+                    />
 
                 </ConfigTable>
             }/>
