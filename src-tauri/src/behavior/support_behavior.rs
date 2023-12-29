@@ -61,9 +61,14 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         //This is where we heal the target
-        // self.check_restorations(config, image);
-        self.full_buffing(config, image);
-        std::thread::sleep(Duration::from_millis(100));
+        self.check_restorations(config, image);
+        self.use_party_skills(config,image);
+
+        if image.client_stats.target_hp.value > 85  && self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs()  {
+            self.full_buffing(config, image);
+            self.last_buff_usage = Instant::now();
+            std::thread::sleep(Duration::from_millis(100));
+        }
 
         if image.client_stats.target_hp.value > 0 {
             if let Some(target_marker) = target_marker {
@@ -75,7 +80,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     self.avoid_obstacle(config);
                 } else {
                     self.last_far_from_target = None;
-
                 }
             } else {
                 self.avoid_obstacle(config);
@@ -170,33 +174,31 @@ impl SupportBehavior<'_> {
 
 
     fn full_buffing(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
-        let all_buffs= config.get_all_usable_slot_for_type(SlotType::BuffSkill,  self.slots_usage_last_time);
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
         for slot_index in all_buffs {
             self.send_slot(slot_index);
-            std::thread::sleep(Duration::from_millis(1500));
+            std::thread::sleep(Duration::from_millis(500));
             self.check_restorations(config, image);
         }
 
-        let party_skills= config.get_all_usable_slot_for_type(SlotType::PartySkill,  self.slots_usage_last_time);
+    }
+
+    fn use_party_skills(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
+        let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
         }
-
-        self.last_buff_usage = Instant::now();
-
-
     }
     fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
 
         //Check target HP
         let target_hp = Some(image.client_stats.target_hp.value);
         if image.client_stats.target_hp.value > 0 {
+            if image.client_stats.target_hp.value < 90 {
+                self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
 
-            if image.client_stats.target_hp.value < 85 {
                 if image.client_stats.target_hp.value < 60 {
                     self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
-                }else{
-                    self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
                 }
             }
         }
@@ -207,12 +209,12 @@ impl SupportBehavior<'_> {
         if image.client_stats.hp.value > 0 {
             // Use a HealSkill if configured when health is under 85
 
-            if  image.client_stats.hp.value < 20 {
+            if image.client_stats.hp.value < 20 {
                 // Take a pill if health is less than 40, ideally should not be often
                 self.get_slot_for(config, health_stat, SlotType::Pill, true);
             }
 
-            if image.client_stats.hp.value < 90 {
+            if image.client_stats.hp.value < 95 {
                 self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
             }
 
@@ -220,24 +222,18 @@ impl SupportBehavior<'_> {
                 // Eat food if health under 70
                 self.get_slot_for(config, health_stat, SlotType::Food, true);
             }
-
-
-
         }
 
         // Check MP
         let mp_stat = Some(image.client_stats.mp.value);
-        if image.client_stats.mp.value > 0 &&  image.client_stats.mp.value < 60 {
+        if image.client_stats.mp.value > 0 && image.client_stats.mp.value < 60 {
             self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
         }
 
         // Check FP
         let fp_stat = Some(image.client_stats.fp.value);
-        if image.client_stats.fp.value > 0 &&  image.client_stats.mp.value < 60 {
+        if image.client_stats.fp.value > 0 && image.client_stats.mp.value < 60 {
             self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
-
-
-
     }
 }

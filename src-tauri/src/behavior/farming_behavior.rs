@@ -271,7 +271,7 @@ impl FarmingBehavior<'_> {
             self.check_restorations(config, image);
         }
 
-        let party_skills= config.get_all_usable_slot_for_type(SlotType::PartySkill,  self.slots_usage_last_time);
+        let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
         }
@@ -336,7 +336,6 @@ impl FarmingBehavior<'_> {
         config: &FarmingConfig,
         image: &mut ImageAnalyzer,
     ) -> State {
-        slog::debug!(self.logger, "On searching for enemy: ");
         //if a mob is attacking us while we search
         self.check_restorations(config, image);
 
@@ -463,35 +462,6 @@ impl FarmingBehavior<'_> {
         State::SearchingForEnemy
     }
 
-    fn avoid_obstacle_no_jump(&mut self, image: &mut ImageAnalyzer, max_avoid: u32) -> bool {
-        if self.obstacle_avoidance_count < max_avoid {
-            use crate::movement::prelude::*;
-            if self.obstacle_avoidance_count == 0 {
-                play!(self.movement => [
-                    PressKey("Z"),
-                    HoldKeys(vec!["W"]),
-                    Wait(dur::Fixed(800)),
-                    ReleaseKeys(vec![ "W"]),
-                ]);
-            } else {
-                let rotation_key = ["A", "D"].choose(&mut self.rng).unwrap_or(&"A");
-                // Move into a random direction while jumping
-                play!(self.movement => [
-                    HoldKeys(vec!["W"]),
-                    HoldKeyFor(rotation_key, dur::Fixed(200)),
-                    Wait(dur::Fixed(800)),
-                    ReleaseKeys(vec!["W"]),
-                    PressKey("Z"),
-                ]);
-            }
-            image.client_stats.target_hp.reset_last_update_time();
-            self.obstacle_avoidance_count += 1;
-            false
-        } else {
-            self.abort_attack(image);
-            true
-        }
-    }
     fn avoid_obstacle(&mut self, image: &mut ImageAnalyzer, max_avoid: u32) -> bool {
         if self.obstacle_avoidance_count < max_avoid {
             use crate::movement::prelude::*;
@@ -602,85 +572,34 @@ impl FarmingBehavior<'_> {
                 }
             }
 
-            // slog::debug!(self.logger, "on attacking: ";"last_target_hp_update"=>last_target_hp_update ,"config.obstacle_avoidance_cooldown()"=>config.obstacle_avoidance_cooldown(), "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, "image.client_stats.target_hp.value" => image.client_stats.target_hp.value);
-            //
+             // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, "image.client_stats.target_hp.value" => image.client_stats.target_hp.value);
 
-            if (config.max_aoe_farming() > 1) {
+            if config.max_aoe_farming() > 1 {
+                //arbitrary checking we lower less than 70
                 if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
                     self.get_slot_for(config, None, SlotType::AttackSkill, true);
-                    std::thread::sleep(Duration::from_millis(2000));
-                    // self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
+                    std::thread::sleep(Duration::from_millis(200));
 
-                    // self.avoid_last_click();
-                    // self.is_attacking = false;
-
-                    // use crate::movement::prelude::*;
-                    // play!(self.movement => [
-                    //          PressKey("Escape"),
-                    //      ]);
-                    // play!(self.movement => [
-                    //     // Rotate in random direction for a random duration
-                    //     Rotate(rot::Right, dur::Fixed(3)),
-                    //     // Wait a bit to wait for monsters to enter view
-                    //     // Wait(dur::Fixed(3)),
-                    // ]);
-                    //
-                    // return self.state;
-                    // return self.abort_attack(image);
-
-
-                    //inline abort attack
-                    use crate::movement::prelude::*;
-                    self.is_attacking = false;
-                    if self.already_attack_count > 0 {
-                        // Target marker found
-                        if let Some(marker) = image.identify_target_marker(false) {
-                            self.avoided_bounds.push((
-                                marker.bounds.grow_by(self.already_attack_count * 10),
-                                Instant::now(),
-                                2000,
-                            ));
-                            self.already_attack_count += 1;
-                        }
-                    } else {
-                        self.obstacle_avoidance_count = 0;
-                        use crate::movement::prelude::*;
-                        self.is_attacking = false;
-                        self.avoid_last_click();
+                    if image.client_stats.target_hp.value < 90 {
+                        self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
+                        return self.abort_attack(image);
                     }
-                    play!(self.movement => [
-                        PressKey("Escape"),
-                    ]);
-                    self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
-
-                    return State::SearchingForEnemy;
-
-                    //inline abort attack
-
-
-                    // self.avoid_obstacle(image, 1);
-
-                    // play!(self.movement => [
-                    //          PressKey("Escape"),
-                    //      ]);
-                    // play!(self.movement => [
-                    //          PressKey("Escape"),
-                    //       ]);
-                    // slog::debug!(self.logger, "Inside the aoe search function, about to go to search for enemy");
-                    // // return State::SearchingForEnemy;
-                    // return self.abort_attack(image);
                 } else {
-                    self.get_slot_for(config, None, SlotType::AttackSkill, true);
-                    std::thread::sleep(Duration::from_millis(1000));
-                    self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
-                    // std::thread::sleep(Duration::from_millis(1000));
+                    //checking for distance to last target to use AOE skill
+                    let target_marker = image.identify_target_marker(true);
+                    if let Some(target_marker) = target_marker {
+                        let marker_distance = image.get_target_marker_distance(target_marker);
+                        if marker_distance < 35 {
+                            //basically do this until the target market dies
+                            self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
+                        }
+                    }
                 }
-            } else {
+            }
+            else{
                 self.get_slot_for(config, None, SlotType::AttackSkill, true);
-                // std::thread::sleep(Duration::from_millis(1000));
             }
 
-            self.check_restorations(config, image);
             self.state
         } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
             // Mob's dead
@@ -694,8 +613,7 @@ impl FarmingBehavior<'_> {
             self.check_restorations(config, image);
 
             // Use buffs after we kill the mob so we don't buff mid fight
-            // self.check_buffs(config, image);
-            self.full_buffing(config,image, self.state);
+            self.full_buffing(config, image, self.state);
 
             self.concurrent_mobs_under_attack = 0;
             return State::AfterEnemyKill(mob);
