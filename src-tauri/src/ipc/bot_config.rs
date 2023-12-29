@@ -18,6 +18,7 @@ pub enum SlotType {
     BuffSkill,
     RezSkill,
     Flying,
+    PartySkill,
 }
 impl fmt::Display for SlotType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -32,6 +33,7 @@ impl fmt::Display for SlotType {
             SlotType::BuffSkill => write!(f, "buff skill"),
             SlotType::RezSkill => write!(f, "rez skill"),
             SlotType::Flying => write!(f, "fly"),
+            SlotType::PartySkill => write!(f, "PartySkill"),
             _ => write!(f, "??none??"),
         }
     }
@@ -88,12 +90,11 @@ impl SlotBar {
         &self,
         slot_type: SlotType,
         slot_bar_index: usize,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
     ) ->  Vec<(usize, usize)> {
         let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
-
         for (index,current_slot) in self.slots().iter().enumerate(){
-            if current_slot.slot_enabled && current_slot.slot_type == slot_type {
-
+            if current_slot.slot_enabled && current_slot.slot_type == slot_type && last_slots_usage[slot_bar_index][index].is_none() {
                 all_valid_slots.push( (slot_bar_index, index ) )
             }
         }
@@ -265,18 +266,14 @@ impl FarmingConfig {
         None
     }
 
-    ///Get a list of usable matching slot index types
-    pub fn get_all_usable_slot_for_type_index(&self, slot_type: SlotType) ->Vec< (usize, usize) >{
+    ///Get a list of usable matching slot index types for the farming behavior
+    pub fn get_all_usable_slot_for_type(&self, slot_type: SlotType, last_slots_usage: [[Option<Instant>; 10]; 9]) ->Vec< (usize, usize) >{
         let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
-
         for slot_bar_index in 0..9 {
-
-           let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index);
-
-           for found_skill in result {
+            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index, last_slots_usage);
+            for found_skill in result {
                 all_valid_slots.push(  (slot_bar_index, found_skill.1) );
-           }
-
+            }
         }
         return all_valid_slots;
     }
@@ -371,19 +368,14 @@ impl SupportConfig {
         None
     }
 
-
-    ///Get a list of usable matching slot index types
-    pub fn get_all_usable_slot_for_type_index(&self, slot_type: SlotType) ->Vec< (usize, usize) >{
+    ///Get a list of usable matching slot index types for the support behavior
+    pub fn get_all_usable_slot_for_type(&self, slot_type: SlotType, last_slots_usage: [[Option<Instant>; 10]; 9]) ->Vec< (usize, usize) >{
         let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
-
         for slot_bar_index in 0..9 {
-
-            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index);
-
+            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index, last_slots_usage);
             for found_skill in result {
                 all_valid_slots.push(  (slot_bar_index, found_skill.1) );
             }
-
         }
         return all_valid_slots;
     }

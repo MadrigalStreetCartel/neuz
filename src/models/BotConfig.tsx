@@ -5,14 +5,19 @@ import IconHealSkill from '../assets/heal_spell.png'
 import IconAOEHealSkill from '../assets/icon_heal_rain.png'
 import IconAOEAttackSkill from '../assets/aoe_attack_skill.png'
 import IconRezSkill from '../assets/rez_spell.png'
+import IconPartySkill from '../assets/party_skill_icon.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
 
-export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill","AOEAttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
-export const thresholdSlotTypes = ["Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill","AOEAttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
+export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer",
+                                                    "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill",
+                                                    "AOEAttackSkill", "BuffSkill", "RezSkill", "Flying", "PartySkill"] as const;
+export const thresholdSlotTypes = ["Food", "Pill","MpRestorer", "FpRestorer"];
+export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill","AOEAttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet","PartySkill"];
 export const farmingSlotsBlacklist = ["Flying", "RezSkill","AOEHealSkill"]
-export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill","AOEAttackSkill"]
+//if we are leveling someone, the support role might want to pick up
+export const supportSlotsBlacklist = ["AttackSkill","AOEAttackSkill"]
+
 
 export type SlotType = typeof slotTypes[number];
 
@@ -38,6 +43,7 @@ export const translateType = (type: SlotType) => {
         case 'BuffSkill': return '🪄'
         case 'RezSkill': return IconRezSkill
         case 'Flying': return '✈️'
+        case 'PartySkill': return IconPartySkill
     }
 }
 
@@ -57,6 +63,7 @@ export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
         case 'BuffSkill': return ['Buff', 'Buff skill']
         case 'RezSkill': return ['Rez', 'Resurection skill']
         case 'Flying': return ['Board', 'Board']
+        case 'PartySkill': return ['PartySkill', 'PartySkill']
     }
 }
 export type SlotModel = {

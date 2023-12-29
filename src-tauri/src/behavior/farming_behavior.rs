@@ -99,7 +99,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         // Check state machine
         self.state = match self.state {
-            State::Buffing => self.full_buffing(config, image),
+            State::Buffing => self.full_buffing(config, image, State::NoEnemyFound),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(mob),
@@ -257,31 +257,28 @@ impl FarmingBehavior<'_> {
             // Check FP
 
             let fp_stat = Some(image.client_stats.fp.value);
-            if image.client_stats.fp.value > 0 && image.client_stats.fp.value  < 50 {
+            if image.client_stats.fp.value > 0 && image.client_stats.fp.value < 50 {
                 self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
             }
         }
     }
 
-    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) -> State {
-        let all_buffs = config.get_all_usable_slot_for_type_index(SlotType::BuffSkill);
-
+    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, return_state: State) -> State {
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
         for slot_index in all_buffs {
-            std::thread::sleep(Duration::from_millis(2000));
+            self.send_slot(slot_index);
+            std::thread::sleep(Duration::from_millis(1500));
+            self.check_restorations(config, image);
+        }
+
+        let party_skills= config.get_all_usable_slot_for_type(SlotType::PartySkill,  self.slots_usage_last_time);
+        for slot_index in party_skills {
             self.send_slot(slot_index);
         }
-        self.check_restorations(config, image);
 
+        self.last_buff_usage = Instant::now();
         // Transition to next state
-        return State::NoEnemyFound;
-    }
-
-    fn check_buffs(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
-        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
-            self.full_buffing(config, image);
-            self.last_buff_usage = Instant::now();
-        }
-        std::thread::sleep(Duration::from_millis(100));
+        return_state
     }
 
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
@@ -656,7 +653,7 @@ impl FarmingBehavior<'_> {
                     ]);
                     self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
 
-                    return State::SearchingForEnemy
+                    return State::SearchingForEnemy;
 
                     //inline abort attack
 
@@ -697,7 +694,9 @@ impl FarmingBehavior<'_> {
             self.check_restorations(config, image);
 
             // Use buffs after we kill the mob so we don't buff mid fight
-            self.check_buffs(config, image);
+            // self.check_buffs(config, image);
+            self.full_buffing(config,image, self.state);
+
             self.concurrent_mobs_under_attack = 0;
             return State::AfterEnemyKill(mob);
         } else {
