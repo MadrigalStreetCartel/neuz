@@ -308,6 +308,7 @@ impl ImageAnalyzer {
         max_distance: i32,
         _logger: &Logger,
     ) -> Option<&'a Target> {
+
         let _timer = Timer::start_new("find_closest_mob");
 
         let image = self.image.as_ref().unwrap();

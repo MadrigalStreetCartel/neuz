@@ -65,14 +65,10 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             return;
         }
 
-        slog::debug!(self.logger, "settings"; "config.on_afk_disconnect()" => config.on_afk_disconnect(),
-            "target_marker" => target_marker.is_none(), "self.last_action_time.elapsed().as_millis() " => self.last_action_time.elapsed().as_millis(),
-            " config.afk_timeout()" => config.afk_timeout());
         //check if we have a valid target and if not, check the AFK time to dc
         if config.on_afk_disconnect() && target_marker.is_none() &&
             self.last_action_time.elapsed().as_millis() > config.afk_timeout() {
             _frontend_info.set_afk_ready_to_disconnect(true);
-            slog::debug!(self.logger, "Ready to disconnect");
         }
 
         //This is where we heal the target
@@ -205,13 +201,13 @@ impl SupportBehavior<'_> {
             self.check_restorations(config, image);
         }
     }
-
     fn use_party_skills(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
         let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
         }
     }
+
     fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
 
         //Check target HP

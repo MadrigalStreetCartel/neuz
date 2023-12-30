@@ -14,6 +14,7 @@ use crate::{
     play,
     utils::DateTime,
 };
+use crate::ipc::SupportConfig;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -48,6 +49,7 @@ pub struct FarmingBehavior<'a> {
     stealed_target_count: u32,
     last_no_ennemy_time: Option<Instant>,
     concurrent_mobs_under_attack: u32,
+    concurrent_mobs_killed: u32,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -75,6 +77,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             stealed_target_count: 0,
             last_no_ennemy_time: None,
             concurrent_mobs_under_attack: 0,
+            concurrent_mobs_killed: 0,
         }
     }
 
@@ -99,7 +102,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
         // Check state machine
         self.state = match self.state {
-            State::Buffing => self.full_buffing(config, image, State::NoEnemyFound),
+            State::Buffing => self.full_buffing(config, image, State::NoEnemyFound, [[None; 10]; 9]),
             State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
             State::EnemyFound(mob) => self.on_enemy_found(mob),
@@ -221,6 +224,8 @@ impl FarmingBehavior<'_> {
     }
 
     fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
+        self.use_party_skills(config, image);
+
         // Check HP
         let health_stat = Some(image.client_stats.hp.value);
         if image.client_stats.hp.value > 0 {
@@ -263,24 +268,23 @@ impl FarmingBehavior<'_> {
         }
     }
 
-    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, return_state: State) -> State {
-        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
+    fn full_buffing(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer, return_state: State, last_slots_usage_vec: [[Option<Instant>; 10]; 9]) -> State {
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, last_slots_usage_vec);
         for slot_index in all_buffs {
             self.send_slot(slot_index);
             std::thread::sleep(Duration::from_millis(1500));
             self.check_restorations(config, image);
         }
-
-        let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
-        for slot_index in party_skills {
-            self.send_slot(slot_index);
-        }
-
         self.last_buff_usage = Instant::now();
         // Transition to next state
         return_state
     }
-
+    fn use_party_skills(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
+        let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
+        for slot_index in party_skills {
+            self.send_slot(slot_index);
+        }
+    }
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
         if let Some(last_no_ennemy_time) = self.last_no_ennemy_time {
             if config.mobs_timeout() > 0
@@ -353,6 +357,10 @@ impl FarmingBehavior<'_> {
                 false => 1000,
             };
 
+            // Calculate max distance of mobs
+            let max_distance_for_aoe = 50;
+
+
             let mob_list = self.get_list_of_mobs(config, image, mobs);
 
 
@@ -366,10 +374,15 @@ impl FarmingBehavior<'_> {
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
                 if let Some(mob) = {
                     // Try avoiding detection of last killed mob
-                    if !self.avoided_bounds.is_empty() {
-                        image.find_closest_mob(mob_list.as_slice(), Some(&self.avoided_bounds), max_distance, self.logger)
+
+                    if self.avoided_bounds.is_empty() {
+                        if config.max_aoe_farming() > 1 && self.concurrent_mobs_killed > 1 && self.concurrent_mobs_under_attack > 1 {
+                            image.find_closest_mob(mob_list.as_slice(), None, max_distance_for_aoe, self.logger)
+                        } else {
+                            image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
+                        }
                     } else {
-                        image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
+                        image.find_closest_mob(mob_list.as_slice(), Some(&self.avoided_bounds), max_distance, self.logger)
                     }
                 } {
                     // Transition to next state
@@ -433,7 +446,7 @@ impl FarmingBehavior<'_> {
         eval_mob_click(self.window, point);
 
         // Wait a few ms before transitioning state
-        std::thread::sleep(Duration::from_millis(500));
+        // std::thread::sleep(Duration::from_millis(100));
         State::Attacking(mob)
     }
 
@@ -572,16 +585,28 @@ impl FarmingBehavior<'_> {
                 }
             }
 
-             // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, "image.client_stats.target_hp.value" => image.client_stats.target_hp.value);
+            // let target_marker = image.identify_target_marker(true);
+            // if let Some(target_marker) = target_marker {
+            //     let marker_distance = image.get_target_marker_distance(target_marker);
+            //     slog::debug!(self.logger,"checking distance"; "market_distance" => marker_distance);
+            // }
+
+            //give a full buff if we elapsed time and no danger?
+            if self.concurrent_mobs_under_attack == 0 && self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs(){
+                self.full_buffing(config, image, self.state, [[None; 10]; 9]);
+                self.last_buff_usage = Instant::now();
+            }
+
 
             if config.max_aoe_farming() > 1 {
+                // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, );
+
                 //arbitrary checking we lower less than 70
                 if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
                     self.get_slot_for(config, None, SlotType::AttackSkill, true);
-                    std::thread::sleep(Duration::from_millis(200));
-
                     if image.client_stats.target_hp.value < 90 {
-                        self.concurrent_mobs_under_attack = self.concurrent_mobs_under_attack + 1;
+                        self.concurrent_mobs_under_attack += 1;
+
                         return self.abort_attack(image);
                     }
                 } else {
@@ -589,19 +614,22 @@ impl FarmingBehavior<'_> {
                     let target_marker = image.identify_target_marker(true);
                     if let Some(target_marker) = target_marker {
                         let marker_distance = image.get_target_marker_distance(target_marker);
-                        if marker_distance < 35 {
+
+                        // slog::debug!(self.logger,"checking distance"; "market_distance" => marker_distance);
+                        if marker_distance < 50 {
                             //basically do this until the target market dies
                             self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
+                        } else {
+                            self.get_slot_for(config, None, SlotType::AttackSkill, true);
                         }
                     }
                 }
-            }
-            else{
+            } else {
                 self.get_slot_for(config, None, SlotType::AttackSkill, true);
             }
 
             self.state
-        } else if !is_mob_alive && image.client_stats.is_alive() && self.is_attacking {
+        } else if image.client_stats.is_alive() && self.is_attacking {
             // Mob's dead
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
@@ -611,11 +639,12 @@ impl FarmingBehavior<'_> {
 
             self.is_attacking = false;
             self.check_restorations(config, image);
-
+            self.concurrent_mobs_killed += 1;
             // Use buffs after we kill the mob so we don't buff mid fight
-            self.full_buffing(config, image, self.state);
+            if config.max_aoe_farming() == 1 {
+                self.full_buffing(config, image, self.state, self.slots_usage_last_time);
+            }
 
-            self.concurrent_mobs_under_attack = 0;
             return State::AfterEnemyKill(mob);
         } else {
             self.is_attacking = false;
@@ -679,7 +708,14 @@ impl FarmingBehavior<'_> {
 
         // Pickup items
         self.pickup_items(config);
-        self.concurrent_mobs_under_attack = 0;
+
+        if config.max_aoe_farming() > 1 {
+            if self.concurrent_mobs_killed >= self.concurrent_mobs_under_attack {
+                self.concurrent_mobs_killed = 0;
+                self.concurrent_mobs_under_attack = 0;
+            }
+        }
+
         // Transition state
         State::SearchingForEnemy
     }
