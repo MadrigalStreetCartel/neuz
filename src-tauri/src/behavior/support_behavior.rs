@@ -13,24 +13,28 @@ use crate::{
 };
 
 pub struct SupportBehavior<'a> {
+    logger: &'a Logger,
     movement: &'a MovementAccessor,
     window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_buff_usage: Instant,
     last_jump_time: Instant,
+    last_action_time: Instant,
     avoid_obstacle_direction: String,
     last_far_from_target: Option<Instant>,
     //is_on_flight: bool,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
-    fn new(_logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
+    fn new(logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
         Self {
+            logger,
             movement,
             window,
             slots_usage_last_time: [[None; 10]; 9],
             last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
+            last_action_time: Instant::now(),
             avoid_obstacle_direction: "D".to_owned(),
             last_far_from_target: None,
             //is_on_flight: false,
@@ -42,6 +46,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
     fn stop(&mut self, _config: &BotConfig) {
         self.slots_usage_last_time = [[None; 10]; 9];
     }
+
 
     fn run_iteration(
         &mut self,
@@ -60,16 +65,34 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             return;
         }
 
+        slog::debug!(self.logger, "settings"; "config.on_afk_disconnect()" => config.on_afk_disconnect(),
+            "target_marker" => target_marker.is_none(), "self.last_action_time.elapsed().as_millis() " => self.last_action_time.elapsed().as_millis(),
+            " config.afk_timeout()" => config.afk_timeout());
+        //check if we have a valid target and if not, check the AFK time to dc
+        if config.on_afk_disconnect() && target_marker.is_none() &&
+            self.last_action_time.elapsed().as_millis() > config.afk_timeout() {
+            _frontend_info.set_afk_ready_to_disconnect(true);
+            slog::debug!(self.logger, "Ready to disconnect");
+        }
+
         //This is where we heal the target
         self.check_restorations(config, image);
-        self.use_party_skills(config,image);
+        self.use_party_skills(config, image);
 
-        if image.client_stats.target_hp.value > 85  && self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs()  {
+        //Run the buffs that are available
+        self.get_slot_for(config, None, SlotType::BuffSkill, true);
+
+        //if target is healthy do a full buff
+        if image.client_stats.target_hp.value > 85 &&
+            self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.full_buffing(config, image);
             self.last_buff_usage = Instant::now();
             std::thread::sleep(Duration::from_millis(100));
+            self.last_action_time = Instant::now();
         }
 
+
+        //detect distance to target and avoid obstacle if needed
         if image.client_stats.target_hp.value > 0 {
             if let Some(target_marker) = target_marker {
                 let marker_distance = image.get_target_marker_distance(target_marker);
@@ -174,13 +197,13 @@ impl SupportBehavior<'_> {
 
 
     fn full_buffing(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
-        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
+        // let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, [[None; 10]; 9]);
         for slot_index in all_buffs {
             self.send_slot(slot_index);
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(1500));
             self.check_restorations(config, image);
         }
-
     }
 
     fn use_party_skills(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {

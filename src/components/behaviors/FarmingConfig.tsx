@@ -32,6 +32,8 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     const debugModal = useModal()
     const debugWarningModal = useModal(debugModal)
     const onDeathModal = useModal(debugModal)
+    const onAFKModal = useModal()
+
     const mobsNameDebugModal = useModal(debugModal)
     const mobsColorsDebugModal = useModal(mobsNameDebugModal)
     const resetSlotYesNo = useModal(debugModal)
@@ -229,6 +231,24 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                     />
                 </ConfigTable>
             }/>
+
+            <Modal isShowing={onAFKModal.isShown} hide={onAFKModal.close}
+                   title={<h4>AFK behavior</h4>} body={
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
+                        item={<BooleanSlider value={config.on_afk_disconnect ?? true} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
+                    />
+
+                    <ConfigTableRow
+                        label={<ConfigLabel name="No action time out" helpText="After this time character will disconnect if AFK Disconnect is enabled" />}
+                        item={<TimeInput value={config.afk_timeout} onChange={value => onChange({...config, afk_timeout: value})} />}
+                    />
+
+                </ConfigTable>
+            }/>
+
             <Modal isShowing={statsModal.isShown} hide={statsModal.close}
             title={<h4>Stats - State: { botState }</h4>} body={
                 <div className="stats">

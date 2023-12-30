@@ -183,9 +183,21 @@ pub struct FarmingConfig {
     interval_between_buffs: Option<u64>,
     mobs_timeout: Option<u64>,
     aoe_farming: Option<u32>,
+
+    on_afk_disconnect:  Option<bool>,
+    afk_timeout: Option<u64>,
+
 }
 
 impl FarmingConfig {
+
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(true)
+    }
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
+    }
+
     pub fn mobs_timeout(&self) -> u128 {
         self.mobs_timeout.unwrap_or(0).into()
     }
@@ -317,7 +329,10 @@ pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
     obstacle_avoidance_cooldown: Option<u64>,
     on_death_disconnect: Option<bool>,
+    on_afk_disconnect:  Option<bool>,
+    afk_timeout: Option<u64>,
     interval_between_buffs: Option<u64>,
+
 }
 
 impl SupportConfig {
@@ -327,6 +342,13 @@ impl SupportConfig {
 
     pub fn on_death_disconnect(&self) -> bool {
         self.on_death_disconnect.unwrap_or(true)
+    }
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(true)
+    }
+
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
     }
 
     pub fn obstacle_avoidance_cooldown(&self) -> u128 {
@@ -386,9 +408,20 @@ impl SupportConfig {
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
     shout_messages: Option<Vec<String>>,
+
+    on_afk_disconnect:  Option<bool>,
+    afk_timeout: Option<u64>,
 }
 
 impl ShoutConfig {
+
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(true)
+    }
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
+    }
+
     pub fn shout_interval(&self) -> u64 {
         self.shout_interval.unwrap_or(30000)
     }

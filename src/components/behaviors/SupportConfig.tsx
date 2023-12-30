@@ -32,6 +32,7 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
     const onDeathModal = useModal()
+    const onAFKModal = useModal()
 
     const defaultValues = {
         'obstacle_avoidance_cooldown': 2000,
@@ -56,6 +57,10 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         item={<button onClick={onDeathModal.open}>⚙️</button>}
                     />
                     <ConfigTableRow
+                        label={<ConfigLabel name="On AFK event" helpText="" />}
+                        item={<button onClick={onAFKModal.open}>⚙️</button>}
+                    />
+                    <ConfigTableRow
                         label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before it tries to avoid obstacles, and start movement pattern" />}
                         item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange?.({...config, obstacle_avoidance_cooldown: value})} />}
                     />
@@ -77,6 +82,23 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
                         item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
                     />
+                </ConfigTable>
+            }/>
+
+            <Modal isShowing={onAFKModal.isShown} hide={onAFKModal.close}
+            title={<h4>AFK behavior</h4>} body={
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
+                        item={<BooleanSlider value={config.on_afk_disconnect ?? true} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
+                    />
+
+                    <ConfigTableRow
+                        label={<ConfigLabel name="No action time out" helpText="After this time character will disconnect if AFK Disconnect is enabled" />}
+                        item={<TimeInput value={config.afk_timeout} onChange={value => onChange({...config, afk_timeout: value})} />}
+                    />
+
                 </ConfigTable>
             }/>
 

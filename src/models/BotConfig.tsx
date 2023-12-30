@@ -109,20 +109,32 @@ export type FarmingConfigModel = Partial<{
     interval_between_buffs: number,
     mobs_timeout: number,
     aoe_farming: number,
+
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
 }>
 
 export type SupportConfigModel = Partial<{
     [key: string]: any;
     slot_bars: SlotBars,
     obstacle_avoidance_cooldown: number,
-    on_death_disconnect: boolean,
     interval_between_buffs: number,
+    on_death_disconnect: boolean,
+
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
 }>
 
 export type ShoutConfigModel = Partial<{
     [key: string]: any;
     shout_interval: number,
     shout_messages: string[],
+    
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
 }>
 
 export type BotConfigModel = {
