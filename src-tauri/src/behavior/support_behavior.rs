@@ -81,6 +81,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         //if target is healthy do a full buff
         if image.client_stats.target_hp.value > 85 &&
             self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
+
             self.full_buffing(config, image);
             self.last_buff_usage = Instant::now();
             std::thread::sleep(Duration::from_millis(100));
@@ -194,7 +195,7 @@ impl SupportBehavior<'_> {
 
     fn full_buffing(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
         // let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
-        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, [[None; 10]; 9]);
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
         for slot_index in all_buffs {
             self.send_slot(slot_index);
             std::thread::sleep(Duration::from_millis(1500));
@@ -213,8 +214,9 @@ impl SupportBehavior<'_> {
         //Check target HP
         let target_hp = Some(image.client_stats.target_hp.value);
         if image.client_stats.target_hp.value > 0 {
-            if image.client_stats.target_hp.value < 90 {
+            if image.client_stats.target_hp.value < 85 {
                 self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
+                std::thread::sleep(Duration::from_millis(500));
 
                 if image.client_stats.target_hp.value < 60 {
                     self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
