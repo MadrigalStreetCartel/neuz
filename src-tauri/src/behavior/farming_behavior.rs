@@ -535,11 +535,12 @@ impl FarmingBehavior<'_> {
             } else if is_mob {
                 self.rotation_movement_tries = 0;
                 let hp_last_update = image.client_stats.hp.last_update_time.unwrap();
-                // Detect if mob was attacked
 
+                // Detect if mob was attacked
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
                     // // If we didn't took any damages abort attack
-                    if hp_last_update.elapsed().as_millis() > 5000 {
+                    // reducing to 500ms the time to check the last time the mob was attacked, 5s is too long.
+                    if hp_last_update.elapsed().as_millis() > 500 {
                         return self.abort_attack(image);
                     } else if self.stealed_target_count > 5 {
                         self.stealed_target_count = 0;

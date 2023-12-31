@@ -306,6 +306,7 @@ async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
     .build()
     .unwrap();
     drop(window.show());
+    // window.open_devtools();
 
     let main_window = app_handle.get_window("main").unwrap();
     drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
