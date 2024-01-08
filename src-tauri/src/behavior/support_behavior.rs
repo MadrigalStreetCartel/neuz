@@ -62,7 +62,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
 
         //add movement every minute to try to avoid bot detection
-        if self.last_jump_time.elapsed().as_millis() > 30000 {
+        if self.last_jump_time.elapsed().as_millis() > 10000 {
             use crate::movement::prelude::*;
             play!(self.movement => [
                 // Rotate in random direction for a random duration
@@ -104,11 +104,11 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
 
         //do a full buff
-        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
-            self.full_buffing(config, image);
-            self.last_buff_usage = Instant::now();
-            self.last_action_time = Instant::now();
-        }
+        // if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
+        //     self.full_buffing(config, image);
+        //     self.last_buff_usage = Instant::now();
+        //     self.last_action_time = Instant::now();
+        // }
 
 
         //detect distance to target and avoid obstacle if needed
