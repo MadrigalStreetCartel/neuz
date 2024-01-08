@@ -22,6 +22,7 @@ pub struct SupportBehavior<'a> {
     last_action_time: Instant,
     avoid_obstacle_direction: String,
     last_far_from_target: Option<Instant>,
+    initial_full_buff: bool,
     //is_on_flight: bool,
 }
 
@@ -37,6 +38,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             last_action_time: Instant::now(),
             avoid_obstacle_direction: "D".to_owned(),
             last_far_from_target: None,
+            initial_full_buff: true,
             //is_on_flight: false,
         }
     }
@@ -58,11 +60,34 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         let target_marker = image.identify_target_marker(true);
         self.update_slots_usage(config);
 
+
+        //add movement every minute to try to avoid bot detection
+        if self.last_jump_time.elapsed().as_millis() > 30000 {
+            use crate::movement::prelude::*;
+            play!(self.movement => [
+                // Rotate in random direction for a random duration
+                Rotate(rot::Right, dur::Fixed(50)),
+                // Wait a bit to wait for monsters to enter view
+                Wait(dur::Fixed(50)),
+            ]);
+
+            self.last_jump_time = Instant::now();
+        }
+
+
+
         //Res the target if it dies
         if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
             self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
             return;
+        }
+
+        if self.initial_full_buff {
+            self.full_buffing(config, image);
+            self.initial_full_buff = false;
+            self.last_buff_usage = Instant::now();
+            std::thread::sleep(Duration::from_millis(100));
         }
 
         //check if we have a valid target and if not, check the AFK time to dc
@@ -73,18 +98,15 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         //This is where we heal the target
         self.check_restorations(config, image);
-        self.use_party_skills(config, image);
+        self.use_party_skills(config);
 
         //Run the buffs that are available
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
 
-        //if target is healthy do a full buff
-        if image.client_stats.target_hp.value > 85 &&
-            self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
-
+        //do a full buff
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             self.full_buffing(config, image);
             self.last_buff_usage = Instant::now();
-            std::thread::sleep(Duration::from_millis(100));
             self.last_action_time = Instant::now();
         }
 
@@ -179,7 +201,6 @@ impl SupportBehavior<'_> {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
                 self.send_slot(slot_index);
             }
-
             return Some(slot_index);
         }
         None
@@ -194,15 +215,21 @@ impl SupportBehavior<'_> {
 
 
     fn full_buffing(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
-        // let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
-        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, self.slots_usage_last_time);
+
+        let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, [[None; 10]; 9]);
+
         for slot_index in all_buffs {
             self.send_slot(slot_index);
             std::thread::sleep(Duration::from_millis(1500));
-            self.check_restorations(config, image);
+
+            self.get_slot_for(config, None, SlotType::HealSkill, true);
+
+            std::thread::sleep(Duration::from_millis(500));
+            self.get_slot_for(config, None, SlotType::AOEHealSkill, true);
+            std::thread::sleep(Duration::from_millis(500));
         }
     }
-    fn use_party_skills(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
+    fn use_party_skills(&mut self, config: &SupportConfig) {
         let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
@@ -223,8 +250,6 @@ impl SupportBehavior<'_> {
                 }
             }
         }
-
-
         // Checking our own stuff first to keep alive
         let health_stat = Some(image.client_stats.hp.value);
         if image.client_stats.hp.value > 0 {

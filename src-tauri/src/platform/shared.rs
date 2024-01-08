@@ -14,7 +14,7 @@ pub enum KeyMode {
 
 // For visual recognition: Avoids mouse clicks outside the window by ignoring monster names that are too close to the bottom of the GUI
 pub const IGNORE_AREA_BOTTOM: u32 = 110;
-
+//>100 <230 where we get the red announcement for already targetted mob
 /// Get the native window id.
 pub fn get_window_id(window: &Window) -> Option<u64> {
     #[allow(unused_variables)]

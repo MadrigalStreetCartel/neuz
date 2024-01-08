@@ -91,7 +91,7 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                     <ConfigTableRow
                         layout="v"
                         label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
-                        item={<BooleanSlider value={config.on_afk_disconnect ?? true} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
+                        item={<BooleanSlider value={config.on_afk_disconnect ?? false} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
                     />
 
                     <ConfigTableRow

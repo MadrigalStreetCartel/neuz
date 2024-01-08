@@ -14,7 +14,8 @@ use crate::{
     play,
     utils::DateTime,
 };
-use crate::ipc::SupportConfig;
+const MAX_DISTANCE_FOR_AOE: i32 = 75;
+
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -34,6 +35,7 @@ pub struct FarmingBehavior<'a> {
     state: State,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
+    searching_for_enemy_timeout: Instant,
     last_kill_time: Instant,
     avoided_bounds: Vec<(Bounds, Instant, u128)>,
     rotation_movement_tries: u32,
@@ -53,6 +55,8 @@ pub struct FarmingBehavior<'a> {
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
+    // Calculate max distance of mobs
+
     fn new(logger: &'a Logger, movement: &'a MovementAccessor, window: &'a Window) -> Self {
         Self {
             logger,
@@ -62,6 +66,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             state: State::Buffing, //Start with buff before attacking
             slots_usage_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
+            searching_for_enemy_timeout: Instant::now(),
             last_kill_time: Instant::now(),
             avoided_bounds: vec![],
             is_attacking: false,
@@ -224,7 +229,7 @@ impl FarmingBehavior<'_> {
     }
 
     fn check_restorations(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
-        self.use_party_skills(config, image);
+        self.use_party_skills(config);
 
         // Check HP
         let health_stat = Some(image.client_stats.hp.value);
@@ -279,7 +284,7 @@ impl FarmingBehavior<'_> {
         // Transition to next state
         return_state
     }
-    fn use_party_skills(&mut self, config: &FarmingConfig, image: &mut ImageAnalyzer) {
+    fn use_party_skills(&mut self, config: &FarmingConfig) {
         let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
@@ -357,8 +362,7 @@ impl FarmingBehavior<'_> {
                 false => 1000,
             };
 
-            // Calculate max distance of mobs
-            let max_distance_for_aoe = 50;
+
 
 
             let mob_list = self.get_list_of_mobs(config, image, mobs);
@@ -367,6 +371,13 @@ impl FarmingBehavior<'_> {
             // inverted conditionals to make it easier to read
             // Check again if we have a list of mobs
             if mob_list.is_empty() {
+                // //we didnt find a valid mob within distance and since it's aoe we need to reset our counters
+                // if config.max_aoe_farming() > 1 {
+                //     if self.concurrent_mobs_killed >= self.concurrent_mobs_under_attack {
+                //         self.concurrent_mobs_killed = 0;
+                //         self.concurrent_mobs_under_attack = 0;
+                //     }
+                // }
                 // Transition to next state
                 State::NoEnemyFound
             } else {
@@ -377,17 +388,30 @@ impl FarmingBehavior<'_> {
 
                     if self.avoided_bounds.is_empty() {
                         if config.max_aoe_farming() > 1 && self.concurrent_mobs_killed > 1 && self.concurrent_mobs_under_attack > 1 {
-                            image.find_closest_mob(mob_list.as_slice(), None, max_distance_for_aoe, self.logger)
+                            image.find_closest_mob(mob_list.as_slice(), None, MAX_DISTANCE_FOR_AOE, self.logger)
                         } else {
                             image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
                         }
                     } else {
-                        image.find_closest_mob(mob_list.as_slice(), Some(&self.avoided_bounds), max_distance, self.logger)
+                        if config.max_aoe_farming() > 1 && self.concurrent_mobs_killed > 1 && self.concurrent_mobs_under_attack > 1 {
+                            image.find_closest_mob(mob_list.as_slice(), None, MAX_DISTANCE_FOR_AOE, self.logger)
+                        }else{
+                            image.find_closest_mob(mob_list.as_slice(), Some(&self.avoided_bounds), max_distance, self.logger)
+                        }
                     }
                 } {
                     // Transition to next state
                     State::EnemyFound(*mob)
                 } else {
+
+                    //we didnt find a valid mob within distance and since it's aoe we need to reset our counters
+                    if config.max_aoe_farming() > 1 {
+                        if self.concurrent_mobs_killed >= self.concurrent_mobs_under_attack {
+                            self.concurrent_mobs_killed = 0;
+                            self.concurrent_mobs_under_attack = 0;
+                        }
+                    }
+
                     // Transition to next state
                     State::SearchingForEnemy
                 }
@@ -451,7 +475,7 @@ impl FarmingBehavior<'_> {
     }
 
     fn abort_attack(&mut self, image: &mut ImageAnalyzer) -> State {
-        use crate::movement::prelude::*;
+
         self.is_attacking = false;
         if self.already_attack_count > 0 {
             // Target marker found
@@ -465,10 +489,10 @@ impl FarmingBehavior<'_> {
             }
         } else {
             self.obstacle_avoidance_count = 0;
-            use crate::movement::prelude::*;
             self.is_attacking = false;
             self.avoid_last_click();
         }
+        use crate::movement::prelude::*;
         play!(self.movement => [
             PressKey("Escape"),
         ]);
@@ -540,7 +564,7 @@ impl FarmingBehavior<'_> {
                 if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
                     // // If we didn't took any damages abort attack
                     // reducing to 500ms the time to check the last time the mob was attacked, 5s is too long.
-                    if hp_last_update.elapsed().as_millis() > 500 {
+                    if hp_last_update.elapsed().as_millis() > 50 {
                         return self.abort_attack(image);
                     } else if self.stealed_target_count > 5 {
                         self.stealed_target_count = 0;
@@ -604,6 +628,7 @@ impl FarmingBehavior<'_> {
 
                 //arbitrary checking we lower less than 70
                 if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
+
                     self.get_slot_for(config, None, SlotType::AttackSkill, true);
                     if image.client_stats.target_hp.value < 90 {
                         self.concurrent_mobs_under_attack += 1;
@@ -617,7 +642,7 @@ impl FarmingBehavior<'_> {
                         let marker_distance = image.get_target_marker_distance(target_marker);
 
                         // slog::debug!(self.logger,"checking distance"; "market_distance" => marker_distance);
-                        if marker_distance < 50 {
+                        if marker_distance < MAX_DISTANCE_FOR_AOE {
                             //basically do this until the target market dies
                             self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
                         } else {
@@ -652,7 +677,24 @@ impl FarmingBehavior<'_> {
             return State::SearchingForEnemy;
         }
     }
+    fn after_enemy_kill(
+        &mut self,
+        frontend_info: &mut FrontendInfo,
+        config: &FarmingConfig,
+    ) -> State {
+        self.kill_count += 1;
+        frontend_info.set_kill_count(self.kill_count);
+        self.after_enemy_kill_debug(frontend_info);
 
+        self.stealed_target_count = 0;
+        self.last_kill_time = Instant::now();
+
+        // Pickup items
+        self.pickup_items(config);
+
+        // Transition state
+        State::SearchingForEnemy
+    }
     fn after_enemy_kill_debug(&mut self, frontend_info: &mut FrontendInfo) {
 
         // Let's introduce some stats
@@ -695,29 +737,5 @@ impl FarmingBehavior<'_> {
         )
     }
 
-    fn after_enemy_kill(
-        &mut self,
-        frontend_info: &mut FrontendInfo,
-        config: &FarmingConfig,
-    ) -> State {
-        self.kill_count += 1;
-        frontend_info.set_kill_count(self.kill_count);
-        self.after_enemy_kill_debug(frontend_info);
 
-        self.stealed_target_count = 0;
-        self.last_kill_time = Instant::now();
-
-        // Pickup items
-        self.pickup_items(config);
-
-        if config.max_aoe_farming() > 1 {
-            if self.concurrent_mobs_killed >= self.concurrent_mobs_under_attack {
-                self.concurrent_mobs_killed = 0;
-                self.concurrent_mobs_under_attack = 0;
-            }
-        }
-
-        // Transition state
-        State::SearchingForEnemy
-    }
 }

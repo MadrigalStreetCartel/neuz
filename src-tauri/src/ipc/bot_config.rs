@@ -192,7 +192,7 @@ pub struct FarmingConfig {
 impl FarmingConfig {
 
     pub fn on_afk_disconnect(&self) -> bool {
-        self.on_afk_disconnect.unwrap_or(true)
+        self.on_afk_disconnect.unwrap_or(false)
     }
     pub fn afk_timeout(&self) -> u128 {
         self.afk_timeout.unwrap_or(3000).into()
@@ -344,7 +344,7 @@ impl SupportConfig {
         self.on_death_disconnect.unwrap_or(true)
     }
     pub fn on_afk_disconnect(&self) -> bool {
-        self.on_afk_disconnect.unwrap_or(true)
+        self.on_afk_disconnect.unwrap_or(false)
     }
 
     pub fn afk_timeout(&self) -> u128 {
@@ -392,7 +392,9 @@ impl SupportConfig {
 
     ///Get a list of usable matching slot index types for the support behavior
     pub fn get_all_usable_slot_for_type(&self, slot_type: SlotType, last_slots_usage: [[Option<Instant>; 10]; 9]) ->Vec< (usize, usize) >{
+
         let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+
         for slot_bar_index in 0..9 {
             let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(slot_type,slot_bar_index, last_slots_usage);
             for found_skill in result {
@@ -416,7 +418,7 @@ pub struct ShoutConfig {
 impl ShoutConfig {
 
     pub fn on_afk_disconnect(&self) -> bool {
-        self.on_afk_disconnect.unwrap_or(true)
+        self.on_afk_disconnect.unwrap_or(false)
     }
     pub fn afk_timeout(&self) -> u128 {
         self.afk_timeout.unwrap_or(3000).into()
