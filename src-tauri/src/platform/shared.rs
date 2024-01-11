@@ -130,6 +130,30 @@ pub fn eval_mob_click(window: &Window, pos: Point) {
     );
 }
 
+pub fn eval_simple_click(window: &Window, pos: Point) {
+    eval_mouse_move(window, pos);
+    std::thread::sleep(Duration::from_millis(1000));
+    drop(
+        window.eval(
+            format!(
+                "
+                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
+                            clientX: {0},
+                            clientY: {1}
+                        }}))
+
+                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
+                            clientX: {0},
+                            clientY: {1}
+                        }}))
+                    global.gc();;",
+                pos.x, pos.y
+            )
+            .as_str(),
+        ),
+    );
+}
+
 pub fn eval_send_message(window: &Window, text: &str) {
     drop(
         window.eval(
