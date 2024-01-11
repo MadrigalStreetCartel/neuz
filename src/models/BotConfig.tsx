@@ -120,6 +120,7 @@ export type SupportConfigModel = Partial<{
     slot_bars: SlotBars,
     obstacle_avoidance_cooldown: number,
     interval_between_buffs: number,
+    is_in_party: boolean,
     on_death_disconnect: boolean,
 
     on_afk_disconnect: boolean,
@@ -131,7 +132,7 @@ export type ShoutConfigModel = Partial<{
     [key: string]: any;
     shout_interval: number,
     shout_messages: string[],
-    
+
     on_afk_disconnect: boolean,
     afk_timeout: number,
     afk_ready_to_disconnect: boolean,

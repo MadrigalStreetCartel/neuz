@@ -76,22 +76,18 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         if self.initial_full_buff {
+            if config.is_in_party() {
+                if target_marker.is_some() {
+                    self.lose_target();
+                }
+                slog::debug!(self.logger, "full self buffing");
+                self.full_buffing(config, false);
+                std::thread::sleep(Duration::from_millis(100));
+                slog::debug!(self.logger, "full buffing target");
+                self.select_party_leader();
+            }
 
-            if  target_marker.is_some(){
-               self.lose_target(); }
-
-            slog::debug!(self.logger, "full self buffing");
-
-             self.full_buffing(config, false);
-
-            std::thread::sleep(Duration::from_millis(100));
-
-            slog::debug!(self.logger, "full buffing target");
-
-            self.select_party_leader();
             self.full_buffing(config, true);
-
-
             self.initial_full_buff = false;
             self.last_buff_usage = Instant::now();
             std::thread::sleep(Duration::from_millis(100));
@@ -118,24 +114,25 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             std::thread::sleep(Duration::from_millis(1500));
         }
 
-        // buffing myself
-        let self_buff_available = self.get_slot_for(config, None, SlotType::BuffSkill, false, false);
-        if self_buff_available.is_some() {
-            let available_buff: (usize, usize) = self_buff_available.unwrap();
+        if config.is_in_party() {
+            // buffing myself
+            let self_buff_available = self.get_slot_for(config, None, SlotType::BuffSkill, false, false);
+            if self_buff_available.is_some() {
+                let available_buff: (usize, usize) = self_buff_available.unwrap();
 
-            // slog::debug!(self.logger, "Buff available for myself"; "v1" => available_buff.0, "v2" => available_buff.1);
-            // slog::debug!(self.logger, "losing target");
-            if  target_marker.is_some(){
-                self.lose_target();
+                // slog::debug!(self.logger, "Buff available for myself"; "v1" => available_buff.0, "v2" => available_buff.1);
+                // slog::debug!(self.logger, "losing target");
+                if target_marker.is_some() {
+                    self.lose_target();
+                }
+
+                self.send_slot(available_buff, false);
+
+                std::thread::sleep(Duration::from_millis(1500));
+                //buffing myself
+                self.select_party_leader();
             }
-
-            self.send_slot(available_buff, false);
-
-            std::thread::sleep(Duration::from_millis(1500));
-            //buffing myself
-            self.select_party_leader();
         }
-
         //detect distance to target and avoid obstacle if needed
         self.avoid_obstacle_if_needed(image, config, target_marker);
     }

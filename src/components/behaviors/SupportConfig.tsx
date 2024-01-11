@@ -69,6 +69,11 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         item={<TimeInput value={config.interval_between_buffs} onChange={value => onChange({...config, interval_between_buffs: value})} />}
                     />
                     <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Is it in a party?" helpText="If enabled will buff itself and party leader" />}
+                        item={<BooleanSlider value={config.is_in_party ?? false} onChange={value => onChange?.({ ...config, is_in_party: value })} />}
+                    />
+                    <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
                         item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
                     />

@@ -330,6 +330,7 @@ pub struct SupportConfig {
     obstacle_avoidance_cooldown: Option<u64>,
     on_death_disconnect: Option<bool>,
     on_afk_disconnect:  Option<bool>,
+    is_in_party:  Option<bool>,
     afk_timeout: Option<u64>,
     interval_between_buffs: Option<u64>,
 
@@ -345,6 +346,9 @@ impl SupportConfig {
     }
     pub fn on_afk_disconnect(&self) -> bool {
         self.on_afk_disconnect.unwrap_or(false)
+    }
+    pub fn is_in_party(&self) -> bool {
+        self.is_in_party.unwrap_or(false)
     }
 
     pub fn afk_timeout(&self) -> u128 {
