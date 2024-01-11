@@ -169,10 +169,10 @@ impl SupportBehavior<'_> {
             ]);
         std::thread::sleep(Duration::from_millis(500));
 
-        let point = Point::new(733, 50); //moving to the "position of the party window
+        let point = Point::new(739, 56); //moving to the "position of the party window
         eval_simple_click(self.window, point);
 
-        std::thread::sleep(Duration::from_millis(500));
+        // std::thread::sleep(Duration::from_millis(500));
 
         play!(self.movement => [
                 // close party menu
@@ -264,7 +264,7 @@ impl SupportBehavior<'_> {
         send: bool,
         buffing_target: bool,
     ) -> Option<(usize, usize)> {
-        if buffing_target {
+        return if buffing_target {
             if let Some(slot_index) =
                 config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
             {
@@ -273,7 +273,7 @@ impl SupportBehavior<'_> {
                 }
                 return Some(slot_index);
             }
-            return None;
+            None
         } else {
             if let Some(slot_index) =
                 config.get_usable_slot_index(slot_type, threshold, self.self_slots_usage_last_time)
@@ -283,7 +283,7 @@ impl SupportBehavior<'_> {
                 }
                 return Some(slot_index);
             }
-            return None;
+            None
         }
     }
 
@@ -324,6 +324,10 @@ impl SupportBehavior<'_> {
 
         //Check target HP
         let target_hp = Some(image.client_stats.target_hp.value);
+
+        slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
+
+
         if image.client_stats.target_hp.value > 0 {
             if image.client_stats.target_hp.value < 85 {
                 self.get_slot_for(config, target_hp, SlotType::HealSkill, true, true);
