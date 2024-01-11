@@ -19,7 +19,6 @@ pub struct SupportBehavior<'a> {
     movement: &'a MovementAccessor,
     window: &'a Window,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
-    self_slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_buff_usage: Instant,
     last_jump_time: Instant,
     last_action_time: Instant,
@@ -36,7 +35,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             movement,
             window,
             slots_usage_last_time: [[None; 10]; 9],
-            self_slots_usage_last_time: [[None; 10]; 9],
             last_buff_usage: Instant::now(),
             last_jump_time: Instant::now(),
             last_action_time: Instant::now(),
@@ -70,7 +68,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         //Res the target if it dies
         if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
-            self.get_slot_for(config, None, SlotType::RezSkill, true, true);
+            self.get_slot_for(config, None, SlotType::RezSkill, true);
             self.slots_usage_last_time = [[None; 10]; 9];
             return;
         }
@@ -81,13 +79,13 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     self.lose_target();
                 }
                 slog::debug!(self.logger, "full self buffing");
-                self.full_buffing(config, false);
+                self.full_buffing(config);
                 std::thread::sleep(Duration::from_millis(100));
                 slog::debug!(self.logger, "full buffing target");
                 self.select_party_leader();
             }
 
-            self.full_buffing(config, true);
+            self.full_buffing(config);
             self.initial_full_buff = false;
             self.last_buff_usage = Instant::now();
             std::thread::sleep(Duration::from_millis(100));
@@ -105,34 +103,26 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
 
         // buffing target
-        let target_buff_available = self.get_slot_for(config, None, SlotType::BuffSkill, false, true);
+        let target_buff_available = self.get_slot_for(config, None, SlotType::BuffSkill, false);
         if target_buff_available.is_some() {
             let available_buff: (usize, usize) = target_buff_available.unwrap();
 
             // slog::debug!(self.logger, "Buff available for the target"; "v1" => available_buff.0, "v2" => available_buff.1);
-            self.send_slot(available_buff, true);
+            self.send_slot(available_buff);
             std::thread::sleep(Duration::from_millis(1500));
-        }
 
-        if config.is_in_party() {
-            // buffing myself
-            let self_buff_available = self.get_slot_for(config, None, SlotType::BuffSkill, false, false);
-            if self_buff_available.is_some() {
-                let available_buff: (usize, usize) = self_buff_available.unwrap();
-
-                // slog::debug!(self.logger, "Buff available for myself"; "v1" => available_buff.0, "v2" => available_buff.1);
-                // slog::debug!(self.logger, "losing target");
+            if config.is_in_party() {
                 if target_marker.is_some() {
                     self.lose_target();
                 }
-
-                self.send_slot(available_buff, false);
+                self.send_slot(available_buff);
 
                 std::thread::sleep(Duration::from_millis(1500));
                 //buffing myself
                 self.select_party_leader();
             }
         }
+
         //detect distance to target and avoid obstacle if needed
         self.avoid_obstacle_if_needed(image, config, target_marker);
     }
@@ -237,23 +227,6 @@ impl SupportBehavior<'_> {
                 }
             }
         }
-
-        for (slotbar_index, slot_bars) in self.self_slots_usage_last_time.into_iter().enumerate() {
-            for (slot_index, last_time) in slot_bars.into_iter().enumerate() {
-                let cooldown = config
-                    .get_slot_cooldown(slotbar_index, slot_index)
-                    .unwrap_or(100)
-                    .try_into();
-                if let Some(last_time) = last_time {
-                    if let Ok(cooldown) = cooldown {
-                        let slot_last_time = last_time.elapsed().as_millis();
-                        if slot_last_time > cooldown {
-                            self.self_slots_usage_last_time[slotbar_index][slot_index] = None;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     fn get_slot_for(
@@ -262,61 +235,44 @@ impl SupportBehavior<'_> {
         threshold: Option<u32>,
         slot_type: SlotType,
         send: bool,
-        buffing_target: bool,
     ) -> Option<(usize, usize)> {
-        return if buffing_target {
-            if let Some(slot_index) =
-                config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
-            {
-                if send {
-                    self.send_slot(slot_index, buffing_target);
-                }
-                return Some(slot_index);
+        if let Some(slot_index) =
+            config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
+        {
+            if send {
+                self.send_slot(slot_index);
             }
-            None
-        } else {
-            if let Some(slot_index) =
-                config.get_usable_slot_index(slot_type, threshold, self.self_slots_usage_last_time)
-            {
-                if send {
-                    self.send_slot(slot_index, buffing_target);
-                }
-                return Some(slot_index);
-            }
-            None
+            return Some(slot_index);
         }
+        None
     }
 
-    fn send_slot(&mut self, slot_index: (usize, usize), buffing_target: bool) {
+    fn send_slot(&mut self, slot_index: (usize, usize)) {
         // Send keystroke for first slot mapped to pill
         send_slot_eval(self.window, slot_index.0, slot_index.1);
         // Update usage last time
-        if buffing_target {
-            self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
-        } else {
-            self.self_slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
-        }
+        self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }
 
 
-    fn full_buffing(&mut self, config: &SupportConfig, buffing_target: bool) {
+    fn full_buffing(&mut self, config: &SupportConfig) {
         let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, [[None; 10]; 9]);
 
         for slot_index in all_buffs {
-            self.send_slot(slot_index, buffing_target);
+            self.send_slot(slot_index);
             std::thread::sleep(Duration::from_millis(1500));
 
-            self.get_slot_for(config, None, SlotType::HealSkill, true, true);
+            self.get_slot_for(config, None, SlotType::HealSkill, true);
 
             std::thread::sleep(Duration::from_millis(500));
-            self.get_slot_for(config, None, SlotType::AOEHealSkill, true, true);
+            self.get_slot_for(config, None, SlotType::AOEHealSkill, true);
             std::thread::sleep(Duration::from_millis(500));
         }
     }
     fn use_party_skills(&mut self, config: &SupportConfig) {
         let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
-            self.send_slot(slot_index, true);
+            self.send_slot(slot_index);
         }
     }
 
@@ -330,11 +286,11 @@ impl SupportBehavior<'_> {
 
         if image.client_stats.target_hp.value > 0 {
             if image.client_stats.target_hp.value < 85 {
-                self.get_slot_for(config, target_hp, SlotType::HealSkill, true, true);
+                self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
                 std::thread::sleep(Duration::from_millis(500));
 
                 if image.client_stats.target_hp.value < 60 {
-                    self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true, true);
+                    self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
                 }
             }
         }
@@ -345,29 +301,29 @@ impl SupportBehavior<'_> {
 
             if image.client_stats.hp.value < 20 {
                 // Take a pill if health is less than 40, ideally should not be often
-                self.get_slot_for(config, health_stat, SlotType::Pill, true, true);
+                self.get_slot_for(config, health_stat, SlotType::Pill, true);
             }
 
             if image.client_stats.hp.value < 95 {
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, true);
+                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
             }
 
             if image.client_stats.hp.value < 60 {
                 // Eat food if health under 70
-                self.get_slot_for(config, health_stat, SlotType::Food, true, true);
+                self.get_slot_for(config, health_stat, SlotType::Food, true);
             }
         }
 
         // Check MP
         let mp_stat = Some(image.client_stats.mp.value);
         if image.client_stats.mp.value > 0 && image.client_stats.mp.value < 60 {
-            self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true, true);
+            self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
         }
 
         // Check FP
         let fp_stat = Some(image.client_stats.fp.value);
         if image.client_stats.fp.value > 0 && image.client_stats.mp.value < 60 {
-            self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true, true);
+            self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
     }
 
