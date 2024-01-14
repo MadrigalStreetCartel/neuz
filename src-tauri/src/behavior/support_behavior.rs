@@ -79,16 +79,21 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     self.lose_target();
                 }
                 slog::debug!(self.logger, "full self buffing");
-                self.full_buffing(config);
-                std::thread::sleep(Duration::from_millis(100));
-                slog::debug!(self.logger, "full buffing target");
+
+                play!(self.movement => [
+                    PressKey("F1"),
+                    PressKey("C"),
+                ]);
+                std::thread::sleep(Duration::from_millis(1000));
+
+                // self.full_buffing(config);
                 self.select_party_leader();
             }
-
-            self.full_buffing(config);
-            self.initial_full_buff = false;
-            self.last_buff_usage = Instant::now();
-            std::thread::sleep(Duration::from_millis(100));
+            //
+            // self.full_buffing(config);
+            // self.initial_full_buff = false;
+            // self.last_buff_usage = Instant::now();
+            // std::thread::sleep(Duration::from_millis(100));
         }
 
         //check if we have a valid target and if not, check the AFK time to dc
@@ -109,17 +114,33 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
             // slog::debug!(self.logger, "Buff available for the target"; "v1" => available_buff.0, "v2" => available_buff.1);
             self.send_slot(available_buff);
-            std::thread::sleep(Duration::from_millis(1500));
+            std::thread::sleep(Duration::from_millis(1000));
 
+            // if config.is_in_party() {
+            //     if target_marker.is_some() {
+            //         self.lose_target();
+            //     }
+            //     self.send_slot(available_buff);
+            //
+            //     std::thread::sleep(Duration::from_millis(1500));
+            //     //buffing myself
+            //     self.select_party_leader();
+            // }
+        }
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             if config.is_in_party() {
                 if target_marker.is_some() {
                     self.lose_target();
                 }
-                self.send_slot(available_buff);
+                play!(self.movement => [
+                    PressKey("F1"),
+                    PressKey("C"),
+                ]);
 
-                std::thread::sleep(Duration::from_millis(1500));
+                std::thread::sleep(Duration::from_millis(1000));
                 //buffing myself
                 self.select_party_leader();
+                self.last_buff_usage = Instant::now();
             }
         }
 
@@ -135,7 +156,6 @@ impl SupportBehavior<'_> {
                 self.move_circle_pattern();
             }
         } else {
-            use crate::movement::prelude::*;
             play!(self.movement => [
                 PressKey("Z"),
             ]);

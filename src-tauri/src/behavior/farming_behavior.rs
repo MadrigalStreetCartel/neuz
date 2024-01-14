@@ -539,6 +539,10 @@ impl FarmingBehavior<'_> {
         //Adding restoration checks in case health is low
         self.check_restorations(config, image);
 
+        self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        //buff myself on available buffs
+        std::thread::sleep(Duration::from_millis(1000));
+
 
         let is_npc =
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
@@ -617,10 +621,10 @@ impl FarmingBehavior<'_> {
             // }
 
             //give a full buff if we elapsed time and no danger?
-            if self.concurrent_mobs_under_attack == 0 && self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs(){
-                self.full_buffing(config, image, self.state, [[None; 10]; 9]);
-                self.last_buff_usage = Instant::now();
-            }
+            // if self.concurrent_mobs_under_attack == 0 && self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs(){
+            //     self.full_buffing(config, image, self.state, [[None; 10]; 9]);
+            //     self.last_buff_usage = Instant::now();
+            // }
 
 
             if config.max_aoe_farming() > 1 {
@@ -664,12 +668,11 @@ impl FarmingBehavior<'_> {
             }
 
             self.is_attacking = false;
-            self.check_restorations(config, image);
             self.concurrent_mobs_killed += 1;
             // Use buffs after we kill the mob so we don't buff mid fight
-            if config.max_aoe_farming() == 1 {
-                self.full_buffing(config, image, self.state, self.slots_usage_last_time);
-            }
+            // if config.max_aoe_farming() == 1 {
+            //     self.full_buffing(config, image, self.state, self.slots_usage_last_time);
+            // }
 
             return State::AfterEnemyKill(mob);
         } else {
