@@ -102,9 +102,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         // Update all needed timestamps
         self.update_timestamps(config);
 
-        // Check whether something should be restored
-        self.check_restorations(config, image);
-
         // Check state machine
         self.state = match self.state {
             State::Buffing => self.full_buffing(config, image, State::NoEnemyFound, [[None; 10]; 9]),
@@ -345,9 +342,6 @@ impl FarmingBehavior<'_> {
         config: &FarmingConfig,
         image: &mut ImageAnalyzer,
     ) -> State {
-        //if a mob is attacking us while we search
-        self.check_restorations(config, image);
-
         if config.is_stop_fighting() {
             return State::Attacking(Target::default());
         }
