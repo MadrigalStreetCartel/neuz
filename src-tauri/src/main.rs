@@ -503,9 +503,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     if !frontend_info_mut.is_alive() {
                         frontend_info_mut.set_is_alive(true);
                         let should_disconnect = should_disconnect_on_death(config);
-                        if !should_disconnect {
-                            eval_send_key(&window, "Escape", KeyMode::Press);
-                        }
+                        // if !should_disconnect {
+                        //     eval_send_key(&window, "Escape", KeyMode::Press);
+                        // }
                     }
                 }
                 else{
