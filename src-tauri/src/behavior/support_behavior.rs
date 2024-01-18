@@ -161,7 +161,7 @@ impl SupportBehavior<'_> {
             ]);
         std::thread::sleep(Duration::from_millis(500));
 
-        let point = Point::new(739, 56); //moving to the "position of the party window
+        let point = Point::new(739, 72); //moving to the "position of the party window
         eval_simple_click(self.window, point);
 
         // std::thread::sleep(Duration::from_millis(500));
