@@ -8,7 +8,15 @@ Date format: `DD/MM/YYYY`
 
 **0.16.4**
 > Released on 23.12.2023
-- Support
+- Added multi buffs
+- Added toggle to prioritize aggros or just the closest mob
+- AOE healing 
+- AOE attack
+  - Configurable with number of mobs to attack
+- Party leader selection when on party, for support mode.
+- Skills
+  - Alphabetical order for skills
+  - Added party skills
 
 **0.16.3**
 > Released on 24.3.2023

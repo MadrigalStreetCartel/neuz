@@ -32,6 +32,12 @@ const SlotModal = ({className, isShowing, hide, index, slot, onChange, barIndex,
         return {}
 
     }).filter((item) => item.value != null )
+        .sort((a,b) => {
+            if (a.label !== undefined && b.label !== undefined) {
+                return a.label.localeCompare(b.label);
+            }
+            return 0;
+        } ) ;
 
     if (slot) {
         return(

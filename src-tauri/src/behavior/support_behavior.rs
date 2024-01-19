@@ -77,17 +77,18 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             if config.is_in_party() {
                 if target_marker.is_some() {
                     self.lose_target();
-                    slog::debug!(self.logger, "full self buffing");
+                }
+                slog::debug!(self.logger, "full self buffing");
 
-                    play!(self.movement => [
+                play!(self.movement => [
                         PressKey("F1"),
                         PressKey("C"),
                     ]);
-                    std::thread::sleep(Duration::from_millis(1000));
+                std::thread::sleep(Duration::from_millis(5000));
 
-                    // self.full_buffing(config);
-                    self.select_party_leader();
-                }
+                // self.full_buffing(config);
+                self.select_party_leader();
+                self.initial_full_buff = false;
             }
         }
 
@@ -113,16 +114,16 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             if config.is_in_party() {
                 if target_marker.is_some() {
                     self.lose_target();
-                    play!(self.movement => [
+                }
+                play!(self.movement => [
                         PressKey("F1"),
                         PressKey("C"),
                      ]);
 
-                    std::thread::sleep(Duration::from_millis(1000));
-                    //buffing myself
-                    self.select_party_leader();
-                    self.last_buff_usage = Instant::now();
-                }
+                std::thread::sleep(Duration::from_millis(5000));
+                //buffing myself
+                self.select_party_leader();
+                self.last_buff_usage = Instant::now();
             }
         }
 
