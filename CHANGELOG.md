@@ -7,7 +7,7 @@ Date format: `DD/MM/YYYY`
 <!-- /maintainers -->
 
 **0.16.4**
-> Released on 23.12.2023
+> Released on 1.19.2024
 - Added multi buffs
 - Added toggle to prioritize aggros or just the closest mob
 - AOE healing 
