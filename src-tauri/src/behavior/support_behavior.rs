@@ -82,6 +82,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
                 play!(self.movement => [
                         PressKey("F1"),
+                    Wait(dur::Fixed(100)),
                         PressKey("C"),
                     ]);
                 std::thread::sleep(Duration::from_millis(5000));
@@ -103,12 +104,14 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.use_party_skills(config);
 
 
-        // buffing target
-
-        if target_marker.is_some() {
-            self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        if target_marker.is_none() {
+            if config.is_in_party() {
+                self.select_party_leader();
+            }
         }
 
+        // buffing target
+        self.get_slot_for(config, None, SlotType::BuffSkill, true);
 
         if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             if config.is_in_party() {
@@ -117,6 +120,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 }
                 play!(self.movement => [
                         PressKey("F1"),
+                        Wait(dur::Fixed(100)),
                         PressKey("C"),
                      ]);
 
@@ -155,23 +159,24 @@ impl SupportBehavior<'_> {
     }
 
     fn select_party_leader(&mut self) {
+        slog::debug!(self.logger, "selecting party leader");
+
         //attempt to get party leader
         play!(self.movement => [
                 // Open party menu
                 PressKey("P"),
             ]);
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(1000));
 
-        let point = Point::new(739, 72); //moving to the "position of the party window
+        let point = Point::new(739, 69); //moving to the "position of the party window
         eval_simple_click(self.window, point);
 
         // std::thread::sleep(Duration::from_millis(500));
 
         play!(self.movement => [
-                // close party menu
-                PressKey("P"),
                 PressKey("Z"),
-
+                Wait(dur::Fixed(100)),
+                PressKey("P"),
             ]);
     }
 
@@ -284,7 +289,7 @@ impl SupportBehavior<'_> {
         //Check target HP
         let target_hp = Some(image.client_stats.target_hp.value);
 
-        slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
+        // slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
 
 
         if image.client_stats.target_hp.value > 0 {
