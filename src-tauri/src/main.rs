@@ -22,6 +22,7 @@ use std::{
 use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
+use platform::register_evals;
 use slog::{Drain, Level, Logger};
 use tauri::{LogicalSize, Manager, Size, Window};
 
@@ -378,6 +379,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         send_config(&config.read());
 
         let window = app_handle.get_window("client").unwrap();
+
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
@@ -391,8 +393,10 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
         let mut last_mode: Option<BotMode> = None;
         let mut frontend_info: Arc<RwLock<FrontendInfo>> =
-            Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
+        Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
         send_info(&frontend_info.read());
+        register_evals(&window); //TODO test this
+        window.eval("test()");
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -506,7 +510,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         send_info(&frontend_info.read());
                     } else {
                         eval_send_key(&window, "Enter", KeyMode::Press);
-                        std::thread::sleep(Duration::from_millis(500));
+                        std::thread::sleep(Duration::from_millis(1000));
                     }
                     continue;
                 } else if is_alive && !frontend_info_mut.is_alive() {

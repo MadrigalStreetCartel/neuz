@@ -36,107 +36,41 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
     }
 }
 
+pub fn register_evals(window: &Window) {
+    drop(window.eval(include_str!("eval.js")));
+}
+
 pub fn eval_send_key(window: &Window, key: &str, mode: KeyMode) {
-    match mode {
-        KeyMode::Press => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
-        KeyMode::Hold => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
-        KeyMode::Release => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
-    }
+   let mode_str =  match mode {
+        KeyMode::Press => "press",
+        KeyMode::Hold => "hold",
+        KeyMode::Release => "release",
+    };
+    drop(window.eval(format!("sendKey('{0}', '{1}')", key, mode_str).as_str()));
 }
 
 pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
-    eval_send_key(
-        window,
-        format!("F{}", slot_bar_index + 1).to_string().as_str(),
-        KeyMode::Press,
-    );
-    eval_send_key(window, k.to_string().as_str(), KeyMode::Press);
+    drop(window.eval(format!("sendSlotBar({})", slot_bar_index + 1).as_str()));
+    drop(window.eval(format!("sendSlot({})", k.to_string()).as_str()));
     //std::thread::sleep(Duration::from_millis(100));
 }
 
-/* pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
-    drop(
-        window.eval(
-            format!(
-                "
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
-            clientX: {0},
-            clientY: {1}
-        }}))
-
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
-            clientX: {0},
-            clientY: {1}
-        }}))",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
-    );
-} */
-
 pub fn eval_mouse_move(window: &Window, pos: Point) {
-    drop(
-        window.eval(
-            format!(
-                "
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
-            clientX: {0},
-            clientY: {1}
-        }}))",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
-    );
+    drop(window.eval(format!("sendMouse('move', {0}, {1}) ", pos.x, pos.y).as_str()));
 }
 
-pub fn eval_mob_click(window: &Window, pos: Point) {
-    eval_mouse_move(window, pos);
-    std::thread::sleep(Duration::from_millis(25));
-    drop(
-        window.eval(
-            format!(
-                "
-                    if (document.body.style.cursor.indexOf('curattack') > 0) {{
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
-
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
-                    }}
-                    global.gc();;",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
-    );
+pub fn eval_mob_click(window: &Window, pos: Point, debug: bool) {
+    //eval_mouse_move(window, pos);
+    //std::thread::sleep(Duration::from_millis(25));
+    //println!("clicking at {:?}", pos);
+    drop(window.eval(format!("mobClick({0}, {1}, {2})", pos.x, pos.y, debug).as_str()));
 }
 
 pub fn eval_send_message(window: &Window, text: &str) {
     drop(
         window.eval(
             format!(
-                "
-    document.querySelector('input').value = '{0}';
-    document.querySelector('input').select();",
+                "writeMessage('{0}')",
                 text
             )
             .as_str(),
