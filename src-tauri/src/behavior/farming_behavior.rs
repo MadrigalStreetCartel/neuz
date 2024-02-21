@@ -535,7 +535,7 @@ impl FarmingBehavior<'_> {
 
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
         //buff myself on available buffs
-        std::thread::sleep(Duration::from_millis(1000));
+        // std::thread::sleep(Duration::from_millis(1000));
 
 
         let is_npc =

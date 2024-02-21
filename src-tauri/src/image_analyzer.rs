@@ -71,7 +71,7 @@ impl ImageAnalyzer {
         mut max_y: u32,
         tolerence: Option<u8>,
     ) -> Receiver<Point> {
-        let (snd, recv) = sync_channel::<Point>(4096);
+        let (snd, recv) = sync_channel::<Point>(8192);
         let image = self.image.as_ref().unwrap();
 
         if max_x == 0 {
