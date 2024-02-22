@@ -2,6 +2,7 @@ use std::{
     sync::mpsc::{sync_channel, Receiver},
     time::Instant,
 };
+use std::thread;
 
 //use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
@@ -71,7 +72,7 @@ impl ImageAnalyzer {
         mut max_y: u32,
         tolerence: Option<u8>,
     ) -> Receiver<Point> {
-        let (snd, recv) = sync_channel::<Point>(8192);
+        let (snd, recv) = sync_channel::<Point>(480000);
         let image = self.image.as_ref().unwrap();
 
         if max_x == 0 {
@@ -91,8 +92,8 @@ impl ImageAnalyzer {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if y <= IGNORE_AREA_TOP
                     || y > image_height
-                        .checked_sub(IGNORE_AREA_BOTTOM)
-                        .unwrap_or(image_height)
+                    .checked_sub(IGNORE_AREA_BOTTOM)
+                    .unwrap_or(image_height)
                     || y > IGNORE_AREA_TOP + max_y
                     || y > max_y
                     || y < min_y
@@ -112,7 +113,12 @@ impl ImageAnalyzer {
                         // Check if the pixel matches any of the reference colors
                         if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
                             #[allow(dropping_copy_types)]
-                            drop(snd.send(Point::new(x, y)));
+                            drop(snd.try_send(Point::new(x, y)));
+                            // drop(snd.send(Point::new(x, y)));
+
+                            // drop(snd.try_send(Point::new(x, y)).map_err(|err| {
+                            //     eprintln!("Error sending data: {}", err);
+                            // }));
 
                             // Continue to next column
                             continue 'outer;
@@ -158,8 +164,8 @@ impl ImageAnalyzer {
                 if let Some(config) = config {
                     // Filter out small clusters (likely to cause misclicks)
                     mob.bounds.w > config.min_mobs_name_width()
-                    // Filter out huge clusters (likely to be Violet Magician Troupe)
-                    && mob.bounds.w < config.max_mobs_name_width()
+                        // Filter out huge clusters (likely to be Violet Magician Troupe)
+                        && mob.bounds.w < config.max_mobs_name_width()
                 } else {
                     true
                 }
@@ -262,19 +268,38 @@ impl ImageAnalyzer {
         // Reference color
         let ref_color: Color = {
             if !blank_target {
-                Color::new(246, 90, 106)
+                Color::new(246, 90, 106) //F65A6A
             } else {
-                Color::new(164, 180, 226)
+                Color::new(164, 180, 226) //A4B4E1
             }
         };
 
         // Collect pixel clouds
         let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
 
+        // // Receive points from channel
+        // while let Ok(point) = recv.recv() {
+        //     coords.push(point);
+        // }
+
+
         // Receive points from channel
-        while let Ok(point) = recv.recv() {
-            coords.push(point);
+        loop {
+            match recv.recv() {
+                Ok(point) => {
+                    coords.push(point);
+                }
+                Err(std::sync::mpsc::RecvError) => {
+                    // Channel is closed, break the loop
+                    break;
+                }
+                Err(err) => {
+                    eprintln!("Error receiving data: {}", err);
+                    // Handle other errors if needed
+                }
+            }
         }
+
 
         // Identify target marker entities
         let target_markers =
@@ -308,7 +333,6 @@ impl ImageAnalyzer {
         max_distance: i32,
         _logger: &Logger,
     ) -> Option<&'a Target> {
-
         let _timer = Timer::start_new("find_closest_mob");
 
         let image = self.image.as_ref().unwrap();
@@ -350,8 +374,8 @@ impl ImageAnalyzer {
                     }
                 }
                 result // && *distance > 20
-                       // let coords = mob.name_bounds.get_lowest_center_point();
-                       // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+                // let coords = mob.name_bounds.get_lowest_center_point();
+                // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {
                 Some(mob)
             } else {
