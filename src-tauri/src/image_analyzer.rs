@@ -72,7 +72,7 @@ impl ImageAnalyzer {
         mut max_y: u32,
         tolerence: Option<u8>,
     ) -> Receiver<Point> {
-        let (snd, recv) = sync_channel::<Point>(480000);
+        let (snd, recv) = sync_channel::<Point>(4096);
         let image = self.image.as_ref().unwrap();
 
         if max_x == 0 {
@@ -112,13 +112,13 @@ impl ImageAnalyzer {
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
                         if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
-                            #[allow(dropping_copy_types)]
-                            drop(snd.try_send(Point::new(x, y)));
+                            // #[allow(dropping_copy_types)]
+                            // drop(snd.try_send(Point::new(x, y)));
                             // drop(snd.send(Point::new(x, y)));
-
-                            // drop(snd.try_send(Point::new(x, y)).map_err(|err| {
-                            //     eprintln!("Error sending data: {}", err);
-                            // }));
+                            #[allow(dropping_copy_types)]
+                            drop(snd.try_send(Point::new(x, y)).map_err(|err| {
+                                eprintln!("Error sending data: {}", err);
+                            }));
 
                             // Continue to next column
                             continue 'outer;
@@ -196,6 +196,7 @@ impl ImageAnalyzer {
         // Reference colors
         let ref_color_pas_wrapped: [Option<u8>; 3] = config.passive_mobs_colors(); // Passive mobs 234, 234, 149
         let ref_color_agg_wrapped: [Option<u8>; 3] = config.aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
+
         let ref_color_pas: [u8; 3] = [
             ref_color_pas_wrapped[0].unwrap_or(234),
             ref_color_pas_wrapped[1].unwrap_or(234),
@@ -228,11 +229,7 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(
-                        &px.0,
-                        &ref_color_agg,
-                        config.aggressive_tolerence(),
-                    ) {
+                    } else if Self::pixel_matches(&px.0,&ref_color_agg,config.aggressive_tolerence(),) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
                     }
                 }
@@ -261,51 +258,58 @@ impl ImageAnalyzer {
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
     }
 
-    pub fn identify_target_marker(&self, blank_target: bool) -> Option<Target> {
+    pub fn identify_target_marker(&self, blue_target: bool) -> Option<Target> {
         let _timer = Timer::start_new("identify_target_marker");
         let mut coords = Vec::default();
 
         // Reference color
         let ref_color: Color = {
-            if !blank_target {
-                Color::new(246, 90, 106) //F65A6A
+            if blue_target {
+                // Color::new(164, 180, 226) //A4B4E1 -- blueish
+                Color::new(131, 148, 205) //A4B4E1 -- blueish - more center of the arrow
             } else {
-                Color::new(164, 180, 226) //A4B4E1
+                Color::new(246, 90, 106) //F65A6A -- redish
             }
+            // if !blank_target {
+            //     Color::new(246, 90, 106) //F65A6A
+            // } else {
+            //     Color::new(164, 180, 226) //A4B4E1
+            // }
         };
 
         // Collect pixel clouds
         let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
 
         // // Receive points from channel
-        // while let Ok(point) = recv.recv() {
-        //     coords.push(point);
-        // }
-
-
-        // Receive points from channel
-        loop {
-            match recv.recv() {
-                Ok(point) => {
-                    coords.push(point);
-                }
-                Err(std::sync::mpsc::RecvError) => {
-                    // Channel is closed, break the loop
-                    break;
-                }
-                Err(err) => {
-                    eprintln!("Error receiving data: {}", err);
-                    // Handle other errors if needed
-                }
-            }
+        while let Ok(point) = recv.recv() {
+            coords.push(point);
         }
+
+
+        // // Receive points from channel
+        // loop {
+        //     match recv.recv() {
+        //         Ok(point) => {
+        //             coords.push(point);
+        //         }
+        //         Err(std::sync::mpsc::RecvError) => {
+        //             eprintln!("Error receiving data, channel is closed");
+        //             // Channel is closed, break the loop
+        //             break;
+        //         }
+        //         Err(err) => {
+        //             eprintln!("Error receiving data: {}", err);
+        //             // Handle other errors if needed
+        //         }
+        //     }
+        // }
 
 
         // Identify target marker entities
         let target_markers =
             Self::merge_cloud_into_mobs(None, &PointCloud::new(coords), TargetType::TargetMarker);
 
-        if !blank_target && target_markers.is_empty() {
+        if !blue_target && target_markers.is_empty() {
             return self.identify_target_marker(true);
         }
 

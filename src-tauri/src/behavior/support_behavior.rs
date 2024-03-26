@@ -112,6 +112,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         // buffing target
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
+        std::thread::sleep(Duration::from_millis(1000));
 
         if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
             if config.is_in_party() {
@@ -168,7 +169,7 @@ impl SupportBehavior<'_> {
             ]);
         std::thread::sleep(Duration::from_millis(1000));
 
-        let point = Point::new(739, 69); //moving to the "position of the party window
+        let point = Point::new(739, 48); //moving to the "position of the party window
         eval_simple_click(self.window, point);
 
         // std::thread::sleep(Duration::from_millis(500));
@@ -295,10 +296,11 @@ impl SupportBehavior<'_> {
         if image.client_stats.target_hp.value > 0 {
             if image.client_stats.target_hp.value < 85 {
                 self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
-                std::thread::sleep(Duration::from_millis(500));
+                std::thread::sleep(Duration::from_millis(200));
 
                 if image.client_stats.target_hp.value < 60 {
                     self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
+                    std::thread::sleep(Duration::from_millis(200));
                 }
             }
         }
@@ -314,6 +316,7 @@ impl SupportBehavior<'_> {
 
             if image.client_stats.hp.value < 95 {
                 self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                std::thread::sleep(Duration::from_millis(200));
             }
 
             if image.client_stats.hp.value < 60 {
