@@ -359,13 +359,6 @@ impl FarmingBehavior<'_> {
             // inverted conditionals to make it easier to read
             // Check again if we have a list of mobs
             if mob_list.is_empty() {
-                // //we didnt find a valid mob within distance and since it's aoe we need to reset our counters
-                // if config.max_aoe_farming() > 1 {
-                //     if self.concurrent_mobs_killed >= self.concurrent_mobs_under_attack {
-                //         self.concurrent_mobs_killed = 0;
-                //         self.concurrent_mobs_under_attack = 0;
-                //     }
-                // }
                 // Transition to next state
                 State::NoEnemyFound
             } else {
@@ -396,6 +389,7 @@ impl FarmingBehavior<'_> {
         if config.prioritize_aggro() {
             mob_list = mobs
                 .iter()
+                .filter(|m| m.target_type != TargetType::Mob(MobType::Violet))// removing violets from coordinates
                 .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
                 .cloned()
                 .collect::<Vec<_>>();
@@ -409,6 +403,7 @@ impl FarmingBehavior<'_> {
             {
                 mob_list = mobs
                     .iter()
+                    .filter(|m| m.target_type != TargetType::Mob(MobType::Violet))// removing violets from coordinates
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
                     .cloned()
                     .collect::<Vec<_>>();
@@ -416,6 +411,7 @@ impl FarmingBehavior<'_> {
         } else {
             mob_list = mobs
                 .iter()
+                .filter(|m| m.target_type != TargetType::Mob(MobType::Violet))// removing violets from coordinates
                 .cloned()
                 .collect::<Vec<_>>();
         }
@@ -612,6 +608,7 @@ impl FarmingBehavior<'_> {
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => self.last_killed_type = MobType::Aggressive,
                 TargetType::Mob(MobType::Passive) => self.last_killed_type = MobType::Passive,
+                TargetType::Mob(MobType::Violet) => self.last_killed_type = MobType::Violet,
                 TargetType::TargetMarker => {}
             }
             self.concurrent_mobs_under_attack = 0;

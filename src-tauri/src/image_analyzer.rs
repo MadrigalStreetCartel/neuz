@@ -10,6 +10,8 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 use tauri::Window;
 
+use rayon::prelude::*;
+
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
     ipc::FarmingConfig,
@@ -192,10 +194,13 @@ impl ImageAnalyzer {
         // Create collections for passive and aggro mobs
         let mut mob_coords_pas: Vec<Point> = Vec::default();
         let mut mob_coords_agg: Vec<Point> = Vec::default();
+        let mut mob_coords_violet: Vec<Point> = Vec::default();
 
         // Reference colors
         let ref_color_pas_wrapped: [Option<u8>; 3] = config.passive_mobs_colors(); // Passive mobs 234, 234, 149
         let ref_color_agg_wrapped: [Option<u8>; 3] = config.aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
+
+        let ref_color_violet_wrapped: [Option<u8>; 3] = config.violet_mobs_colors(); // Aggro mobs 179, 23, 23
 
         let ref_color_pas: [u8; 3] = [
             ref_color_pas_wrapped[0].unwrap_or(234),
@@ -206,6 +211,11 @@ impl ImageAnalyzer {
             ref_color_agg_wrapped[0].unwrap_or(179),
             ref_color_agg_wrapped[1].unwrap_or(23),
             ref_color_agg_wrapped[2].unwrap_or(23),
+        ];
+        let ref_color_violet: [u8; 3] = [
+            ref_color_violet_wrapped[0].unwrap_or(182),
+            ref_color_violet_wrapped[1].unwrap_or(144),
+            ref_color_violet_wrapped[2].unwrap_or(146),
         ];
 
         // Collect pixel clouds
@@ -229,8 +239,10 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0,&ref_color_agg,config.aggressive_tolerence(),) {
+                    } else if Self::pixel_matches(&px.0,&ref_color_agg,config.aggressive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
+                    }else if Self::pixel_matches(&px.0,&ref_color_violet,config.violet_tolerence()) {
+                        drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Violet))));
                     }
                 }
             });
@@ -238,6 +250,7 @@ impl ImageAnalyzer {
             match px.2 {
                 TargetType::Mob(MobType::Passive) => mob_coords_pas.push(Point::new(px.0, px.1)),
                 TargetType::Mob(MobType::Aggressive) => mob_coords_agg.push(Point::new(px.0, px.1)),
+                TargetType::Mob(MobType::Violet) => mob_coords_violet.push(Point::new(px.0, px.1)),
                 _ => unreachable!(),
             }
         }
@@ -252,6 +265,11 @@ impl ImageAnalyzer {
             Some(config),
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
+        );
+        let mobs_violet = Self::merge_cloud_into_mobs(
+            Some(config),
+            &PointCloud::new(mob_coords_violet),
+            TargetType::Mob(MobType::Violet),
         );
 
         // Return all mobs
@@ -270,6 +288,7 @@ impl ImageAnalyzer {
             } else {
                 Color::new(246, 90, 106) //F65A6A -- redish
             }
+            //changed the Original colors (below), because they don't work in Azria
             // if !blank_target {
             //     Color::new(246, 90, 106) //F65A6A
             // } else {

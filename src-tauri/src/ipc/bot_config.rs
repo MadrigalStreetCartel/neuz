@@ -169,8 +169,12 @@ pub struct FarmingConfig {
 
     passive_mobs_colors: Option<[Option<u8>; 3]>,
     passive_tolerence: Option<u8>,
+
     aggressive_mobs_colors: Option<[Option<u8>; 3]>,
     aggressive_tolerence: Option<u8>,
+
+    violet_mobs_colors: Option<[Option<u8>; 3]>,
+    violet_tolerence: Option<u8>,
 
     obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
@@ -248,10 +252,19 @@ impl FarmingConfig {
     pub fn aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
         self.aggressive_mobs_colors.unwrap_or([None, None, None])
     }
-
     pub fn aggressive_tolerence(&self) -> u8 {
         self.aggressive_tolerence.unwrap_or(10)
     }
+
+
+    pub fn violet_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.violet_mobs_colors.unwrap_or([None, None, None])
+    }
+    pub fn violet_tolerence(&self) -> u8 {
+        self.violet_tolerence.unwrap_or(10)
+    }
+
+
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {
         self.slot_bars
