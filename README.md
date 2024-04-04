@@ -66,6 +66,7 @@ Before pushing:
 Use farming automation if you're trying to level up your character or farm sets, quest items, penya, etc.
 
 Works best if you're in a densely populated farming area.
+It will also use an AOE attack skill (if configured) when the bot is close to the target.
 
 ### Requirements
 
@@ -81,9 +82,20 @@ For optimal performance (optional and not necessarily needed):
 3. Take a look at #How-To channel on discord for a full setup tutorial.
 
 ## Support Automation
+##### Stand-alone support:
 - Fill the slots as desired (Heal spell for the target you wanna heal, Food/Pills for yourself).
 - Target the character you want to follow in game.
+- Press Z to follow character
 - Engage
+
+
+##### Party support:
+It will follow the party leader by automatically selecting it from the party window, to make it work:
+- Enable the "Is it in a party?" toggle under settings
+- Position the party window names list in the top right corner and shrink it as much as possible from sides and below
+- Make sure to close all party windows before engaging.
+- Engage.
+It will also use F1 + C (action slot) to self-buff based on the "interval between buffs" timer.
 
 ## Slot Configuration
 
