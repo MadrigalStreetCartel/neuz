@@ -1,4 +1,4 @@
-use std::thread;
+
 use std::{
     sync::mpsc::{sync_channel, Receiver},
     time::Instant,
@@ -10,7 +10,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use slog::Logger;
 use tauri::Window;
 
-use rayon::prelude::*;
+
 
 use crate::{
     data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
@@ -274,14 +274,14 @@ impl ImageAnalyzer {
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
         );
-        let mobs_violet = Self::merge_cloud_into_mobs(
+        let _mobs_violet = Self::merge_cloud_into_mobs(
             Some(config),
             &PointCloud::new(mob_coords_violet),
             TargetType::Mob(MobType::Violet),
         );
 
         // Return all mobs
-        Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
+        Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas))
     }
 
     pub fn identify_target_marker(&self, blue_target: bool) -> Option<Target> {

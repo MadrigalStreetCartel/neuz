@@ -612,11 +612,9 @@ impl FarmingBehavior<'_> {
             if config.max_aoe_farming() > 1 {
                 // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, );
                 //arbitrary checking we lower less than 70
-                if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
-                    if image.client_stats.target_hp.value < 90 {
-                        self.concurrent_mobs_under_attack += 1;
-                        return self.abort_attack(image);
-                    }
+                if self.concurrent_mobs_under_attack < config.max_aoe_farming() && image.client_stats.target_hp.value < 90 {
+                    self.concurrent_mobs_under_attack += 1;
+                    return self.abort_attack(image);
                 }
             }
 

@@ -101,7 +101,7 @@ impl SlotBar {
                 all_valid_slots.push((slot_bar_index, index))
             }
         }
-        return all_valid_slots;
+        all_valid_slots
     }
 }
 
@@ -304,7 +304,7 @@ impl FarmingConfig {
                 all_valid_slots.push((slot_bar_index, found_skill.1));
             }
         }
-        return all_valid_slots;
+        all_valid_slots
     }
 
     /// Get a random usable matching slot index
@@ -427,7 +427,7 @@ impl SupportConfig {
                 all_valid_slots.push((slot_bar_index, found_skill.1));
             }
         }
-        return all_valid_slots;
+        all_valid_slots
     }
 }
 

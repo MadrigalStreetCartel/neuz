@@ -6,7 +6,7 @@ use tauri::Window;
 use super::Behavior;
 
 use crate::{
-    data::{Bounds, MobType, Point, Target, TargetType},
+    data::{Point, Target},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
     movement::{prelude::*, MovementAccessor},
@@ -71,24 +71,22 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             return;
         }
 
-        if self.initial_full_buff {
-            if config.is_in_party() {
-                if target_marker.is_some() {
-                    self.lose_target();
-                }
-                slog::debug!(self.logger, "full self buffing");
-
-                play!(self.movement => [
-                    PressKey("F1"),
-                Wait(dur::Fixed(100)),
-                    PressKey("C"),
-                ]);
-                std::thread::sleep(Duration::from_millis(5000));
-
-                // self.full_buffing(config);
-                self.select_party_leader();
-                self.initial_full_buff = false;
+        if self.initial_full_buff && config.is_in_party() {
+            if target_marker.is_some() {
+                self.lose_target();
             }
+            slog::debug!(self.logger, "full self buffing");
+
+            play!(self.movement => [
+                PressKey("F1"),
+            Wait(dur::Fixed(100)),
+                PressKey("C"),
+            ]);
+            std::thread::sleep(Duration::from_millis(5000));
+
+            // self.full_buffing(config);
+            self.select_party_leader();
+            self.initial_full_buff = false;
         }
 
         //check if we have a valid target and if not, check the AFK time to dc
@@ -99,10 +97,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             _frontend_info.set_afk_ready_to_disconnect(true);
         }
 
-        if target_marker.is_none() {
-            if config.is_in_party() {
-                self.select_party_leader();
-            }
+        if target_marker.is_none() && config.is_in_party() {
+            self.select_party_leader();
         }
         play!(self.movement => [
             PressKey("Z"),
@@ -116,22 +112,20 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
         std::thread::sleep(Duration::from_millis(1000));
 
-        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() {
-            if config.is_in_party() {
-                if target_marker.is_some() {
-                    self.lose_target();
-                }
-                play!(self.movement => [
-                   PressKey("F1"),
-                   Wait(dur::Fixed(100)),
-                   PressKey("C"),
-                ]);
-
-                std::thread::sleep(Duration::from_millis(5000));
-                //buffing myself
-                self.select_party_leader();
-                self.last_buff_usage = Instant::now();
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() && config.is_in_party() {
+            if target_marker.is_some() {
+                self.lose_target();
             }
+            play!(self.movement => [
+               PressKey("F1"),
+               Wait(dur::Fixed(100)),
+               PressKey("C"),
+            ]);
+
+            std::thread::sleep(Duration::from_millis(5000));
+            //buffing myself
+            self.select_party_leader();
+            self.last_buff_usage = Instant::now();
         }
 
         //detect distance to target and avoid obstacle if needed
@@ -298,15 +292,13 @@ impl SupportBehavior<'_> {
 
         // slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
 
-        if image.client_stats.target_hp.value > 0 {
-            if image.client_stats.target_hp.value < 85 {
-                self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
-                std::thread::sleep(Duration::from_millis(200));
+        if image.client_stats.target_hp.value > 0 && image.client_stats.target_hp.value < 85 {
+            self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
+            std::thread::sleep(Duration::from_millis(200));
 
-                if image.client_stats.target_hp.value < 60 {
-                    self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
-                    std::thread::sleep(Duration::from_millis(200));
-                }
+            if image.client_stats.target_hp.value < 60 {
+                self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
+                std::thread::sleep(Duration::from_millis(200));
             }
         }
         // Checking our own stuff first to keep alive

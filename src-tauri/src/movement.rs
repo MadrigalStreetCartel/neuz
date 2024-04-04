@@ -10,7 +10,7 @@ pub use self::{
 
 pub mod prelude {
     pub use super::{
-        ActionDuration as dur, Movement::*, MovementDirection as dir, RotationDirection as rot,
+        ActionDuration as dur, Movement::*, RotationDirection as rot,
     };
 }
 
