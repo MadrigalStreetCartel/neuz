@@ -6,12 +6,12 @@ use tauri::Window;
 use super::Behavior;
 
 use crate::{
+    data::{Bounds, MobType, Point, Target, TargetType},
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
-    movement::{MovementAccessor, prelude::*},
-    platform::{send_slot_eval, eval_simple_click},
+    movement::{prelude::*, MovementAccessor},
+    platform::{eval_simple_click, send_slot_eval},
     play,
-    data::{Bounds, MobType, Point, Target, TargetType},
 };
 
 pub struct SupportBehavior<'a> {
@@ -51,7 +51,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.slots_usage_last_time = [[None; 10]; 9];
     }
 
-
     fn run_iteration(
         &mut self,
         _frontend_info: &mut FrontendInfo,
@@ -64,7 +63,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         //add movement every minute to try to avoid bot detection
         self.random_camera_movement();
-
 
         //Res the target if it dies
         if image.client_stats.target_hp.value == 0 && target_marker.is_some() {
@@ -81,10 +79,10 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 slog::debug!(self.logger, "full self buffing");
 
                 play!(self.movement => [
-                        PressKey("F1"),
-                    Wait(dur::Fixed(100)),
-                        PressKey("C"),
-                    ]);
+                    PressKey("F1"),
+                Wait(dur::Fixed(100)),
+                    PressKey("C"),
+                ]);
                 std::thread::sleep(Duration::from_millis(5000));
 
                 // self.full_buffing(config);
@@ -94,8 +92,10 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         //check if we have a valid target and if not, check the AFK time to dc
-        if config.on_afk_disconnect() && target_marker.is_none() &&
-            self.last_action_time.elapsed().as_millis() > config.afk_timeout() {
+        if config.on_afk_disconnect()
+            && target_marker.is_none()
+            && self.last_action_time.elapsed().as_millis() > config.afk_timeout()
+        {
             _frontend_info.set_afk_ready_to_disconnect(true);
         }
 
@@ -105,15 +105,12 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             }
         }
         play!(self.movement => [
-                PressKey("Z"),
-            ]);
+            PressKey("Z"),
+        ]);
 
         //This is where we heal the target
         self.check_restorations(config, image);
         self.use_party_skills(config);
-
-
-
 
         // buffing target
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
@@ -125,10 +122,10 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                     self.lose_target();
                 }
                 play!(self.movement => [
-                        PressKey("F1"),
-                        Wait(dur::Fixed(100)),
-                        PressKey("C"),
-                     ]);
+                   PressKey("F1"),
+                   Wait(dur::Fixed(100)),
+                   PressKey("C"),
+                ]);
 
                 std::thread::sleep(Duration::from_millis(5000));
                 //buffing myself
@@ -157,9 +154,9 @@ impl SupportBehavior<'_> {
 
     fn lose_target(&mut self) {
         play!(self.movement => [
-                PressKey("Escape"),
-                Wait(dur::Random(100..250)),
-            ]);
+            PressKey("Escape"),
+            Wait(dur::Random(100..250)),
+        ]);
         // self.full_buffing(config, image);
         std::thread::sleep(Duration::from_millis(100));
     }
@@ -169,9 +166,9 @@ impl SupportBehavior<'_> {
 
         //attempt to get party leader
         play!(self.movement => [
-                // Open party menu
-                PressKey("P"),
-            ]);
+            // Open party menu
+            PressKey("P"),
+        ]);
         std::thread::sleep(Duration::from_millis(1000));
 
         let point = Point::new(739, 48); //moving to the "position of the party window
@@ -180,15 +177,15 @@ impl SupportBehavior<'_> {
         // std::thread::sleep(Duration::from_millis(500));
 
         play!(self.movement => [
-                PressKey("Z"),
-                Wait(dur::Fixed(100)),
-                PressKey("P"),
-            ]);
+            PressKey("Z"),
+            Wait(dur::Fixed(100)),
+            PressKey("P"),
+        ]);
         std::thread::sleep(Duration::from_millis(100));
 
         play!(self.movement => [
-                PressKey("Z"),
-            ]);
+            PressKey("Z"),
+        ]);
     }
 
     fn move_circle_pattern(&mut self) {
@@ -214,7 +211,7 @@ impl SupportBehavior<'_> {
         }
     }
     fn random_camera_movement(&mut self) {
-//add movement every minute to try to avoid bot detection
+        //add movement every minute to try to avoid bot detection
         if self.last_jump_time.elapsed().as_millis() > 10000 {
             use crate::movement::prelude::*;
             play!(self.movement => [
@@ -273,7 +270,6 @@ impl SupportBehavior<'_> {
         self.slots_usage_last_time[slot_index.0][slot_index.1] = Some(Instant::now());
     }
 
-
     fn full_buffing(&mut self, config: &SupportConfig) {
         let all_buffs = config.get_all_usable_slot_for_type(SlotType::BuffSkill, [[None; 10]; 9]);
 
@@ -289,19 +285,18 @@ impl SupportBehavior<'_> {
         }
     }
     fn use_party_skills(&mut self, config: &SupportConfig) {
-        let party_skills = config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
+        let party_skills =
+            config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index);
         }
     }
 
     fn check_restorations(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) {
-
         //Check target HP
         let target_hp = Some(image.client_stats.target_hp.value);
 
         // slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
-
 
         if image.client_stats.target_hp.value > 0 {
             if image.client_stats.target_hp.value < 85 {
@@ -349,7 +344,12 @@ impl SupportBehavior<'_> {
     }
 
     //detect distance to target and avoid obstacle if needed
-    fn avoid_obstacle_if_needed(&mut self, image: &mut ImageAnalyzer, config: &SupportConfig, target_marker: Option<Target>) {
+    fn avoid_obstacle_if_needed(
+        &mut self,
+        image: &mut ImageAnalyzer,
+        config: &SupportConfig,
+        target_marker: Option<Target>,
+    ) {
         if image.client_stats.target_hp.value > 0 {
             if let Some(target_marker) = target_marker {
                 let marker_distance = image.get_target_marker_distance(target_marker);

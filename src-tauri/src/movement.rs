@@ -4,20 +4,13 @@ mod movement_coordinator;
 pub use self::{
     movement_accessor::MovementAccessor,
     movement_coordinator::{
-        ActionDuration,
-        Movement,
-        MovementCoordinator,
-        MovementDirection,
-        RotationDirection,
+        ActionDuration, Movement, MovementCoordinator, MovementDirection, RotationDirection,
     },
 };
 
 pub mod prelude {
     pub use super::{
-        ActionDuration as dur,
-        Movement::*,
-        MovementDirection as dir,
-        RotationDirection as rot,
+        ActionDuration as dur, Movement::*, MovementDirection as dir, RotationDirection as rot,
     };
 }
 

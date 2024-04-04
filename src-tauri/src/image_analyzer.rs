@@ -1,8 +1,8 @@
+use std::thread;
 use std::{
     sync::mpsc::{sync_channel, Receiver},
     time::Instant,
 };
-use std::thread;
 
 //use libscreenshot::shared::Area;
 use libscreenshot::{ImageBuffer, WindowCaptureProvider};
@@ -94,8 +94,8 @@ impl ImageAnalyzer {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if y <= IGNORE_AREA_TOP
                     || y > image_height
-                    .checked_sub(IGNORE_AREA_BOTTOM)
-                    .unwrap_or(image_height)
+                        .checked_sub(IGNORE_AREA_BOTTOM)
+                        .unwrap_or(image_height)
                     || y > IGNORE_AREA_TOP + max_y
                     || y > max_y
                     || y < min_y
@@ -239,9 +239,17 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(&px.0,&ref_color_agg,config.aggressive_tolerence()) {
+                    } else if Self::pixel_matches(
+                        &px.0,
+                        &ref_color_agg,
+                        config.aggressive_tolerence(),
+                    ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
-                    }else if Self::pixel_matches(&px.0,&ref_color_violet,config.violet_tolerence()) {
+                    } else if Self::pixel_matches(
+                        &px.0,
+                        &ref_color_violet,
+                        config.violet_tolerence(),
+                    ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Violet))));
                     }
                 }
@@ -304,7 +312,6 @@ impl ImageAnalyzer {
             coords.push(point);
         }
 
-
         // // Receive points from channel
         // loop {
         //     match recv.recv() {
@@ -322,7 +329,6 @@ impl ImageAnalyzer {
         //         }
         //     }
         // }
-
 
         // Identify target marker entities
         let target_markers =
@@ -397,8 +403,8 @@ impl ImageAnalyzer {
                     }
                 }
                 result // && *distance > 20
-                // let coords = mob.name_bounds.get_lowest_center_point();
-                // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+                       // let coords = mob.name_bounds.get_lowest_center_point();
+                       // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
             }) {
                 Some(mob)
             } else {

@@ -507,8 +507,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         //     eval_send_key(&window, "Escape", KeyMode::Press);
                         // }
                     }
-                }
-                else{
+                } else {
                     if frontend_info_mut.is_alive() {
                         let should_disconnect = should_disconnect_on_death(config);
                         if should_disconnect {
@@ -526,7 +525,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     }
                     continue;
                 }
-
 
                 match mode {
                     BotMode::Farming => {

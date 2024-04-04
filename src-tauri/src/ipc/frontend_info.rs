@@ -24,7 +24,7 @@ impl FrontendInfo {
            self.active_enemy_bounds = Some(active_enemy_bounds);
        }
     */
-    pub fn set_afk_ready_to_disconnect(&mut self, afk_ready_to_disconnect: bool){
+    pub fn set_afk_ready_to_disconnect(&mut self, afk_ready_to_disconnect: bool) {
         self.afk_ready_to_disconnect = afk_ready_to_disconnect
     }
     pub fn is_afk_ready_to_disconnect(&mut self) -> bool {
