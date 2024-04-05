@@ -1,8 +1,10 @@
 const client = document.querySelector('canvas')
 const input = document.querySelector('input')
-function addTargetMarker(x = 0, y = 0) {
+const DEBUG = true
+function addTargetMarker(color = 'red', x = 0, y = 0,) {
+    if(!DEBUG) return
     const targetMarker = document.createElement('div')
-    const targetMarkerStyle = `position: fixed; width: 10px; height: 10px; background-color: red; border-radius: 50%;z-index: 9999;left: ${x}px;top: ${y}px;`
+    const targetMarkerStyle = `position: fixed; width: 10px; height: 10px; background-color: ${color}; border-radius: 50%;z-index: 9999;left: ${x}px;top: ${y}px;`
     targetMarker.style = targetMarkerStyle
     document.body.appendChild(targetMarker)
 
@@ -18,12 +20,16 @@ function dispatchEvent(event) {
     return client.dispatchEvent(event)
 }
 
-function mouseEvent(type, x, y, { checkMob = false, delay = 5 } = {}) {
+function after(duration = 0, callback) {
+    setTimeout(callback, duration)
+}
+
+function mouseEvent(type, x, y, { checkMob = false, delay = 5, duration } = {}) {
     function waitDuration(type) {
         if (duration) {
-            setTimeout(() => {
-                dispatchEvent(new MouseEvent(type ?? 'mouseup', { key }))
-            }, duration)
+            after(duration, () => {
+                dispatchEvent(new MouseEvent(type ?? 'mouseup', { clientX: x, clientY: y }))
+            })
         } else if (type) {
             dispatchEvent(new MouseEvent(type, { key }))
         }
@@ -45,15 +51,21 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 5 } = {}) {
             break;
         case 'moveClick':
             dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
-            addTargetMarker(x,y)
             if (checkMob) {
                 setTimeout(() => {
                     if (isMob()) {
                         dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
                         dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
+                        after(100, () => {
+                            dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
+                        })
+                        addTargetMarker('green', x,y)
+                    } else {
+                        addTargetMarker('red', x,y)
                     }
                 }, delay)
             } else if (!checkMob) {
+                addTargetMarker('blue', x,y)
                 dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
                 dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
             }
