@@ -380,6 +380,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         send_config(&config.read());
 
         let window = app_handle.get_window("client").unwrap();
+        let eval_js = include_str!("./platform/eval.js");
+        drop(window.eval(eval_js));
+
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
