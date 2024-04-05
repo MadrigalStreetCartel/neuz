@@ -7,16 +7,23 @@ Date format: `DD/MM/YYYY`
 <!-- /maintainers -->
 
 **0.16.4**
-> Released on 1.19.2024
-- Added multi buffs
-- Added toggle to prioritize aggros or just the closest mob
-- AOE healing 
-- AOE attack
-  - Configurable with number of mobs to attack
-- Party leader selection when on party, for support mode.
-- Skills
-  - Alphabetical order for skills
-  - Added party skills
+> Released on 05.04.2024
+- Farming
+    - Added toggle to prioritize aggros or just the closest mob
+    - AOE attack, configurable with number of mobs to attack
+- Support 
+    - Party leader selection when on party, for support mode.
+- Common
+    - Added multi buffs
+    - AOE healing 
+- UI
+    - Skills
+        - Alphabetical order for skills
+        - Added party skills
+- Misc
+    - Rework eval api
+    - Changed cloud detection max_x distance
+    - Fixes Azria issue (was crashing)
 
 **0.16.3**
 > Released on 24.3.2023
