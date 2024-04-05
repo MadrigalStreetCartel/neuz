@@ -279,6 +279,10 @@ impl FarmingBehavior<'_> {
     ) -> State {
         let all_buffs =
             config.get_all_usable_slot_for_type(SlotType::BuffSkill, last_slots_usage_vec);
+        if all_buffs.is_empty() {
+            self.check_restorations(config, image);
+            return return_state;
+        }
         for slot_index in all_buffs {
             self.send_slot(slot_index);
             std::thread::sleep(Duration::from_millis(1500));
@@ -520,12 +524,13 @@ impl FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-        //Adding restoration checks in case health is low
+/*         //Adding restoration checks in case health is low
         self.check_restorations(config, image);
 
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
         //buff myself on available buffs
-        std::thread::sleep(Duration::from_millis(1000));
+        std::thread::sleep(Duration::from_millis(1000)); */
+        self.full_buffing(config, image, State::Attacking(mob), self.slots_usage_last_time);
 
         let is_npc =
             image.client_stats.target_hp.value == 100 && image.client_stats.target_mp.value == 0;
@@ -599,7 +604,7 @@ impl FarmingBehavior<'_> {
             }
 
             self.get_slot_for(config, None, SlotType::AttackSkill, true);
-            std::thread::sleep(Duration::from_millis(200));
+            //std::thread::sleep(Duration::from_millis(200));
 
             if let Some(target_marker) = target_marker {
                 let marker_distance = image.get_target_marker_distance(target_marker);
