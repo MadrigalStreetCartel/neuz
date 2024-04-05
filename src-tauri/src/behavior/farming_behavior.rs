@@ -524,12 +524,6 @@ impl FarmingBehavior<'_> {
         mob: Target,
         image: &mut ImageAnalyzer,
     ) -> State {
-/*         //Adding restoration checks in case health is low
-        self.check_restorations(config, image);
-
-        self.get_slot_for(config, None, SlotType::BuffSkill, true);
-        //buff myself on available buffs
-        std::thread::sleep(Duration::from_millis(1000)); */
         self.full_buffing(config, image, State::Attacking(mob), self.slots_usage_last_time);
 
         let is_npc =
