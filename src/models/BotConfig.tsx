@@ -8,11 +8,10 @@ import IconRezSkill from '../assets/rez_spell.png'
 import IconPartySkill from '../assets/party_skill_icon.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
-
 export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer",
                                                     "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill",
                                                     "AOEAttackSkill", "BuffSkill", "RezSkill", "Flying", "PartySkill"] as const;
-export const thresholdSlotTypes = ["Food", "Pill","MpRestorer", "FpRestorer"];
+export const thresholdSlotTypes = ["Food", "Pill","HealSkill","MpRestorer", "FpRestorer"];
 export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill","AOEAttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet","PartySkill"];
 export const farmingSlotsBlacklist = ["Flying", "RezSkill","AOEHealSkill"]
 //if we are leveling someone, the support role might want to pick up
