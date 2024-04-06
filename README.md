@@ -11,7 +11,7 @@
 - [FAQ](#faq)
 
 # Download
-
+[![Build release](https://github.com/MadrigalStreetCartel/neuz/actions/workflows/main.yml/badge.svg)](https://github.com/MadrigalStreetCartel/neuz/actions/workflows/main.yml)
 - Latest version: [Download][download]
 - Older versions (Windows only): [Release Archive](./releases)
 
