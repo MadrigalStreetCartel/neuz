@@ -12,7 +12,7 @@ Date format: `DD/MM/YYYY`
     - Added toggle to prioritize aggros or just the closest mob
     - AOE attack, configurable with number of mobs to attack
 - Support 
-    - Party leader selection when on party, for support mode.
+    - Party leader selection when on party, for support mode
 - Common
     - Added multi buffs
     - AOE healing 
@@ -24,6 +24,7 @@ Date format: `DD/MM/YYYY`
     - Rework eval api
     - Changed cloud detection max_x distance
     - Fixes Azria issue (was crashing)
+    - Changes updater new update page
 
 **0.16.3**
 > Released on 24.3.2023
