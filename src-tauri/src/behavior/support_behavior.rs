@@ -204,7 +204,7 @@ impl SupportBehavior<'_> {
             } else {
                 "D".to_owned()
             }
-        }
+        };
     }
     fn random_camera_movement(&mut self) {
         //add movement every minute to try to avoid bot detection
@@ -293,47 +293,47 @@ impl SupportBehavior<'_> {
         let target_hp = Some(image.client_stats.target_hp.value);
 
         // slog::debug!(self.logger, "Target HP"; "HP" => target_hp);
-
-        if image.client_stats.target_hp.value > 0 && image.client_stats.target_hp.value < 85 {
-            self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
-            std::thread::sleep(Duration::from_millis(200));
-
-            if image.client_stats.target_hp.value < 60 {
-                self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(200));
-            }
-        }
-        // Checking our own stuff first to keep alive
         let health_stat = Some(image.client_stats.hp.value);
         if image.client_stats.hp.value > 0 {
             // Use a HealSkill if configured when health is under 85
-
-            if image.client_stats.hp.value < 20 {
-                // Take a pill if health is less than 40, ideally should not be often
-                self.get_slot_for(config, health_stat, SlotType::Pill, true);
+            let pill = self.get_slot_for(config, health_stat, SlotType::Pill, true);
+            if pill.is_none() {
+                let heal = self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
+                if heal.is_none() {
+                    let aoe_heal =
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                    if aoe_heal.is_none() {
+                        self.get_slot_for(config, health_stat, SlotType::Food, true);
+                    } else {
+                        std::thread::sleep(Duration::from_millis(100));
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                        std::thread::sleep(Duration::from_millis(100));
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                    }
+                }
             }
 
-            if image.client_stats.hp.value < 95 {
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(200));
-            }
-
-            if image.client_stats.hp.value < 60 {
-                // Eat food if health under 70
-                self.get_slot_for(config, health_stat, SlotType::Food, true);
-            }
-        }
-
-        // Check MP
-        let mp_stat = Some(image.client_stats.mp.value);
-        if image.client_stats.mp.value > 0 && image.client_stats.mp.value < 60 {
+            // Check MP
+            let mp_stat = Some(image.client_stats.mp.value);
             self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
-        }
 
-        // Check FP
-        let fp_stat = Some(image.client_stats.fp.value);
-        if image.client_stats.fp.value > 0 && image.client_stats.mp.value < 60 {
+            // Check FP
+
+            let fp_stat = Some(image.client_stats.fp.value);
             self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
+
+            if image.client_stats.target_hp.value > 0 {
+                let heal_skill = self.get_slot_for(config, target_hp, SlotType::HealSkill, true);
+                if heal_skill.is_none() {
+                    let aoe_skill =
+                        self.get_slot_for(config, target_hp, SlotType::AOEHealSkill, true);
+                    if aoe_skill.is_some() {
+                        std::thread::sleep(Duration::from_millis(200));
+                    }
+                } else {
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
         }
     }
 

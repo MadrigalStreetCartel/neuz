@@ -232,41 +232,30 @@ impl FarmingBehavior<'_> {
         let health_stat = Some(image.client_stats.hp.value);
         if image.client_stats.hp.value > 0 {
             // Use a HealSkill if configured when health is under 85
-
-            if image.client_stats.hp.value < 20 {
-                // Take a pill if health is less than 40, ideally should not be often
-                self.get_slot_for(config, health_stat, SlotType::Pill, true);
-            }
-
-            if image.client_stats.hp.value < 70 {
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-                std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
-            }
-
-            if image.client_stats.hp.value < 85 {
-                self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
-            }
-
-            if image.client_stats.hp.value < 60 {
-                // Eat food if health under 70
-                self.get_slot_for(config, health_stat, SlotType::Food, true);
+            let pill = self.get_slot_for(config, health_stat, SlotType::Pill, true);
+            if pill.is_none() {
+                let heal = self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
+                if heal.is_none() {
+                    let aoe_heal =
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                    if aoe_heal.is_none() {
+                        self.get_slot_for(config, health_stat, SlotType::Food, true);
+                    } else {
+                        std::thread::sleep(Duration::from_millis(100));
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                        std::thread::sleep(Duration::from_millis(100));
+                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                    }
+                }
             }
 
             // Check MP
             let mp_stat = Some(image.client_stats.mp.value);
-            if image.client_stats.mp.value > 0 && image.client_stats.mp.value < 50 {
-                self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
-            }
+            self.get_slot_for(config, mp_stat, SlotType::MpRestorer, true);
 
             // Check FP
-
             let fp_stat = Some(image.client_stats.fp.value);
-            if image.client_stats.fp.value > 0 && image.client_stats.fp.value < 50 {
-                self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
-            }
+            self.get_slot_for(config, fp_stat, SlotType::FpRestorer, true);
         }
     }
 
