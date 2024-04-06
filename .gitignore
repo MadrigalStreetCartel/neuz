@@ -30,7 +30,7 @@ todo-notes
 # keep .gitkeep files
 !/**/.gitkeep
 .botconfig
-src-tauri/target/release/bundle/msi/Neuz_0.13.0_x64_en-US.msi
+src-tauri/target/**/*
 
 .idea/*
 .vs/*
