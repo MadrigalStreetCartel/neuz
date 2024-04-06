@@ -9,9 +9,7 @@ pub use self::{
 };
 
 pub mod prelude {
-    pub use super::{
-        ActionDuration as dur, Movement::*, RotationDirection as rot,
-    };
+    pub use super::{ActionDuration as dur, Movement::*, RotationDirection as rot};
 }
 
 #[macro_export]

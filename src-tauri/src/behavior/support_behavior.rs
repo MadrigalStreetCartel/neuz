@@ -112,7 +112,9 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.get_slot_for(config, None, SlotType::BuffSkill, true);
         std::thread::sleep(Duration::from_millis(1000));
 
-        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs() && config.is_in_party() {
+        if self.last_buff_usage.elapsed().as_millis() > config.interval_between_buffs()
+            && config.is_in_party()
+        {
             if target_marker.is_some() {
                 self.lose_target();
             }

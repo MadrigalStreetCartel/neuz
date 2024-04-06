@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use raw_window_handle::{ HasRawWindowHandle, RawWindowHandle };
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tauri::Window;
 
 use crate::data::Point;
@@ -26,8 +26,7 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
             unsafe {
                 use std::ffi::c_void;
                 let ns_window_ptr = handle.ns_window as *const c_void;
-                libscreenshot::platform::macos::macos_helper
-                    ::ns_window_to_window_id(ns_window_ptr)
+                libscreenshot::platform::macos::macos_helper::ns_window_to_window_id(ns_window_ptr)
                     .map(|id| id as u64)
             }
             #[cfg(not(target_os = "macos"))]
@@ -39,12 +38,15 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
 
 pub fn eval_send_key(window: &Window, key: &str, mode: KeyMode) {
     match mode {
-        KeyMode::Press => drop(window.eval(format!("keyboardEvent('press', '{0}');", key).as_str())),
+        KeyMode::Press => {
+            drop(window.eval(format!("keyboardEvent('press', '{0}');", key).as_str()))
+        }
 
         KeyMode::Hold => drop(window.eval(format!("keyboardEvent('hold', '{0}');", key).as_str())),
 
-        KeyMode::Release =>
-            drop(window.eval(format!("keyboardEvent('release', '{0}');", key).as_str())),
+        KeyMode::Release => {
+            drop(window.eval(format!("keyboardEvent('release', '{0}');", key).as_str()))
+        }
     }
 }
 
@@ -55,8 +57,12 @@ pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
 pub fn eval_mob_click(window: &Window, pos: Point) {
     drop(
         window.eval(
-            format!("mouseEvent('moveClick', {0}, {1}, {{checkMob: true}});", pos.x, pos.y).as_str()
-        )
+            format!(
+                "mouseEvent('moveClick', {0}, {1}, {{checkMob: true}});",
+                pos.x, pos.y
+            )
+            .as_str(),
+        ),
     );
 }
 
