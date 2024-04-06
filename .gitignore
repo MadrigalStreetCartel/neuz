@@ -30,7 +30,7 @@ todo-notes
 # keep .gitkeep files
 !/**/.gitkeep
 .botconfig
-src-tauri/target/**/*
+/src-tauri/target/**/*
 
 .idea/*
 .vs/*
