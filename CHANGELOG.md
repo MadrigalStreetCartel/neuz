@@ -12,14 +12,14 @@ Date format: `DD/MM/YYYY`
     - Added toggle to prioritize aggros or just the closest mob
     - AOE attack, configurable with number of mobs to attack
 - Support 
-    - Party leader selection when on party, for support mode
+    - Party leader selection when in a party, support mode **only**
 - Common
     - Added multi buffs
     - AOE healing 
 - UI
-    - Skills
-        - Alphabetical order for skills
-        - Added party skills
+    - Slots
+        - Alphabetical order for slots
+        - Added party slots
 - Misc
     - Rework eval api
     - Changed cloud detection max_x distance
