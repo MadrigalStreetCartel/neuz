@@ -1,6 +1,6 @@
 const client = document.querySelector('canvas')
 const input = document.querySelector('input')
-const DEBUG = true
+const DEBUG = false && process.env.NODE_ENV === 'development' // Added env check to disable debug mode in production
 function addTargetMarker(color = 'red', x = 0, y = 0,) {
     if(!DEBUG) return
     const targetMarker = document.createElement('div')
