@@ -482,7 +482,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             }
 
             // Capture client window
-            image_analyzer.capture_window(&logger, config.farming_config());
+            image_analyzer.capture_window(&logger);
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
