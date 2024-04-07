@@ -349,6 +349,7 @@ pub struct SupportConfig {
     is_in_party: Option<bool>,
     afk_timeout: Option<u64>,
     interval_between_buffs: Option<u64>,
+    max_main_distance: Option<u32>,
 }
 
 impl SupportConfig {
@@ -428,6 +429,10 @@ impl SupportConfig {
             }
         }
         all_valid_slots
+    }
+
+    pub fn get_max_main_distance(&self) -> u32 {
+        self.max_main_distance.unwrap_or(100)
     }
 }
 

@@ -28,7 +28,7 @@ type Props = {
 
 }
 
-const SupportConfig = ({ className, info, config, onChange, botStopWatch, botState}: Props) => {
+const SupportConfig = ({ className, info, config, onChange, botStopWatch, botState }: Props) => {
     const debugModal = useModal()
     const resetSlotYesNo = useModal(debugModal)
     const onDeathModal = useModal()
@@ -37,6 +37,7 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
     const defaultValues = {
         'obstacle_avoidance_cooldown': 2000,
         'interval_between_buffs': 2000,
+        'max_main_distance': 100,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
@@ -49,7 +50,7 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                 onYes={() => {
                     const newConfig = { ...config, slot_bars: createSlotBars() }
                     onChange(newConfig)
-            }}/>
+                }} />
             <Modal isShowing={debugModal.isShown} hide={debugModal.close} title={<h4>Settings</h4>} body={
                 <ConfigTable>
                     <ConfigTableRow
@@ -62,11 +63,15 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Obstacle avoidance cooldown" helpText="Time before it tries to avoid obstacles, and start movement pattern" />}
-                        item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange?.({...config, obstacle_avoidance_cooldown: value})} />}
+                        item={<TimeInput value={config.obstacle_avoidance_cooldown} onChange={value => onChange?.({ ...config, obstacle_avoidance_cooldown: value })} />}
                     />
                     <ConfigTableRow
                         label={<ConfigLabel name="Interval between buffs" helpText="" />}
-                        item={<TimeInput value={config.interval_between_buffs} onChange={value => onChange({...config, interval_between_buffs: value})} />}
+                        item={<TimeInput value={config.interval_between_buffs} onChange={value => onChange({ ...config, interval_between_buffs: value })} />}
+                    />
+                    <ConfigTableRow
+                        label={<ConfigLabel name="Max main distance" helpText="Max distance from main character" />}
+                        item={<NumericInput value={config.max_main_distance} onChange={value => onChange?.({ ...config, max_main_distance: value })} />}
                     />
                     <ConfigTableRow
                         layout="v"
@@ -78,34 +83,34 @@ const SupportConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         item={<button onClick={() => resetSlotYesNo.open()}>⚙️</button>}
                     />
                 </ConfigTable>
-            }/>
+            } />
             <Modal isShowing={onDeathModal.isShown} hide={onDeathModal.close}
-            title={<h4>On death behavior</h4>} body={
-                <ConfigTable>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
-                        item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
-                    />
-                </ConfigTable>
-            }/>
+                title={<h4>On death behavior</h4>} body={
+                    <ConfigTable>
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the dead character, otherwise we'll try to revive by pressing ENTER" />}
+                            item={<BooleanSlider value={config.on_death_disconnect ?? true} onChange={value => onChange?.({ ...config, on_death_disconnect: value })} />}
+                        />
+                    </ConfigTable>
+                } />
 
             <Modal isShowing={onAFKModal.isShown} hide={onAFKModal.close}
-            title={<h4>AFK behavior</h4>} body={
-                <ConfigTable>
-                    <ConfigTableRow
-                        layout="v"
-                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
-                        item={<BooleanSlider value={config.on_afk_disconnect ?? false} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
-                    />
+                title={<h4>AFK behavior</h4>} body={
+                    <ConfigTable>
+                        <ConfigTableRow
+                            layout="v"
+                            label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
+                            item={<BooleanSlider value={config.on_afk_disconnect ?? false} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
+                        />
 
-                    <ConfigTableRow
-                        label={<ConfigLabel name="No action time out" helpText="After this time character will disconnect if AFK Disconnect is enabled" />}
-                        item={<TimeInput value={config.afk_timeout} onChange={value => onChange({...config, afk_timeout: value})} />}
-                    />
+                        <ConfigTableRow
+                            label={<ConfigLabel name="No action time out" helpText="After this time character will disconnect if AFK Disconnect is enabled" />}
+                            item={<TimeInput value={config.afk_timeout} onChange={value => onChange({ ...config, afk_timeout: value })} />}
+                        />
 
-                </ConfigTable>
-            }/>
+                    </ConfigTable>
+                } />
 
             {info && (
                 <div className="info">

@@ -125,6 +125,7 @@ export type SupportConfigModel = Partial<{
     on_afk_disconnect: boolean,
     afk_timeout: number,
     afk_ready_to_disconnect: boolean,
+    max_main_distance: number,
 }>
 
 export type ShoutConfigModel = Partial<{

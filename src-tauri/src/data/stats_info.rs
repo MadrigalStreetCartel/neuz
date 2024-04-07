@@ -37,6 +37,11 @@ pub struct ClientStats {
     pub fp: StatInfo,
     pub target_hp: StatInfo,
     pub target_mp: StatInfo,
+    pub target_is_mover: bool,
+    pub target_is_npc: bool,
+    pub target_is_alive: bool,
+    pub target_on_screen: bool,
+    pub target_distance: Option<i32>,
     is_alive: bool,
     pub stat_try_not_detected_count: i32,
     window: Window,
@@ -47,9 +52,15 @@ impl ClientStats {
             hp: StatInfo::new(0, 100, StatusBarKind::Hp, None),
             mp: StatInfo::new(0, 100, StatusBarKind::Mp, None),
             fp: StatInfo::new(0, 100, StatusBarKind::Fp, None),
+            is_alive: true,
             target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
             target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
-            is_alive: true,
+            target_is_mover: false,
+            target_is_npc: false,
+            target_is_alive: false,
+            target_on_screen: false,
+            target_distance: None,
+
             stat_try_not_detected_count: 0,
             window,
         }
@@ -64,6 +75,18 @@ impl ClientStats {
             self.target_hp.update_value(image),
             self.target_mp.update_value(image),
         ];
+
+        self.target_is_npc = self.target_hp.value == 100 && self.target_mp.value == 0;
+        self.target_is_mover = image.client_stats.target_mp.value > 0;
+        self.target_is_alive = self.target_hp.value > 0;
+        let target = image.identify_target_marker(true);
+        self.target_on_screen = self.target_is_mover && target.is_some();
+        if self.target_on_screen {
+            self.target_distance = Some(image.get_target_marker_distance(target.unwrap()));
+        } else {
+            self.target_distance = None;
+        }
+
         // Debug is deactivated
         /*if should_debug.contains(&true) {
             self.debug_print(_logger);
