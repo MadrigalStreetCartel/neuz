@@ -47,7 +47,7 @@ impl ImageAnalyzer {
         self.image.is_some()
     }
 
-    pub fn capture_window(&mut self, logger: &Logger, _config: &FarmingConfig) {
+    pub fn capture_window(&mut self, logger: &Logger) {
         let _timer = Timer::start_new("capture_window");
         if self.window_id == 0 {
             return;
@@ -136,7 +136,7 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 20;
+        let max_distance_x: u32 = 35;
         let max_distance_y: u32 = 3;
 
         // Cluster coordinates in x-direction
