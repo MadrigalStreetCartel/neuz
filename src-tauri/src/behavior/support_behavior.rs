@@ -277,7 +277,7 @@ impl SupportBehavior<'_> {
     fn rez_target(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
         if image.client_stats.target_is_mover && image.client_stats.target_is_alive == false {
             self.get_slot_for(config, None, SlotType::RezSkill, true, None);
-            self.slots_usage_last_time = [[None; 10]; 9];
+            self.self_buff_usage_last_time = [[None; 10]; 9];
             return true;
         } else {
             return false;
