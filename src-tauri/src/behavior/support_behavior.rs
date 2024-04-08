@@ -90,14 +90,16 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             return;
         }
 
+        self.follow_target();
+
         if self.is_waiting_for_revive {
             if image.client_stats.target_hp.value > 0 {
                 self.is_waiting_for_revive = false;
-                self.check_target_restorations(config, image);
             } else {
                 return;
             }
         }
+        self.check_target_restorations(config, image);
         if image.client_stats.target_on_screen {
             let dist = self.is_target_in_range(config, image);
             if dist == false {
@@ -423,9 +425,9 @@ impl SupportBehavior<'_> {
                 if config.is_in_party() {
                     self.lose_target();
                     std::thread::sleep(Duration::from_millis(5));
+                    self.send_slot(heal.unwrap(), true);
+                    self.wait(Duration::from_millis(500));
                 }
-                self.send_slot(heal.unwrap(), false);
-                self.wait(Duration::from_millis(500));
             }
 
             // Check MP
