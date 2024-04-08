@@ -81,10 +81,16 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         image: &mut ImageAnalyzer
     ) {
         let config = config.support_config();
-        self.has_target = image.client_stats.target_is_mover;
         self.update_slots_usage(config);
+
+        if image.client_stats.is_alive() == false {
+            return;
+        }
+        self.has_target = image.client_stats.target_is_mover;
+
         self.use_party_skills(config);
         self.check_self_restorations(config, image);
+
         if self.has_target == false {
             if config.is_in_party() {
                 self.select_party_leader(config);
