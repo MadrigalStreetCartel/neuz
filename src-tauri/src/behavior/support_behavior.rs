@@ -13,7 +13,9 @@ use crate::{
     platform::{ eval_simple_click, send_slot_eval },
     play,
 };
-
+const HEAL_SKILL_CAST_TIME: u64 = 1500;
+const BUFF_CAST_TIME: u64 = 1500;
+const AOE_SKILL_CAST_TIME: u64 = 100;
 pub struct SupportBehavior<'a> {
     logger: &'a Logger,
     movement: &'a MovementAccessor,
@@ -95,6 +97,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         if self.is_waiting_for_revive {
             if image.client_stats.target_hp.value > 0 {
                 self.is_waiting_for_revive = false;
+                self.slots_usage_last_time = [[None; 10]; 9];
             } else {
                 return;
             }
@@ -130,7 +133,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         let target_buff = self.get_slot_for(config, None, SlotType::BuffSkill, false, None);
 
-        if self.self_buffing == false {
+        if self.self_buffing == false && image.client_stats.target_is_alive {
             //slog::debug!(self.logger, "Buffing target");
             self.send_buff(config, target_buff, false);
         }
@@ -241,7 +244,7 @@ impl SupportBehavior<'_> {
                 slot.1
             ); */
             self.send_slot(slot, is_self_buff);
-            self.wait(Duration::from_millis(1500));
+            self.wait(Duration::from_millis(BUFF_CAST_TIME));
         } else if is_self_buff {
             if self.self_buffing {
                 self.self_buffing = false;
@@ -277,7 +280,6 @@ impl SupportBehavior<'_> {
     fn rez_target(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
         if image.client_stats.target_is_mover && image.client_stats.target_is_alive == false {
             self.get_slot_for(config, None, SlotType::RezSkill, true, None);
-            self.slots_usage_last_time = [[None; 10]; 9];
             return true;
         } else {
             return false;
@@ -417,9 +419,9 @@ impl SupportBehavior<'_> {
                 if aoe_heal.is_none() {
                     self.get_slot_for(config, health_stat, SlotType::Food, true, None);
                 } else {
-                    std::thread::sleep(Duration::from_millis(100));
+                    std::thread::sleep(Duration::from_millis(AOE_SKILL_CAST_TIME));
                     self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
-                    std::thread::sleep(Duration::from_millis(100));
+                    std::thread::sleep(Duration::from_millis(AOE_SKILL_CAST_TIME));
                     self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
                 }
             } else {
@@ -427,7 +429,7 @@ impl SupportBehavior<'_> {
                     self.lose_target();
                     std::thread::sleep(Duration::from_millis(5));
                     self.send_slot(heal.unwrap(), true);
-                    self.wait(Duration::from_millis(500));
+                    self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
                 }
             }
 
@@ -462,7 +464,7 @@ impl SupportBehavior<'_> {
                 std::thread::sleep(Duration::from_millis(100));
             }
         } else {
-            self.wait(Duration::from_millis(500));
+            self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
         }
     }
 }
