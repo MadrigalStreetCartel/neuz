@@ -98,6 +98,11 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             } else {
                 return;
             }
+        } else {
+            if self.rez_target(config, image) {
+                self.is_waiting_for_revive = true;
+                //slog::debug!(self.logger, "Rezzing target");
+            }
         }
         self.check_target_restorations(config, image);
         if image.client_stats.target_on_screen {
@@ -105,10 +110,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             if dist == false {
                 return;
             }
-        }
-        if self.rez_target(config, image) {
-            self.is_waiting_for_revive = true;
-            //slog::debug!(self.logger, "Rezzing target");
         }
 
         if self.wait_cooldown() {

@@ -501,10 +501,11 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 if is_alive {
                     if !frontend_info_mut.is_alive() {
                         frontend_info_mut.set_is_alive(true);
-                        let _should_disconnect = should_disconnect_on_death(config);
-                        // if !should_disconnect {
-                        //     eval_send_key(&window, "Escape", KeyMode::Press);
-                        // }
+                        let should_disconnect = should_disconnect_on_death(config);
+                        if !should_disconnect { // close chat after beign rez
+                            eval_send_key(&window, "Escape", KeyMode::Press);
+                            std::thread::sleep(Duration::from_millis(1000));
+                        }
                     }
                 } else {
                     if frontend_info_mut.is_alive() {
