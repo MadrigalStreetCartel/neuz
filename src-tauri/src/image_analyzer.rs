@@ -136,7 +136,7 @@ impl ImageAnalyzer {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
         // Max merge distance
-        let max_distance_x: u32 = 35;
+        let max_distance_x: u32 = 50;
         let max_distance_y: u32 = 3;
 
         // Cluster coordinates in x-direction
