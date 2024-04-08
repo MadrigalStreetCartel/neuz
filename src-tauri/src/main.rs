@@ -370,6 +370,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
+        let mut last_is_running: Option<bool> = None;
         let mut frontend_info: Arc<RwLock<FrontendInfo>> = Arc::new(
             RwLock::new(FrontendInfo::deserialize_or_default())
         );
@@ -381,7 +382,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             let mut frontend_info_mut = *frontend_info.read();
 
             // Send changed config to frontend if needed
-            if config.change_id() > last_config_change_id {
+            if last_config_change_id == 0 || config.change_id() > last_config_change_id {
                 config.serialize(
                     format!(
                         r"{}\.botconfig_{}",
@@ -396,65 +397,76 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 farming_behavior.update(config);
                 shout_behavior.update(config);
                 support_behavior.update(config);
-            }
 
-            // Client window is closed
-            if window.is_resizable().is_err() {
-                app_handle.restart();
-                break;
-            }
+                // Make sure an operation mode is set
+                guard!(let Some(mode) = config.mode() else {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    timer.silence();
+                    continue;
+                });
 
-            // Continue early if the bot is not engaged
-            if !config.is_running() {
-                if !window.is_resizable().unwrap() {
-                    drop(window.set_resizable(true));
+                // Continue early if the bot is not engaged
+                if !config.is_running() {
+                    if let Some(last_is_running_value) = last_is_running.as_mut() {
+                        if *last_is_running_value {
+                            match mode {
+                                BotMode::Farming => farming_behavior.interupt(config),
+                                BotMode::Support => support_behavior.interupt(config),
+                                BotMode::AutoShout => shout_behavior.interupt(config),
+                            }
+                            last_is_running = None;
+                        }
+                        if !window.is_resizable().unwrap() {
+                            drop(window.set_resizable(true));
+                        }
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    timer.silence();
+                    continue;
                 }
-                std::thread::sleep(std::time::Duration::from_millis(250));
-                timer.silence();
-                continue;
+
+                // Check if mode is different from last mode
+                if let Some(last_mode_value) = last_mode.as_mut() {
+                    if &mode != last_mode_value {
+                        slog::info!(logger, "Mode changed"; "old_mode" => last_mode_value.to_string(), "new_mode" => mode.to_string());
+
+                        // Stop the last behavior
+                        match last_mode_value {
+                            BotMode::Farming => farming_behavior.stop(config),
+                            BotMode::Support => support_behavior.stop(config),
+                            BotMode::AutoShout => shout_behavior.stop(config),
+                        }
+
+                        // Start the current behavior
+                        match mode {
+                            BotMode::Farming => farming_behavior.start(config),
+                            BotMode::Support => support_behavior.start(config),
+                            BotMode::AutoShout => shout_behavior.start(config),
+                        }
+                        last_mode = None;
+                    }
+                }
+
+                if !config.farming_config().is_stop_fighting() {
+                    drop(
+                        window.set_size(
+                            Size::Logical(LogicalSize {
+                                width: 800.0,
+                                height: 600.0,
+                            })
+                        )
+                    );
+                    drop(window.set_resizable(false));
+                }
             }
 
-            if !config.farming_config().is_stop_fighting() {
-                drop(
-                    window.set_size(
-                        Size::Logical(LogicalSize {
-                            width: 800.0,
-                            height: 600.0,
-                        })
-                    )
-                );
-                drop(window.set_resizable(false));
-            } else {
-                drop(window.set_resizable(true));
-            }
-
-            frontend_info_mut.set_is_running(true);
-
-            // Make sure an operation mode is set
-            guard!(let Some(mode) = config.mode() else {
+            if !config.is_running() {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 timer.silence();
                 continue;
-            });
-
-            // Check if mode is different from last mode
-            if let Some(last_mode) = last_mode.as_ref() {
-                if &mode != last_mode {
-                    slog::info!(logger, "Mode changed"; "old_mode" => last_mode.to_string(), "new_mode" => mode.to_string());
-
-                    // Stop all behaviors
-                    farming_behavior.stop(config);
-                    support_behavior.stop(config);
-                    shout_behavior.stop(config);
-
-                    // Start the current behavior
-                    match mode {
-                        BotMode::Farming => farming_behavior.start(config),
-                        BotMode::Support => support_behavior.start(config),
-                        BotMode::AutoShout => shout_behavior.start(config),
-                    }
-                }
             }
+
+            frontend_info_mut.set_is_running(true);
 
             // Capture client window
             image_analyzer.capture_window(&logger);
@@ -532,6 +544,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Update last mode
             last_mode = config.mode();
+            last_is_running = Some(config.is_running());
         }
     });
 }
