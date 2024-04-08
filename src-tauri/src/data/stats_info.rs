@@ -3,7 +3,7 @@ use std::{fmt, time::Instant};
 use slog::Logger;
 use tauri::Window;
 
-use super::PointCloud;
+use super::{PointCloud, Target};
 use crate::{
     image_analyzer::{Color, ImageAnalyzer},
     platform::{eval_send_key, KeyMode},
@@ -41,6 +41,7 @@ pub struct ClientStats {
     pub target_is_npc: bool,
     pub target_is_alive: bool,
     pub target_on_screen: bool,
+    pub target_marker: Option<Target>,
     pub target_distance: Option<i32>,
     is_alive: bool,
     pub stat_try_not_detected_count: i32,
@@ -59,6 +60,7 @@ impl ClientStats {
             target_is_npc: false,
             target_is_alive: false,
             target_on_screen: false,
+            target_marker: None,
             target_distance: None,
 
             stat_try_not_detected_count: 0,
@@ -77,15 +79,23 @@ impl ClientStats {
         ];
 
         self.target_is_npc = self.target_hp.value == 100 && self.target_mp.value == 0;
-        self.target_is_mover = image.client_stats.target_mp.value > 0;
+        self.target_is_mover = self.target_mp.value > 0;
         self.target_is_alive = self.target_hp.value > 0;
-        let target = image.identify_target_marker(true);
-        self.target_on_screen = self.target_is_mover && target.is_some();
+        let blue_target = image.identify_target_marker(true);
+        let target = if blue_target.is_some() {
+            blue_target
+        } else {
+            image.identify_target_marker(false)
+        };
+        self.target_marker = target;
+        self.target_on_screen = target.is_some();
         if self.target_on_screen {
             self.target_distance = Some(image.get_target_marker_distance(target.unwrap()));
         } else {
             self.target_distance = None;
         }
+
+        //        slog::debug!(_logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.target_hp.value, "Character is" => self.is_alive(), "Enemy is NPC" => self.target_is_npc, "Enemy is Mover" => self.target_is_mover, "Enemy is alive" => self.target_is_alive, "Enemy on screen" => self.target_on_screen, "Enemy distance" => self.target_distance.unwrap_or(-1));
 
         // Debug is deactivated
         /*if should_debug.contains(&true) {
