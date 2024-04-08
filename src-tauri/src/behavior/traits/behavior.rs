@@ -18,8 +18,10 @@ pub trait Behavior<'a> {
     /// Runs on config change
     fn update(&mut self, config: &BotConfig);
 
-    /// Runs on deactivation
+    /// Runs when another behavior is activated
     fn stop(&mut self, config: &BotConfig);
+
+    fn interupt(&mut self, config: &BotConfig);
 
     /// Runs every frame
     fn run_iteration(

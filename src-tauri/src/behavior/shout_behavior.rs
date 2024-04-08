@@ -53,6 +53,10 @@ impl<'a> Behavior<'a> for ShoutBehavior<'a> {
         self.message_iter = None;
     }
 
+    fn interupt(&mut self, config: &BotConfig) {
+        self.stop(config)
+    }
+
     fn run_iteration(
         &mut self,
         _frontend_info: &mut FrontendInfo,
