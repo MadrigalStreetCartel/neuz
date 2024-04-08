@@ -11,7 +11,7 @@ export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { 
 export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer",
                                                     "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill",
                                                     "AOEAttackSkill", "BuffSkill", "RezSkill", "Flying", "PartySkill"] as const;
-export const thresholdSlotTypes = ["Food", "Pill","HealSkill","MpRestorer", "FpRestorer"];
+export const thresholdSlotTypes = ["Food", "Pill","HealSkill","MpRestorer", "FpRestorer", 'AOEHealSkill'];
 export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill","AOEAttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet","PartySkill"];
 export const farmingSlotsBlacklist = ["Flying", "RezSkill","AOEHealSkill"]
 //if we are leveling someone, the support role might want to pick up
