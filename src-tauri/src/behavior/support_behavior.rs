@@ -87,9 +87,6 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         let config = config.support_config();
         self.update_slots_usage(config);
 
-        if image.client_stats.is_alive() == false {
-            return;
-        }
         self.has_target = image.client_stats.target_is_mover;
 
         self.use_party_skills(config);
