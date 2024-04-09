@@ -13,8 +13,8 @@ use crate::{
     platform::{ eval_simple_click, send_slot_eval },
     play,
 };
-const HEAL_SKILL_CAST_TIME: u64 = 1500;
-const BUFF_CAST_TIME: u64 = 1500;
+const HEAL_SKILL_CAST_TIME: u64 = 2000;
+const BUFF_CAST_TIME: u64 = 2500;
 const AOE_SKILL_CAST_TIME: u64 = 100;
 pub struct SupportBehavior<'a> {
     logger: &'a Logger,
@@ -34,7 +34,9 @@ pub struct SupportBehavior<'a> {
     wait_start: Instant,
     has_target: bool,
     self_buffing: bool,
+    target_buffing: bool,
     //is_on_flight: bool,
+    buff_counter: u32,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
@@ -54,6 +56,8 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             wait_start: Instant::now(),
             has_target: false,
             self_buffing: false,
+            target_buffing: false,
+            buff_counter: 0,
             //is_on_flight: false,
         }
     }
@@ -93,20 +97,20 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         self.follow_target();
+        if self.rez_target(config, image) {
 
-        if self.is_waiting_for_revive {
-            if image.client_stats.target_hp.value > 0 {
-                self.is_waiting_for_revive = false;
-                self.slots_usage_last_time = [[None; 10]; 9];
+            //slog::debug!(self.logger, "Rezzing target");
+            if self.is_waiting_for_revive {
+                if image.client_stats.target_hp.value > 0 {
+                    self.is_waiting_for_revive = false;
+                    self.slots_usage_last_time = [[None; 10]; 9];
+                }
             } else {
+                self.is_waiting_for_revive = true;
                 return;
             }
-        } else {
-            if self.rez_target(config, image) {
-                self.is_waiting_for_revive = true;
-                //slog::debug!(self.logger, "Rezzing target");
-            }
         }
+
         self.check_target_restorations(config, image);
         if image.client_stats.target_on_screen {
             let dist = self.is_target_in_range(config, image);
@@ -119,6 +123,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             return;
         }
         self.random_camera_movement();
+
         if config.is_in_party() {
             let self_buff = self.get_slot_for(
                 config,
@@ -225,31 +230,33 @@ impl SupportBehavior<'_> {
             if is_self_buff {
                 if self.self_buffing == false {
                     self.self_buffing = true;
-                    //slog::debug!(self.logger, "Starting self buffing");
+                    slog::debug!(self.logger, "Starting self buffing");
+                    self.buff_counter = 0;
                 }
                 if self.has_target {
                     self.lose_target();
                 }
+            } else {
+                if self.target_buffing == false {
+                    self.target_buffing = true;
+                    slog::debug!(self.logger, "Starting target buffing");
+                    self.buff_counter = 0;
+                }
             }
             let slot = buff.unwrap();
-            /* slog::debug!(
-                self.logger,
-                "Sending buff to {:?} F{}-{}",
-                if is_self_buff {
-                    "self"
-                } else {
-                    "target"
-                },
-                slot.0,
-                slot.1
-            ); */
             self.send_slot(slot, is_self_buff);
+            self.buff_counter += 1;
             self.wait(Duration::from_millis(BUFF_CAST_TIME));
         } else if is_self_buff {
             if self.self_buffing {
                 self.self_buffing = false;
-                //slog::debug!(self.logger, "Ending self buffing");
+                slog::debug!(self.logger, "Ending self buffing {}", self.buff_counter);
                 self.select_party_leader(config);
+            }
+        } else if is_self_buff == false {
+            if self.target_buffing {
+                self.target_buffing = false;
+                slog::debug!(self.logger, "Ending target buffing {}", self.buff_counter);
             }
         }
     }
@@ -429,7 +436,7 @@ impl SupportBehavior<'_> {
                     self.lose_target();
                     std::thread::sleep(Duration::from_millis(5));
                     self.send_slot(heal.unwrap(), true);
-                    self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
+                    //self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
                 }
             }
 
@@ -464,7 +471,7 @@ impl SupportBehavior<'_> {
                 std::thread::sleep(Duration::from_millis(100));
             }
         } else {
-            self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
+            //self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
         }
     }
 }
