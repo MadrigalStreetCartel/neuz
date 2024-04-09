@@ -6,7 +6,7 @@ use tauri::{ Manager, Window };
 
 use super::Behavior;
 use crate::{
-    data::{ Bounds, MobType, Point, Target, TargetType },
+    data::{ AliveState, Bounds, MobType, Point, Target, TargetType },
     image_analyzer::ImageAnalyzer,
     ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType },
     movement::MovementAccessor,
@@ -647,7 +647,7 @@ impl FarmingBehavior<'_> {
             }
 
             self.state
-        } else if image.client_stats.is_alive() {
+        } else if image.client_stats.is_alive == AliveState::Alive {
             // Mob's dead
             match mob.target_type {
                 TargetType::Mob(MobType::Aggressive) => {

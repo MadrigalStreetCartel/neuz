@@ -19,6 +19,7 @@ use tauri::{ LogicalSize, Manager, Size, Window };
 use crate::{
     behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
     image_analyzer::ImageAnalyzer,
+    data::AliveState,
     ipc::{ BotConfig, BotMode },
     movement::MovementAccessor,
     platform::{ eval_send_key, KeyMode },
@@ -495,34 +496,43 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     app_handle.exit(0);
                     return;
                 }
-
-                // Stop bot in case of death
-                let is_alive = image_analyzer.client_stats.is_alive();
-                if is_alive {
-                    if !frontend_info_mut.is_alive() {
-                        frontend_info_mut.set_is_alive(true);
-                        let should_disconnect = should_disconnect_on_death(config);
-                        if !should_disconnect { // close chat after beign rez
-                            eval_send_key(&window, "Escape", KeyMode::Press);
-                            std::thread::sleep(Duration::from_millis(1000));
+                let is_alive = image_analyzer.client_stats.is_alive;
+                let return_earlier = match is_alive {
+                    AliveState::StatsTrayClosed => true,
+                    AliveState::Alive => {
+                        if !frontend_info_mut.is_alive() {
+                            frontend_info_mut.set_is_alive(true);
+                            let should_disconnect = should_disconnect_on_death(config);
+                            if !should_disconnect {
+                                // close chat after beign rez
+                                eval_send_key(&window, "Escape", KeyMode::Press);
+                                std::thread::sleep(Duration::from_millis(1000));
+                            }
                         }
+                        false
                     }
-                } else {
-                    if frontend_info_mut.is_alive() {
-                        let should_disconnect = should_disconnect_on_death(config);
-                        if should_disconnect {
-                            app_handle.exit(0);
-                            return;
-                        }
+                    AliveState::Dead => {
+                        if frontend_info_mut.is_alive() {
+                            let should_disconnect = should_disconnect_on_death(config);
+                            if should_disconnect {
+                                app_handle.exit(0);
+                            }
 
-                        frontend_info_mut.set_is_alive(false);
-                        frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                        // Send infos to frontend
-                        send_info(&frontend_info.read());
-                    } else {
-                        eval_send_key(&window, "Enter", KeyMode::Press);
-                        std::thread::sleep(Duration::from_millis(500));
+                            frontend_info_mut.set_is_alive(false);
+                            frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                            // Send infos to frontend
+                            send_info(&frontend_info.read());
+                        } else {
+                            eval_send_key(&window, "Enter", KeyMode::Press);
+                            std::thread::sleep(Duration::from_millis(500));
+                        }
+                        true
                     }
+                };
+
+                if return_earlier {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    timer.silence();
                     continue;
                 }
 
