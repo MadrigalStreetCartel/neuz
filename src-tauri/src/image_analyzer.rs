@@ -336,7 +336,7 @@ impl ImageAnalyzer {
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
-    pub fn get_target_marker_distance(&self, mob: Target) -> i32 {
+    pub fn get_target_marker_distance(&self, target: Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
@@ -344,7 +344,7 @@ impl ImageAnalyzer {
         let mid_y = (image.height() / 2) as i32;
 
         // Calculate 2D euclidian distances to player
-        let point = mob.get_attack_coords();
+        let point = target.bounds.get_lowest_center_point();
 
         (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64).sqrt()
             as i32
