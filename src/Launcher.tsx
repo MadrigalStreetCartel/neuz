@@ -142,7 +142,7 @@ const Launcher = ({ className }: Props) => {
                             <p>Do you want to open download page ?</p>
                         </>
                     }
-                    onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz/releases/download/Neuz-v" + lastVersion.current)}}
+                    onYes={() => {window.open("https://github.com/MadrigalStreetCartel/neuz/releases/Neuz-v" + lastVersion.current)}}
                 />
 
                 <YesNoModal isShowing={newProfileModal.isShown} hide={newProfileModal.close}
