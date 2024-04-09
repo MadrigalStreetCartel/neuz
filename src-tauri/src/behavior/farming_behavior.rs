@@ -446,7 +446,6 @@ impl FarmingBehavior<'_> {
         if config.prioritize_aggro() {
             mob_list = mobs
                 .iter()
-                //.filter(|m| m.target_type != TargetType::Mob(MobType::Violet)) // removing violets from coordinates
                 .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
                 .cloned()
                 .collect::<Vec<_>>();
@@ -461,7 +460,6 @@ impl FarmingBehavior<'_> {
             {
                 mob_list = mobs
                     .iter()
-                    //.filter(|m| m.target_type != TargetType::Mob(MobType::Violet)) // removing violets from coordinates
                     .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
                     .cloned()
                     .collect::<Vec<_>>();
