@@ -270,8 +270,9 @@ impl FarmingBehavior<'_> {
         } else {
             let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
             if let Some(index) = slot {
-                for _i in 1..7 {
+                for _i in 1..10 { // TODO Configurable number of tries
                     send_slot_eval(self.window, index.0, index.1);
+                    std::thread::sleep(Duration::from_millis(300));
                 }
             }
         }
