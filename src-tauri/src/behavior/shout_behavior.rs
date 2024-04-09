@@ -1,6 +1,5 @@
 use std::time::Instant;
 
-use guard::guard;
 use slog::Logger;
 use tauri::Window;
 
@@ -82,8 +81,12 @@ impl ShoutBehavior<'_> {
         }
 
         // Find next message to shout
-        guard!(let Some(mut messages) = self.message_iter.as_mut() else { return });
-        guard!(let Some(message) = messages.next() else { return });
+        let Some(messages) = self.message_iter.as_mut() else {
+            return;
+        };
+        let Some(message) = messages.next() else {
+            return;
+        };
 
         // Avoid sending empty messages
         if message.trim().is_empty() {
