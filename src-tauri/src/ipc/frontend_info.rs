@@ -12,6 +12,7 @@ pub struct FrontendInfo {
     is_attacking: bool,
     is_running: bool,
     is_alive: bool,
+    afk_ready_to_disconnect: bool,
 }
 
 impl FrontendInfo {
@@ -23,6 +24,12 @@ impl FrontendInfo {
            self.active_enemy_bounds = Some(active_enemy_bounds);
        }
     */
+    pub fn set_afk_ready_to_disconnect(&mut self, afk_ready_to_disconnect: bool) {
+        self.afk_ready_to_disconnect = afk_ready_to_disconnect
+    }
+    pub fn is_afk_ready_to_disconnect(&mut self) -> bool {
+        self.afk_ready_to_disconnect
+    }
 
     pub fn set_kill_count(&mut self, enemy_kill_count: u32) {
         self.enemy_kill_count = enemy_kill_count;

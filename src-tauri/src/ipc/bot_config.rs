@@ -8,6 +8,8 @@ pub enum SlotType {
     Food,
     Pill,
     HealSkill,
+    AOEHealSkill,
+    AOEAttackSkill,
     MpRestorer,
     FpRestorer,
     PickupPet,
@@ -16,6 +18,7 @@ pub enum SlotType {
     BuffSkill,
     RezSkill,
     Flying,
+    PartySkill,
 }
 impl fmt::Display for SlotType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -26,9 +29,11 @@ impl fmt::Display for SlotType {
             SlotType::FpRestorer => write!(f, "fp restorer"),
             SlotType::PickupPet => write!(f, "pickup pet"),
             SlotType::AttackSkill => write!(f, "attack skill"),
+            SlotType::AOEAttackSkill => write!(f, "aoe attack skill"),
             SlotType::BuffSkill => write!(f, "buff skill"),
             SlotType::RezSkill => write!(f, "rez skill"),
             SlotType::Flying => write!(f, "fly"),
+            SlotType::PartySkill => write!(f, "PartySkill"),
             _ => write!(f, "??none??"),
         }
     }
@@ -78,6 +83,25 @@ impl SlotBar {
             .min_by(|x, y| x.1.slot_threshold.cmp(&y.1.slot_threshold))
             //.choose(rng)
             .map(|(index, _)| (slot_bar_index, index))
+    }
+
+    /// Get all usable slots for an index
+    pub fn get_all_usable_slots_for_index(
+        &self,
+        slot_type: SlotType,
+        slot_bar_index: usize,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+    ) -> Vec<(usize, usize)> {
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+        for (index, current_slot) in self.slots().iter().enumerate() {
+            if current_slot.slot_enabled
+                && current_slot.slot_type == slot_type
+                && last_slots_usage[slot_bar_index][index].is_none()
+            {
+                all_valid_slots.push((slot_bar_index, index))
+            }
+        }
+        all_valid_slots
     }
 }
 
@@ -140,13 +164,18 @@ pub struct FarmingConfig {
     farming_enabled: Option<bool>,
 
     prevent_already_attacked: Option<bool>,
+    prioritize_aggro: Option<bool>,
 
     is_stop_fighting: Option<bool>,
 
     passive_mobs_colors: Option<[Option<u8>; 3]>,
     passive_tolerence: Option<u8>,
+
     aggressive_mobs_colors: Option<[Option<u8>; 3]>,
     aggressive_tolerence: Option<u8>,
+
+    violet_mobs_colors: Option<[Option<u8>; 3]>,
+    violet_tolerence: Option<u8>,
 
     obstacle_avoidance_cooldown: Option<u64>,
     obstacle_avoidance_max_try: Option<u32>,
@@ -158,9 +187,20 @@ pub struct FarmingConfig {
     on_death_disconnect: Option<bool>,
     interval_between_buffs: Option<u64>,
     mobs_timeout: Option<u64>,
+    aoe_farming: Option<u32>,
+
+    on_afk_disconnect: Option<bool>,
+    afk_timeout: Option<u64>,
 }
 
 impl FarmingConfig {
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(false)
+    }
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
+    }
+
     pub fn mobs_timeout(&self) -> u128 {
         self.mobs_timeout.unwrap_or(0).into()
     }
@@ -196,6 +236,9 @@ impl FarmingConfig {
     pub fn min_hp_attack(&self) -> u32 {
         self.min_hp_attack.unwrap_or(0)
     }
+    pub fn max_aoe_farming(&self) -> u32 {
+        self.aoe_farming.unwrap_or(1)
+    }
 
     pub fn passive_mobs_colors(&self) -> [Option<u8>; 3] {
         self.passive_mobs_colors.unwrap_or([None, None, None])
@@ -208,9 +251,15 @@ impl FarmingConfig {
     pub fn aggressive_mobs_colors(&self) -> [Option<u8>; 3] {
         self.aggressive_mobs_colors.unwrap_or([None, None, None])
     }
-
     pub fn aggressive_tolerence(&self) -> u8 {
         self.aggressive_tolerence.unwrap_or(10)
+    }
+
+    pub fn violet_mobs_colors(&self) -> [Option<u8>; 3] {
+        self.violet_mobs_colors.unwrap_or([None, None, None])
+    }
+    pub fn violet_tolerence(&self) -> u8 {
+        self.violet_tolerence.unwrap_or(10)
     }
 
     pub fn slot_bars(&self) -> Vec<SlotBar> {
@@ -236,6 +285,26 @@ impl FarmingConfig {
             }
         }
         None
+    }
+
+    ///Get a list of usable matching slot index types for the farming behavior
+    pub fn get_all_usable_slot_for_type(
+        &self,
+        slot_type: SlotType,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+    ) -> Vec<(usize, usize)> {
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+        for slot_bar_index in 0..9 {
+            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(
+                slot_type,
+                slot_bar_index,
+                last_slots_usage,
+            );
+            for found_skill in result {
+                all_valid_slots.push((slot_bar_index, found_skill.1));
+            }
+        }
+        all_valid_slots
     }
 
     /// Get a random usable matching slot index
@@ -266,6 +335,9 @@ impl FarmingConfig {
     pub fn prevent_already_attacked(&self) -> bool {
         self.prevent_already_attacked.unwrap_or(true)
     }
+    pub fn prioritize_aggro(&self) -> bool {
+        self.prioritize_aggro.unwrap_or(true)
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -273,7 +345,11 @@ pub struct SupportConfig {
     slot_bars: Option<[SlotBar; 9]>,
     obstacle_avoidance_cooldown: Option<u64>,
     on_death_disconnect: Option<bool>,
+    on_afk_disconnect: Option<bool>,
+    is_in_party: Option<bool>,
+    afk_timeout: Option<u64>,
     interval_between_buffs: Option<u64>,
+    max_main_distance: Option<u32>,
 }
 
 impl SupportConfig {
@@ -283,6 +359,16 @@ impl SupportConfig {
 
     pub fn on_death_disconnect(&self) -> bool {
         self.on_death_disconnect.unwrap_or(true)
+    }
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(false)
+    }
+    pub fn is_in_party(&self) -> bool {
+        self.is_in_party.unwrap_or(false)
+    }
+
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
     }
 
     pub fn obstacle_avoidance_cooldown(&self) -> u128 {
@@ -323,15 +409,50 @@ impl SupportConfig {
         }
         None
     }
+
+    ///Get a list of usable matching slot index types for the support behavior
+    pub fn get_all_usable_slot_for_type(
+        &self,
+        slot_type: SlotType,
+        last_slots_usage: [[Option<Instant>; 10]; 9],
+    ) -> Vec<(usize, usize)> {
+        let mut all_valid_slots: Vec<(usize, usize)> = Vec::new();
+
+        for slot_bar_index in 0..9 {
+            let result = self.slot_bars()[slot_bar_index].get_all_usable_slots_for_index(
+                slot_type,
+                slot_bar_index,
+                last_slots_usage,
+            );
+            for found_skill in result {
+                all_valid_slots.push((slot_bar_index, found_skill.1));
+            }
+        }
+        all_valid_slots
+    }
+
+    pub fn get_max_main_distance(&self) -> u32 {
+        self.max_main_distance.unwrap_or(100)
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ShoutConfig {
     shout_interval: Option<u64>,
     shout_messages: Option<Vec<String>>,
+
+    on_afk_disconnect: Option<bool>,
+    afk_timeout: Option<u64>,
 }
 
 impl ShoutConfig {
+    pub fn on_afk_disconnect(&self) -> bool {
+        self.on_afk_disconnect.unwrap_or(false)
+    }
+    pub fn afk_timeout(&self) -> u128 {
+        self.afk_timeout.unwrap_or(3000).into()
+    }
+
     pub fn shout_interval(&self) -> u64 {
         self.shout_interval.unwrap_or(30000)
     }

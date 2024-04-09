@@ -1,7 +1,4 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod behavior;
 mod data;
@@ -11,26 +8,21 @@ mod movement;
 mod platform;
 mod utils;
 
-use std::{
-    fs::{self},
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::{ fs, io, os::windows::process, path::{ Path, PathBuf }, sync::Arc, time::Duration };
 
 use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
-use slog::{Drain, Level, Logger};
-use tauri::{LogicalSize, Manager, Size, Window};
+use slog::{ Drain, Level, Logger };
+use tauri::{ LogicalSize, Manager, Size, Window };
 
 use crate::{
-    behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
+    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
     image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, BotMode},
+    data::AliveState,
+    ipc::{ BotConfig, BotMode },
     movement::MovementAccessor,
-    platform::{eval_send_key, KeyMode},
+    platform::{ eval_send_key, KeyMode },
     utils::Timer,
 };
 
@@ -43,9 +35,7 @@ fn main() {
     let context = tauri::generate_context!();
     let neuz_version = context
         .config()
-        .package
-        .version
-        .clone()
+        .package.version.clone()
         .unwrap_or_else(|| "unknown".to_string());
 
     // Setup logging
@@ -60,7 +50,8 @@ fn main() {
     ));
     let drain = {
         let decorator = slog_term::TermDecorator::new().stdout().build();
-        let drain = slog_term::CompactFormat::new(decorator)
+        let drain = slog_term::CompactFormat
+            ::new(decorator)
             .build()
             .filter_level(Level::Trace)
             .fuse();
@@ -70,21 +61,24 @@ fn main() {
     let logger = Logger::root(drain.fuse(), slog::o!());
 
     // Build app
-    tauri::Builder::default()
+    tauri::Builder
+        ::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState { logger })
-        .invoke_handler(tauri::generate_handler![
-            start_bot,
-            create_window,
-            get_profiles,
-            create_profile,
-            remove_profile,
-            rename_profile,
-            copy_profile,
-            reset_profile,
-            focus_client,
-            toggle_main_size,
-        ])
+        .invoke_handler(
+            tauri::generate_handler![
+                start_bot,
+                create_window,
+                get_profiles,
+                create_profile,
+                remove_profile,
+                rename_profile,
+                copy_profile,
+                reset_profile,
+                focus_client,
+                toggle_main_size
+            ]
+        )
         .run(context)
         .expect("error while running tauri application");
 }
@@ -94,7 +88,7 @@ fn toggle_main_size(
     size: [u32; 2],
     should_not_toggle: Option<bool>,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle
 ) -> bool {
     let window = app_handle.get_window("main").unwrap();
     let win_size = window.inner_size();
@@ -133,26 +127,19 @@ fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
 #[tauri::command]
 fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
-    drop(fs::create_dir(
-        format!(
-            r"{}\",
-            app_handle
-                .path_resolver()
-                .app_data_dir()
-                .unwrap()
-                .to_string_lossy()
+    drop(
+        fs::create_dir(
+            format!(
+                r"{}\",
+                app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy()
+            ).clone()
         )
-        .clone(),
-    ));
-    let paths = fs::read_dir(format!(
-        r"{}\",
-        app_handle
-            .path_resolver()
-            .app_data_dir()
-            .unwrap()
-            .to_string_lossy()
-    ))
-    .unwrap();
+    );
+    let paths = fs
+        ::read_dir(
+            format!(r"{}\", app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy())
+        )
+        .unwrap();
     let mut profiles = vec![];
 
     for entry in paths.flatten() {
@@ -161,17 +148,14 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
         }
     }
     if profiles.is_empty() {
-        drop(fs::create_dir(
-            format!(
-                r"{}\profile_DEFAULT",
-                app_handle
-                    .path_resolver()
-                    .app_data_dir()
-                    .unwrap()
-                    .to_string_lossy()
+        drop(
+            fs::create_dir(
+                format!(
+                    r"{}\profile_DEFAULT",
+                    app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy()
+                ).clone()
             )
-            .clone(),
-        ));
+        );
         profiles.push("profile_DEFAULT".to_string());
     }
 
@@ -194,22 +178,14 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
 fn config_folder_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
     format!(
         r"{}\profile_{}",
-        app_handle
-            .path_resolver()
-            .app_data_dir()
-            .unwrap()
-            .to_string_lossy(),
+        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
         profile_id
     )
 }
 fn config_file_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
     format!(
         r"{}\.botconfig_{}",
-        app_handle
-            .path_resolver()
-            .app_data_dir()
-            .unwrap()
-            .to_string_lossy(),
+        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
         profile_id
     )
 }
@@ -218,23 +194,27 @@ fn copy_profile(
     profile_id: String,
     new_profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle
 ) {
-    drop(fs::copy(
-        config_file_path(&app_handle, &profile_id),
-        config_file_path(&app_handle, &new_profile_id).clone(),
-    ));
-    drop(copy_dir_all(
-        config_folder_path(&app_handle, &profile_id),
-        config_folder_path(&app_handle, &new_profile_id),
-    ));
+    drop(
+        fs::copy(
+            config_file_path(&app_handle, &profile_id),
+            config_file_path(&app_handle, &new_profile_id).clone()
+        )
+    );
+    drop(
+        copy_dir_all(
+            config_folder_path(&app_handle, &profile_id),
+            config_folder_path(&app_handle, &new_profile_id)
+        )
+    );
 }
 
 #[tauri::command]
 fn create_profile(
     profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle
 ) {
     drop(fs::create_dir(config_folder_path(&app_handle, &profile_id)));
 }
@@ -243,12 +223,9 @@ fn create_profile(
 fn remove_profile(
     profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle
 ) {
-    drop(fs::remove_dir_all(config_folder_path(
-        &app_handle,
-        &profile_id,
-    )));
+    drop(fs::remove_dir_all(config_folder_path(&app_handle, &profile_id)));
     drop(fs::remove_file(config_file_path(&app_handle, &profile_id)));
 }
 
@@ -257,87 +234,83 @@ fn rename_profile(
     profile_id: String,
     new_profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle
 ) {
-    drop(fs::rename(
-        config_folder_path(&app_handle, &profile_id),
-        config_folder_path(&app_handle, &new_profile_id),
-    ));
-    drop(fs::rename(
-        config_folder_path(&app_handle, &profile_id),
-        config_folder_path(&app_handle, &new_profile_id).clone(),
-    ));
+    drop(
+        fs::rename(
+            config_folder_path(&app_handle, &profile_id),
+            config_folder_path(&app_handle, &new_profile_id)
+        )
+    );
+    drop(
+        fs::rename(
+            config_folder_path(&app_handle, &profile_id),
+            config_folder_path(&app_handle, &new_profile_id).clone()
+        )
+    );
 }
 
 #[tauri::command]
 fn reset_profile(profile_id: String, _state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
-    drop(fs::remove_dir_all(config_folder_path(
-        &app_handle,
-        &profile_id,
-    )));
-    drop(fs::remove_file(
-        config_file_path(&app_handle, &profile_id).clone(),
-    ));
-    drop(fs::create_dir(
-        config_folder_path(&app_handle, &profile_id).clone(),
-    ));
+    drop(fs::remove_dir_all(config_folder_path(&app_handle, &profile_id)));
+    drop(fs::remove_file(config_file_path(&app_handle, &profile_id).clone()));
+    drop(fs::create_dir(config_folder_path(&app_handle, &profile_id).clone()));
 }
 
 #[tauri::command]
 async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
-    let window = tauri::WindowBuilder::new(
-        &app_handle,
-        "client",
-        tauri::WindowUrl::External("https://universe.flyff.com/play".parse().unwrap()),
-    )
-    .data_directory(PathBuf::from(format!(
-        r"{}\profile_{}",
-        app_handle
-            .path_resolver()
-            .app_data_dir()
-            .unwrap()
-            .to_string_lossy(),
-        profile_id
-    )))
-    //.resizable(false)
-    .center()
-    .inner_size(800.0, 600.0)
-    .title(format!("{} | Flyff Universe", profile_id))
-    .build()
-    .unwrap();
+    let window = tauri::WindowBuilder
+        ::new(
+            &app_handle,
+            "client",
+            tauri::WindowUrl::External("https://universe.flyff.com/play".parse().unwrap())
+        )
+        .data_directory(
+            PathBuf::from(
+                format!(
+                    r"{}\profile_{}",
+                    app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
+                    profile_id
+                )
+            )
+        )
+        //.resizable(false)
+        .center()
+        .inner_size(800.0, 600.0)
+        .title(format!("{} | Flyff Universe", profile_id))
+        .build()
+        .unwrap();
     drop(window.show());
+    // window.open_devtools();
 
     let main_window = app_handle.get_window("main").unwrap();
     drop(main_window.set_title(format!("{} Neuz | MadrigalStreetCartel", profile_id).as_str()));
     //window.once_global("tauri://close-requested", move |_| app_handle.restart());
 }
-fn should_disconnect(config: &BotConfig) -> bool {
+fn should_disconnect_on_death(config: &BotConfig) -> bool {
     return match config.mode().unwrap() {
         BotMode::Farming => config.farming_config().on_death_disconnect(),
         BotMode::Support => config.support_config().on_death_disconnect(),
         BotMode::AutoShout => true,
     };
 }
+
 #[tauri::command]
 fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
     let logger = state.logger.clone();
     let config_path = format!(
         r"{}\.botconfig_{}",
-        app_handle
-            .path_resolver()
-            .app_data_dir()
-            .unwrap()
-            .to_string_lossy(),
+        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
         profile_id
-    )
-    .clone();
+    ).clone();
 
     std::thread::spawn(move || {
         let logger = logger.clone();
 
         let mut last_config_change_id = 0;
-        let config: Arc<RwLock<BotConfig>> =
-            Arc::new(RwLock::new(BotConfig::deserialize_or_default(config_path)));
+        let config: Arc<RwLock<BotConfig>> = Arc::new(
+            RwLock::new(BotConfig::deserialize_or_default(config_path))
+        );
 
         // Listen for config changes from the UI
         let local_config = config.clone();
@@ -378,6 +351,14 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         send_config(&config.read());
 
         let window = app_handle.get_window("client").unwrap();
+        let eval_js = include_str!("./platform/eval.js");
+
+        #[cfg(dev)]
+        let eval_js = eval_js.replace("$env.DEBUG", "true");
+        #[cfg(not(dev))]
+        let eval_js = eval_js.replace("$env.DEBUG", "false");
+        drop(window.eval(&eval_js));
+
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
@@ -390,8 +371,10 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
         let mut last_mode: Option<BotMode> = None;
-        let mut frontend_info: Arc<RwLock<FrontendInfo>> =
-            Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
+        let mut last_is_running: Option<bool> = None;
+        let mut frontend_info: Arc<RwLock<FrontendInfo>> = Arc::new(
+            RwLock::new(FrontendInfo::deserialize_or_default())
+        );
         send_info(&frontend_info.read());
         // Enter main loop
         loop {
@@ -400,18 +383,13 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             let mut frontend_info_mut = *frontend_info.read();
 
             // Send changed config to frontend if needed
-            if config.change_id() > last_config_change_id {
+            if last_config_change_id == 0 || config.change_id() > last_config_change_id {
                 config.serialize(
                     format!(
                         r"{}\.botconfig_{}",
-                        app_handle
-                            .path_resolver()
-                            .app_data_dir()
-                            .unwrap()
-                            .to_string_lossy(),
+                        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
                         profile_id
-                    )
-                    .clone(),
+                    ).clone()
                 );
                 send_config(config);
                 last_config_change_id = config.change_id();
@@ -420,122 +398,164 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 farming_behavior.update(config);
                 shout_behavior.update(config);
                 support_behavior.update(config);
+
+                // Make sure an operation mode is set
+                guard!(let Some(mode) = config.mode() else {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    timer.silence();
+                    continue;
+                });
+
+                // Interupt the current behavior if the bot is stopped
+                if !config.is_running() {
+                    if let Some(last_is_running_value) = last_is_running.as_mut() {
+                        if *last_is_running_value {
+                            match mode {
+                                BotMode::Farming => farming_behavior.interupt(config),
+                                BotMode::Support => support_behavior.interupt(config),
+                                BotMode::AutoShout => shout_behavior.interupt(config),
+                            }
+                            last_is_running = None;
+                        }
+                        if !window.is_resizable().unwrap() {
+                            drop(window.set_resizable(true));
+                        }
+                    }
+                    // continue so mode changes are handled only when running
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    timer.silence();
+                    continue;
+                }
+
+                // Check if mode is different from last mode
+                if let Some(last_mode_value) = last_mode.as_mut() {
+                    if &mode != last_mode_value {
+                        slog::info!(logger, "Mode changed"; "old_mode" => last_mode_value.to_string(), "new_mode" => mode.to_string());
+
+                        // Stop the last behavior
+                        match last_mode_value {
+                            BotMode::Farming => farming_behavior.stop(config),
+                            BotMode::Support => support_behavior.stop(config),
+                            BotMode::AutoShout => shout_behavior.stop(config),
+                        }
+
+                        // Start the current behavior
+                        match mode {
+                            BotMode::Farming => farming_behavior.start(config),
+                            BotMode::Support => support_behavior.start(config),
+                            BotMode::AutoShout => shout_behavior.start(config),
+                        }
+                        last_mode = None;
+                    }
+                }
+
+                if !config.farming_config().is_stop_fighting() {
+                    drop(
+                        window.set_size(
+                            Size::Logical(LogicalSize {
+                                width: 800.0,
+                                height: 600.0,
+                            })
+                        )
+                    );
+                    drop(window.set_resizable(false));
+                }
             }
 
             // Client window is closed
             if window.is_resizable().is_err() {
+                #[cfg(dev)]
+                std::process::exit(0);
+                #[cfg(not(dev))]
                 app_handle.restart();
+
                 break;
             }
 
-            // Continue early if the bot is not engaged
             if !config.is_running() {
-                if !window.is_resizable().unwrap() {
-                    drop(window.set_resizable(true));
-                }
-                std::thread::sleep(std::time::Duration::from_millis(250));
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 timer.silence();
                 continue;
-            }
-
-            if !config.farming_config().is_stop_fighting() {
-                drop(window.set_size(Size::Logical(LogicalSize {
-                    width: 800.0,
-                    height: 600.0,
-                })));
-                drop(window.set_resizable(false));
-            } else {
-                drop(window.set_resizable(true));
             }
 
             frontend_info_mut.set_is_running(true);
 
-            // Make sure an operation mode is set
-            guard!(let Some(mode) = config.mode() else {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                timer.silence();
-                continue;
-            });
-
-            // Check if mode is different from last mode
-            if let Some(last_mode) = last_mode.as_ref() {
-                if &mode != last_mode {
-                    slog::info!(logger, "Mode changed"; "old_mode" => last_mode.to_string(), "new_mode" => mode.to_string());
-
-                    // Stop all behaviors
-                    farming_behavior.stop(config);
-                    support_behavior.stop(config);
-                    shout_behavior.stop(config);
-
-                    // Start the current behavior
-                    match mode {
-                        BotMode::Farming => farming_behavior.start(config),
-                        BotMode::Support => support_behavior.start(config),
-                        BotMode::AutoShout => shout_behavior.start(config),
-                    }
-                }
-            }
-
             // Capture client window
-            image_analyzer.capture_window(&logger, config.farming_config());
+            image_analyzer.capture_window(&logger);
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
                 // Update stats
-                image_analyzer
-                    .client_stats
-                    .update(&image_analyzer.clone(), &logger);
+                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
 
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
 
-                // Stop bot in case of death
-                let is_alive = image_analyzer.client_stats.is_alive();
-
-                if !is_alive {
-                    if frontend_info_mut.is_alive() {
-                        let should_disconnect = should_disconnect(config);
-                        if should_disconnect {
-                            app_handle.exit(0);
-                            return;
-                        }
-
-                        frontend_info_mut.set_is_alive(false);
-                        frontend_info = Arc::new(RwLock::new(frontend_info_mut));
-                        // Send infos to frontend
-                        send_info(&frontend_info.read());
-                    } else {
-                        eval_send_key(&window, "Enter", KeyMode::Press);
-                        std::thread::sleep(Duration::from_millis(500));
-                    }
-                    continue;
-                } else if is_alive && !frontend_info_mut.is_alive() {
-                    frontend_info_mut.set_is_alive(true);
-                    let should_disconnect = should_disconnect(config);
-                    if !should_disconnect {
-                        eval_send_key(&window, "Escape", KeyMode::Press);
-                    }
+                //Regardless if it's alive or not, if the bot is inactive should be dcd
+                if frontend_info_mut.is_afk_ready_to_disconnect() {
+                    app_handle.exit(0);
+                    return;
                 }
+                let is_alive = image_analyzer.client_stats.is_alive;
+                let return_earlier = match is_alive {
+                    AliveState::StatsTrayClosed => true,
+                    AliveState::Alive => {
+                        if !frontend_info_mut.is_alive() {
+                            frontend_info_mut.set_is_alive(true);
+                            let should_disconnect = should_disconnect_on_death(config);
+                            if !should_disconnect {
+                                // close chat after beign rez
+                                eval_send_key(&window, "Escape", KeyMode::Press);
+                                std::thread::sleep(Duration::from_millis(1000));
+                            }
+                        }
+                        false
+                    }
+                    AliveState::Dead => {
+                        if frontend_info_mut.is_alive() {
+                            let should_disconnect = should_disconnect_on_death(config);
+                            if should_disconnect {
+                                app_handle.exit(0);
+                            }
+
+                            frontend_info_mut.set_is_alive(false);
+                            frontend_info = Arc::new(RwLock::new(frontend_info_mut));
+                            // Send infos to frontend
+                            send_info(&frontend_info.read());
+                        } else {
+                            eval_send_key(&window, "Enter", KeyMode::Press);
+                            std::thread::sleep(Duration::from_millis(500));
+                        }
+                        true
+                    }
+                };
+
+                if return_earlier {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    timer.silence();
+                    continue;
+                }
+
                 match mode {
                     BotMode::Farming => {
                         farming_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer,
+                            &mut image_analyzer
                         );
                     }
                     BotMode::AutoShout => {
                         shout_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer,
+                            &mut image_analyzer
                         );
                     }
                     BotMode::Support => {
                         support_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer,
+                            &mut image_analyzer
                         );
                     }
                 }
@@ -546,6 +566,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Update last mode
             last_mode = config.mode();
+            last_is_running = Some(config.is_running());
         }
     });
 }

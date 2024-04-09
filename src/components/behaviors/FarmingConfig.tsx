@@ -32,6 +32,8 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     const debugModal = useModal()
     const debugWarningModal = useModal(debugModal)
     const onDeathModal = useModal(debugModal)
+    const onAFKModal = useModal()
+
     const mobsNameDebugModal = useModal(debugModal)
     const mobsColorsDebugModal = useModal(mobsNameDebugModal)
     const resetSlotYesNo = useModal(debugModal)
@@ -51,7 +53,9 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
         'circle_pattern_rotation_duration': 30,
         'min_hp_attack': 30,
         'prevent_already_attacked': true,
+        'prioritize_aggro': true,
         'interval_between_buffs': 2000,
+        'aoe_farming': 1,
     }
 
     DefaultValuesChecker(config, defaultValues, onChange)
@@ -62,6 +66,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     ]
 
     const [debugMode, setDebugMode] = useState(false);
+
     useEffect(() => {
         if (debugMode) {
             debugWarningModal.open()
@@ -103,6 +108,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         label={<ConfigLabel name="Debug" />}
                         item={<BooleanSlider value={debugMode} onChange={value => setDebugMode(value)} />}
                     />
+
                     <ConfigTableRow
                         label={<ConfigLabel name="Reset all slots" helpText="" />}
                         item={<button onClick={resetSlotYesNo.open}>⚙️</button>}
@@ -190,6 +196,18 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                         item={<NumericInput unit='%' value={config.min_hp_attack} onChange={value => onChange({...config, min_hp_attack: value})} />}
                     />
 
+
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Max number of mobs to attack" helpText="Max number of mobs to attack at the same time" />}
+                        item={<NumericInput value={config.aoe_farming} onChange={value => onChange?.({ ...config, aoe_farming: value })} />}
+                    />
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Prioritize Aggro" helpText="When selecting a target, give priorities to aggro" />}
+                        item={<BooleanSlider value={config.prioritize_aggro ?? true} onChange={value => onChange?.({ ...config, prioritize_aggro: value })} />}
+                    />
+
                 </ConfigTable>
             }/>
             <Modal isShowing={debugWarningModal.isShown} hide={debugWarningModal.close}
@@ -213,6 +231,24 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
                     />
                 </ConfigTable>
             }/>
+
+            <Modal isShowing={onAFKModal.isShown} hide={onAFKModal.close}
+                   title={<h4>AFK behavior</h4>} body={
+                <ConfigTable>
+                    <ConfigTableRow
+                        layout="v"
+                        label={<ConfigLabel name="Disconnect" helpText="If enabled will automatically disconnect the AFK character" />}
+                        item={<BooleanSlider value={config.on_afk_disconnect ?? false} onChange={value => onChange?.({ ...config, on_afk_disconnect: value })} />}
+                    />
+
+                    <ConfigTableRow
+                        label={<ConfigLabel name="No action time out" helpText="After this time character will disconnect if AFK Disconnect is enabled" />}
+                        item={<TimeInput value={config.afk_timeout} onChange={value => onChange({...config, afk_timeout: value})} />}
+                    />
+
+                </ConfigTable>
+            }/>
+
             <Modal isShowing={statsModal.isShown} hide={statsModal.close}
             title={<h4>Stats - State: { botState }</h4>} body={
                 <div className="stats">

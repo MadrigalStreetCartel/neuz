@@ -10,9 +10,23 @@ type Props = {
 }
 
 const NumericInput = ({ className, value, unit, min, max, onChange }: Props) => {
+    if (unit === '%') {
+        min = 0;
+        max = 100;
+    }
+    const _onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.valueAsNumber;
+        if (min !== undefined && value < min) {
+            value = min;
+        }
+        if (max !== undefined && value > max) {
+            value = max;
+        }
+        onChange(value);
+    }
     return (
         <div className={className}>
-            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={(e)=>onChange(e.target.valueAsNumber)} />
+            <input min={min} max={max} type="number" value={value?.toString() ?? ""} onChange={_onChange    } />
             {unit && <span className="unit">{unit}</span>}
         </div>
     )

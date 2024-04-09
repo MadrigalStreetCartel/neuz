@@ -19,11 +19,14 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "cross-env BROWSER=none react-scripts start",
+    "start": "cross-env BROWSER=none RUST_BACKTRACE=1 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:build": "tauri build",
+    "tauri:dev": "tauri dev",
+    "fmt": "cd ./src-tauri && cargo fmt && cd .."
   },
   "eslintConfig": {
     "extends": [

@@ -47,7 +47,6 @@ const MissionControl = ({ className, lastVersion, currentVersion }: Props) => {
         })
 
         listen('bot_config_s2c', event => {
-            console.log(event.payload)
             const payload = event.payload as BotConfigModel
             setConfig(payload)
         })

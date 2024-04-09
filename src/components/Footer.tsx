@@ -20,7 +20,7 @@ const Footer = ({ className, lastVersion: newVersion = "NaN", currentVersion = "
             <footer className={className}>
                 <SocialButton icon={BsDiscord} label="Join our Discord" href="https://discord.gg/cZr3X3mCnq" />
                 {currentVersion !== "NaN" && (<p id="versionNumber">V{currentVersion}
-                    {(newVersion !== "NaN" && newVersion !== currentVersion) && (<a target="_blank" href="https://github.com/MadrigalStreetCartel/neuz" className="badge">NEW UPDATE</a>)}</p>)
+                    {(newVersion !== "NaN" && newVersion !== currentVersion) && (<a target="_blank" href={"https://github.com/MadrigalStreetCartel/neuz/releases/tag/Neuz-v" + newVersion} className="badge">NEW UPDATE</a>)}</p>)
                 }
                 <SocialButton icon={BsGithub} label="Star us on GitHub" href="https://github.com/MadrigalStreetCartel/neuz" />
             </footer>

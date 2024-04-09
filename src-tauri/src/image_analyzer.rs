@@ -47,7 +47,7 @@ impl ImageAnalyzer {
         self.image.is_some()
     }
 
-    pub fn capture_window(&mut self, logger: &Logger, _config: &FarmingConfig) {
+    pub fn capture_window(&mut self, logger: &Logger) {
         let _timer = Timer::start_new("capture_window");
         if self.window_id == 0 {
             return;
@@ -111,8 +111,13 @@ impl ImageAnalyzer {
                     for ref_color in colors.iter() {
                         // Check if the pixel matches any of the reference colors
                         if Self::pixel_matches(&px.0, &ref_color.refs, tolerence.unwrap_or(5)) {
+                            // #[allow(dropping_copy_types)]
+                            // drop(snd.try_send(Point::new(x, y)));
+                            // drop(snd.send(Point::new(x, y)));
                             #[allow(dropping_copy_types)]
-                            drop(snd.send(Point::new(x, y)));
+                            drop(snd.try_send(Point::new(x, y)).map_err(|err| {
+                                eprintln!("Error sending data: {}", err);
+                            }));
 
                             // Continue to next column
                             continue 'outer;
@@ -126,8 +131,7 @@ impl ImageAnalyzer {
     fn merge_cloud_into_mobs(
         config: Option<&FarmingConfig>,
         cloud: &PointCloud,
-        mob_type: TargetType,
-        //ignore_size: bool,
+        mob_type: TargetType, //ignore_size: bool,
     ) -> Vec<Target> {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
@@ -157,9 +161,9 @@ impl ImageAnalyzer {
             .filter(|mob| {
                 if let Some(config) = config {
                     // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > config.min_mobs_name_width()
-                    // Filter out huge clusters (likely to be Violet Magician Troupe)
-                    && mob.bounds.w < config.max_mobs_name_width()
+                    mob.bounds.w > config.min_mobs_name_width() &&
+                        // Filter out huge clusters (likely to be Violet Magician Troupe)
+                        mob.bounds.w < config.max_mobs_name_width()
                 } else {
                     true
                 }
@@ -186,10 +190,13 @@ impl ImageAnalyzer {
         // Create collections for passive and aggro mobs
         let mut mob_coords_pas: Vec<Point> = Vec::default();
         let mut mob_coords_agg: Vec<Point> = Vec::default();
+        let mut mob_coords_violet: Vec<Point> = Vec::default();
 
         // Reference colors
         let ref_color_pas_wrapped: [Option<u8>; 3] = config.passive_mobs_colors(); // Passive mobs 234, 234, 149
         let ref_color_agg_wrapped: [Option<u8>; 3] = config.aggressive_mobs_colors(); // Aggro mobs 179, 23, 23
+
+        let ref_color_violet_wrapped: [Option<u8>; 3] = config.violet_mobs_colors(); // Aggro mobs 179, 23, 23
         let ref_color_pas: [u8; 3] = [
             ref_color_pas_wrapped[0].unwrap_or(234),
             ref_color_pas_wrapped[1].unwrap_or(234),
@@ -199,6 +206,11 @@ impl ImageAnalyzer {
             ref_color_agg_wrapped[0].unwrap_or(179),
             ref_color_agg_wrapped[1].unwrap_or(23),
             ref_color_agg_wrapped[2].unwrap_or(23),
+        ];
+        let ref_color_violet: [u8; 3] = [
+            ref_color_violet_wrapped[0].unwrap_or(182),
+            ref_color_violet_wrapped[1].unwrap_or(144),
+            ref_color_violet_wrapped[2].unwrap_or(146),
         ];
 
         // Collect pixel clouds
@@ -228,6 +240,12 @@ impl ImageAnalyzer {
                         config.aggressive_tolerence(),
                     ) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
+                    } else if Self::pixel_matches(
+                        &px.0,
+                        &ref_color_violet,
+                        config.violet_tolerence(),
+                    ) {
+                        drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Violet))));
                     }
                 }
             });
@@ -235,6 +253,7 @@ impl ImageAnalyzer {
             match px.2 {
                 TargetType::Mob(MobType::Passive) => mob_coords_pas.push(Point::new(px.0, px.1)),
                 TargetType::Mob(MobType::Aggressive) => mob_coords_agg.push(Point::new(px.0, px.1)),
+                TargetType::Mob(MobType::Violet) => mob_coords_violet.push(Point::new(px.0, px.1)),
                 _ => unreachable!(),
             }
         }
@@ -250,44 +269,74 @@ impl ImageAnalyzer {
             &PointCloud::new(mob_coords_agg),
             TargetType::Mob(MobType::Aggressive),
         );
+        let _mobs_violet = Self::merge_cloud_into_mobs(
+            Some(config),
+            &PointCloud::new(mob_coords_violet),
+            TargetType::Mob(MobType::Violet),
+        );
 
         // Return all mobs
-        Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas.into_iter()))
+        Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas))
     }
 
-    pub fn identify_target_marker(&self, blank_target: bool) -> Option<Target> {
+    pub fn identify_target_marker(&self, blue_target: bool) -> Option<Target> {
         let _timer = Timer::start_new("identify_target_marker");
         let mut coords = Vec::default();
 
         // Reference color
         let ref_color: Color = {
-            if !blank_target {
-                Color::new(246, 90, 106)
+            if blue_target {
+                // Color::new(164, 180, 226) //A4B4E1 -- blueish
+                Color::new(131, 148, 205) //A4B4E1 -- blueish - more center of the arrow
             } else {
-                Color::new(164, 180, 226)
+                Color::new(246, 90, 106) //F65A6A -- redish
             }
+            //changed the Original colors (below), because they don't work in Azria
+            // if !blank_target {
+            //     Color::new(246, 90, 106) //F65A6A
+            // } else {
+            //     Color::new(164, 180, 226) //A4B4E1
+            // }
         };
 
         // Collect pixel clouds
         let recv = self.pixel_detection(vec![ref_color], 0, 0, 0, 0, None);
 
-        // Receive points from channel
+        // // Receive points from channel
         while let Ok(point) = recv.recv() {
             coords.push(point);
         }
+
+        // // Receive points from channel
+        // loop {
+        //     match recv.recv() {
+        //         Ok(point) => {
+        //             coords.push(point);
+        //         }
+        //         Err(std::sync::mpsc::RecvError) => {
+        //             eprintln!("Error receiving data, channel is closed");
+        //             // Channel is closed, break the loop
+        //             break;
+        //         }
+        //         Err(err) => {
+        //             eprintln!("Error receiving data: {}", err);
+        //             // Handle other errors if needed
+        //         }
+        //     }
+        // }
 
         // Identify target marker entities
         let target_markers =
             Self::merge_cloud_into_mobs(None, &PointCloud::new(coords), TargetType::TargetMarker);
 
-        if !blank_target && target_markers.is_empty() {
+        if !blue_target && target_markers.is_empty() {
             return self.identify_target_marker(true);
         }
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
-    pub fn get_target_marker_distance(&self, mob: Target) -> i32 {
+    pub fn get_target_marker_distance(&self, target: Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
@@ -295,9 +344,10 @@ impl ImageAnalyzer {
         let mid_y = (image.height() / 2) as i32;
 
         // Calculate 2D euclidian distances to player
-        let point = mob.get_attack_coords();
+        let point = target.bounds.get_lowest_center_point();
 
-        (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2)) as f64).sqrt() as i32
+        (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64).sqrt()
+            as i32
     }
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'a>(
@@ -320,7 +370,7 @@ impl ImageAnalyzer {
         let mut distances = Vec::default();
         for mob in mobs {
             let point = mob.get_attack_coords();
-            let distance = (((mid_x - point.x as i32).pow(2) + (mid_y - point.y as i32).pow(2))
+            let distance = (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2))
                 as f64)
                 .sqrt() as i32;
             distances.push((mob, distance));

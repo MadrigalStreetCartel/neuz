@@ -14,7 +14,7 @@ pub enum KeyMode {
 
 // For visual recognition: Avoids mouse clicks outside the window by ignoring monster names that are too close to the bottom of the GUI
 pub const IGNORE_AREA_BOTTOM: u32 = 110;
-
+//>100 <230 where we get the red announcement for already targetted mob
 /// Get the native window id.
 pub fn get_window_id(window: &Window) -> Option<u64> {
     #[allow(unused_variables)]
@@ -39,90 +39,26 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
 pub fn eval_send_key(window: &Window, key: &str, mode: KeyMode) {
     match mode {
         KeyMode::Press => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
-        KeyMode::Hold => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keydown', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
+            drop(window.eval(format!("keyboardEvent('press', '{0}');", key).as_str()))
+        }
+
+        KeyMode::Hold => drop(window.eval(format!("keyboardEvent('hold', '{0}');", key).as_str())),
+
         KeyMode::Release => {
-            drop(window.eval(format!("
-                document.querySelector('canvas').dispatchEvent(new KeyboardEvent('keyup', {{'key': '{0}'}}))"
-            , key).as_str()))
-        },
+            drop(window.eval(format!("keyboardEvent('release', '{0}');", key).as_str()))
+        }
     }
 }
 
 pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
-    eval_send_key(
-        window,
-        format!("F{}", slot_bar_index + 1).to_string().as_str(),
-        KeyMode::Press,
-    );
-    eval_send_key(window, k.to_string().as_str(), KeyMode::Press);
-    //std::thread::sleep(Duration::from_millis(100));
-}
-
-/* pub fn eval_mouse_click_at_point(window: &Window, pos: Point) {
-    drop(
-        window.eval(
-            format!(
-                "
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
-            clientX: {0},
-            clientY: {1}
-        }}))
-
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
-            clientX: {0},
-            clientY: {1}
-        }}))",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
-    );
-} */
-
-pub fn eval_mouse_move(window: &Window, pos: Point) {
-    drop(
-        window.eval(
-            format!(
-                "
-        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousemove', {{
-            clientX: {0},
-            clientY: {1}
-        }}))",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
-    );
+    drop(window.eval(format!("sendSlot({0}, {1})", slot_bar_index, k).as_str()))
 }
 
 pub fn eval_mob_click(window: &Window, pos: Point) {
-    eval_mouse_move(window, pos);
-    std::thread::sleep(Duration::from_millis(25));
     drop(
         window.eval(
             format!(
-                "
-                    if (document.body.style.cursor.indexOf('curattack') > 0) {{
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mousedown', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
-
-                        document.querySelector('canvas').dispatchEvent(new MouseEvent('mouseup', {{
-                            clientX: {0},
-                            clientY: {1}
-                        }}))
-                    }}
-                    global.gc();;",
+                "mouseEvent('moveClick', {0}, {1}, {{checkMob: true}});",
                 pos.x, pos.y
             )
             .as_str(),
@@ -130,16 +66,10 @@ pub fn eval_mob_click(window: &Window, pos: Point) {
     );
 }
 
+pub fn eval_simple_click(window: &Window, pos: Point) {
+    drop(window.eval(format!("mouseEvent('moveClick', {0}, {1});", pos.x, pos.y).as_str()));
+}
+
 pub fn eval_send_message(window: &Window, text: &str) {
-    drop(
-        window.eval(
-            format!(
-                "
-    document.querySelector('input').value = '{0}';
-    document.querySelector('input').select();",
-                text
-            )
-            .as_str(),
-        ),
-    );
+    drop(window.eval(format!("setInputChat({0})", text).as_str()));
 }

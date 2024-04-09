@@ -15,6 +15,8 @@
 
 Contributions:
 - Autoshout behavior
+- Multiple window
+- Various fixes and enhancements
 
 ## [genoxalmighty](https://github.com/genoxalmighty)
 
@@ -25,3 +27,11 @@ Contributions:
 
 Contributions:
 - Support buff fix + small QOL feature.
+
+## [TheMrTeapot](https://github.com/TheMrTeapot)
+
+Contributions:
+- Self buff
+- AOE
+- Fix Azria crash
+- Various fixes and enhancements

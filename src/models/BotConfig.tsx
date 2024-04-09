@@ -2,15 +2,21 @@ import IconMotionPickup from '../assets/icon_motion_pickup.png'
 import IconVitalDrink from '../assets/icon_vitaldrink.png'
 import IconRefresher from '../assets/icon_refresher.png'
 import IconHealSkill from '../assets/heal_spell.png'
+import IconAOEHealSkill from '../assets/icon_heal_rain.png'
+import IconAOEAttackSkill from '../assets/aoe_attack_skill.png'
 import IconRezSkill from '../assets/rez_spell.png'
+import IconPartySkill from '../assets/party_skill_icon.png'
 
 export type FixedArray<TItem, TLength extends number> = [TItem, ...TItem[]] & { length: TLength }
+export const slotTypes = ["Unused", "Food", "Pill", "HealSkill","AOEHealSkill", "MpRestorer",
+                                                    "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill",
+                                                    "AOEAttackSkill", "BuffSkill", "RezSkill", "Flying", "PartySkill"] as const;
+export const thresholdSlotTypes = ["Food", "Pill","HealSkill","MpRestorer", "FpRestorer", 'AOEHealSkill'];
+export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AOEHealSkill", "AttackSkill","AOEAttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet","PartySkill"];
+export const farmingSlotsBlacklist = ["Flying", "RezSkill","AOEHealSkill"]
+//if we are leveling someone, the support role might want to pick up
+export const supportSlotsBlacklist = ["AttackSkill","AOEAttackSkill"]
 
-export const slotTypes = ["Unused", "Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer", "PickupPet", "PickupMotion", "AttackSkill", "BuffSkill", "RezSkill", "Flying"] as const;
-export const thresholdSlotTypes = ["Food", "Pill", "HealSkill", "MpRestorer", "FpRestorer"];
-export const cooldownSlotTypes = ["Food", "Pill", "HealSkill", "AttackSkill", "BuffSkill", "MpRestorer", "FpRestorer", "PickupPet"];
-export const farmingSlotsBlacklist = ["HealSkill", "Flying", "RezSkill"]
-export const supportSlotsBlacklist = ["PickupPet", "PickupMotion", "AttackSkill"]
 
 export type SlotType = typeof slotTypes[number];
 
@@ -26,14 +32,17 @@ export const translateType = (type: SlotType) => {
         case 'Food': return '🍔'
         case 'Pill': return '💊'
         case 'HealSkill': return IconHealSkill
+        case 'AOEHealSkill': return IconAOEHealSkill
         case 'MpRestorer': return IconRefresher
         case 'FpRestorer': return IconVitalDrink
         case 'PickupPet': return '🐶'
         case 'PickupMotion': return IconMotionPickup
         case 'AttackSkill': return '🗡️'
+        case 'AOEAttackSkill': return IconAOEAttackSkill
         case 'BuffSkill': return '🪄'
         case 'RezSkill': return IconRezSkill
         case 'Flying': return '✈️'
+        case 'PartySkill': return IconPartySkill
     }
 }
 
@@ -43,14 +52,17 @@ export const translateDesc = (type: SlotType, defaultUnused: string = '') => {
         case 'Food': return ['Food','Food']
         case 'Pill': return ['Pill','Pill']
         case 'HealSkill': return ["Heal",'Heal skill']
+        case 'AOEHealSkill': return ["AOEHeal",'AOE Heal skill']
         case 'MpRestorer': return ['MP', 'MP restorer']
         case 'FpRestorer': return ['FP', 'FP restorer']
         case 'PickupPet': return ['Pet', 'Pickup pet']
         case 'PickupMotion': return ['Pickup', 'Pickup motion']
         case 'AttackSkill': return ['Attack', 'Attack skill']
+        case 'AOEAttackSkill': return ['AOE Attack', 'AOE Attack skill']
         case 'BuffSkill': return ['Buff', 'Buff skill']
         case 'RezSkill': return ['Rez', 'Resurection skill']
         case 'Flying': return ['Board', 'Board']
+        case 'PartySkill': return ['PartySkill', 'PartySkill']
     }
 }
 export type SlotModel = {
@@ -83,6 +95,7 @@ export type FarmingConfigModel = Partial<{
 
     is_stop_fighting: boolean;
     prevent_already_attacked: boolean;
+    prioritize_aggro: boolean;
 
     obstacle_avoidance_cooldown: number,
     obstacle_avoidance_max_try: number,
@@ -94,20 +107,35 @@ export type FarmingConfigModel = Partial<{
     on_death_disconnect: boolean,
     interval_between_buffs: number,
     mobs_timeout: number,
+    aoe_farming: number,
+
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
 }>
 
 export type SupportConfigModel = Partial<{
     [key: string]: any;
     slot_bars: SlotBars,
     obstacle_avoidance_cooldown: number,
-    on_death_disconnect: boolean,
     interval_between_buffs: number,
+    is_in_party: boolean,
+    on_death_disconnect: boolean,
+
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
+    max_main_distance: number,
 }>
 
 export type ShoutConfigModel = Partial<{
     [key: string]: any;
     shout_interval: number,
     shout_messages: string[],
+
+    on_afk_disconnect: boolean,
+    afk_timeout: number,
+    afk_ready_to_disconnect: boolean,
 }>
 
 export type BotConfigModel = {
