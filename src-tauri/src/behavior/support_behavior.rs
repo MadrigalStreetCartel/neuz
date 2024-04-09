@@ -101,15 +101,14 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         self.follow_target();
         if self.rez_target(config, image) {
-
             //slog::debug!(self.logger, "Rezzing target");
             if self.is_waiting_for_revive {
                 if image.client_stats.target_hp.value > 0 {
                     self.is_waiting_for_revive = false;
-                    self.slots_usage_last_time = [[None; 10]; 9];
                 }
             } else {
                 self.is_waiting_for_revive = true;
+                self.slots_usage_last_time = [[None; 10]; 9];
                 return;
             }
         }
@@ -236,9 +235,7 @@ impl SupportBehavior<'_> {
                     slog::debug!(self.logger, "Starting self buffing");
                     self.buff_counter = 0;
                 }
-                if self.has_target {
-                    self.lose_target();
-                }
+                self.lose_target();
             } else {
                 if self.target_buffing == false {
                     self.target_buffing = true;
@@ -296,10 +293,12 @@ impl SupportBehavior<'_> {
         }
     }
     fn lose_target(&mut self) {
-        play!(self.movement => [
-            PressKey("Escape"),
-            Wait(dur::Random(200..250)),
-        ]);
+        if self.has_target {
+            play!(self.movement => [
+               PressKey("Escape"),
+               Wait(dur::Random(200..250)),
+           ]);
+        }
     }
 
     fn select_party_leader(&mut self, _config: &SupportConfig) {
@@ -437,7 +436,6 @@ impl SupportBehavior<'_> {
             } else {
                 if config.is_in_party() {
                     self.lose_target();
-                    std::thread::sleep(Duration::from_millis(5));
                     self.send_slot(heal.unwrap(), true);
                     //self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
                 }
