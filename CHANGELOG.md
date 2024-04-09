@@ -9,22 +9,28 @@ Date format: `DD/MM/YYYY`
 **0.16.4**
 > Released on 05.04.2024
 - Farming
+    - Perform better due to all changes in code base
+    - Fix motion pickup
     - Added toggle to prioritize aggros or just the closest mob
     - AOE attack, configurable with number of mobs to attack
+    - Removes (temporary?) prevent already attacked feature
 - Support 
-    - Party leader selection when in a party, support mode **only**
-- Common
-    - Added multi buffs
+    - Party leader selection when in a party (needs to be enabled in settings) 
+    - Self buffing and healing **ONLY WHILE IN A PARTY** (yes! My RM can now be buffed and healed properly)
     - AOE healing 
+    - Fix issues where buffs were not properly triggered
 - UI
     - Slots
         - Alphabetical order for slots
         - Added party slots
+        - Added AOE skill and heal slots
 - Misc
+    - Better main loop management increasing performances
     - Rework eval api
+    - Rework client_stats adding a bunch of states : is_mover, is_on_screen, target_distance and more.
     - Changed cloud detection max_x distance
     - Fixes Azria issue (was crashing)
-    - Changes updater new update page
+    - Changes updater redirection page
 
 **0.16.3**
 > Released on 24.3.2023
