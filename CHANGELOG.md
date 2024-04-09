@@ -5,7 +5,6 @@ Date format: `DD/MM/YYYY`
 [@genoxalmighty]: https://github.com/genoxalmighty
 [@slyker]: https://github.com/slyker
 <!-- /maintainers -->
-TEST
 
 **0.16.4**
 > Released on 05.04.2024
