@@ -1,6 +1,6 @@
 use super::{Bounds, Point};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MobType {
     Passive,
     Aggressive,

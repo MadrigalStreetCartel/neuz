@@ -15,7 +15,7 @@ pub mod point_selector {
 }
 
 /// A point cloud in 2D space.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct PointCloud {
     points: Vec<Point>,
 }

@@ -6,7 +6,7 @@ use tauri::{ Manager, Window };
 
 use super::Behavior;
 use crate::{
-    data::{ AliveState, Bounds, MobType, Point, Target, TargetType },
+    data::{ AliveState, Bounds, MobType, PixelCloud, Point, Target, TargetType },
     image_analyzer::ImageAnalyzer,
     ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType },
     movement::MovementAccessor,
@@ -52,6 +52,7 @@ pub struct FarmingBehavior<'a> {
     concurrent_mobs_under_attack: u32,
     wait_duration: Option<Duration>,
     wait_start: Instant,
+    pixel_clouds: Vec<PixelCloud>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -83,6 +84,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             concurrent_mobs_under_attack: 0,
             wait_duration: None,
             wait_start: Instant::now(),
+            pixel_clouds: vec![],
         }
     }
 
@@ -142,6 +144,10 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl FarmingBehavior<'_> {
+
+    pub fn set_pixel_clouds(&mut self, clouds: Vec<PixelCloud>) {
+        self.pixel_clouds = clouds;
+    }
     fn wait_cooldown(&mut self) -> bool {
         if self.wait_duration.is_some() {
             if self.wait_start.elapsed() < self.wait_duration.unwrap() {
@@ -384,7 +390,7 @@ impl FarmingBehavior<'_> {
         if config.is_stop_fighting() {
             return State::VerifyTarget(Target::default());
         }
-        let mobs = image.identify_mobs(config);
+        let mobs = image.identify_mobs(&self.pixel_clouds);
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound

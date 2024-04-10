@@ -17,13 +17,7 @@ use slog::{ Drain, Level, Logger };
 use tauri::{ LogicalSize, Manager, Size, Window };
 
 use crate::{
-    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
-    image_analyzer::ImageAnalyzer,
-    data::AliveState,
-    ipc::{ BotConfig, BotMode },
-    movement::MovementAccessor,
-    platform::{ eval_send_key, KeyMode },
-    utils::Timer,
+    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior }, data::{AliveState, MobType, PixelCloudConfig, PixelCloudKind, PixelCloudKindCategorie}, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, BotMode }, movement::MovementAccessor, platform::{ eval_send_key, KeyMode }, utils::Timer
 };
 
 struct AppState {
@@ -359,7 +353,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let eval_js = eval_js.replace("$env.DEBUG", "false");
         drop(window.eval(&eval_js));
 
-        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
+        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window, &logger);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
         // Create movement accessor
@@ -485,8 +479,21 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
+                let configs = &vec![
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::HP(false))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::MP(false))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::FP)),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::HP(true))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::MP(true))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Target(false))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Target(true))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Mob(MobType::Aggressive))),
+                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Mob(MobType::Passive))),
+                ];
+
                 // Update stats
-                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
+                //image_analyzer.client_stats.update(&mut image_analyzer.clone(), &logger);
+               let pixel_clouds = image_analyzer.pixel_detection(configs);
 
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
@@ -538,6 +545,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 match mode {
                     BotMode::Farming => {
+                        farming_behavior.set_pixel_clouds(pixel_clouds);
                         farming_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
