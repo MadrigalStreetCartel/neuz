@@ -1,4 +1,4 @@
-use std::{ sync::mpsc:: sync_channel , time::Instant };
+use std::{ sync::mpsc::sync_channel, time::Instant };
 use std::collections::HashMap;
 //use libscreenshot::shared::Area;
 use libscreenshot::{ ImageBuffer, WindowCaptureProvider };
@@ -271,14 +271,13 @@ impl<'a> ImageAnalyzer<'a> {
                 bounds: cluster.to_bounds(),
             })
             .filter(|mob| {
-                if let Some(config) = config {
-                    // Filter out small clusters (likely to cause misclicks)
-                    mob.bounds.w > config.min_mobs_name_width() &&
-                        // Filter out huge clusters (likely to be Violet Magician Troupe)
-                        mob.bounds.w < config.max_mobs_name_width()
-                } else {
-                    true
+                if mob_type == TargetType::TargetMarker {
+                    return true;
                 }
+                // Filter out small clusters (likely to cause misclicks)
+                mob.bounds.w > 11 &&
+                    // Filter out huge clusters (likely to be Violet Magician Troupe)
+                    mob.bounds.w < 180
             })
             .collect()
     }
