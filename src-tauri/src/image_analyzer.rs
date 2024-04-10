@@ -239,7 +239,6 @@ impl<'a> ImageAnalyzer<'a> {
     }
 
     pub fn merge_cloud_into_mobs(
-        config: Option<&FarmingConfig>,
         cloud: &PointCloud,
         mob_type: TargetType //ignore_size: bool,
     ) -> Vec<Target> {

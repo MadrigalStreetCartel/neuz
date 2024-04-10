@@ -1,7 +1,14 @@
 use crate::image_analyzer::ImageAnalyzer;
 
 use super::{
-    bounds, ColorDetection, MobType, PixelCloudKind, PixelCloudKindCategorie, PointCloud, Target, TargetType
+    bounds,
+    ColorDetection,
+    MobType,
+    PixelCloudKind,
+    PixelCloudKindCategorie,
+    PointCloud,
+    Target,
+    TargetType,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -94,7 +101,6 @@ impl PixelCloud {
 
     pub fn process_target(&self) -> Option<Target> {
         let target_markers = ImageAnalyzer::merge_cloud_into_mobs(
-            None,
             &self.cloud,
             TargetType::TargetMarker
         );
@@ -110,7 +116,7 @@ impl PixelCloud {
                 _ => TargetType::Mob(MobType::Aggressive),
             }
         };
-        let mob_markers = ImageAnalyzer::merge_cloud_into_mobs(None, &self.cloud, mob_type);
+        let mob_markers = ImageAnalyzer::merge_cloud_into_mobs(&self.cloud, mob_type);
 
         mob_markers
             .into_iter()
