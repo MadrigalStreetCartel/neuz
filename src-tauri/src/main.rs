@@ -19,7 +19,6 @@ use std::{
     time::Duration,
 };
 
-use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
 use slog::{Drain, Level, Logger};
@@ -434,11 +433,11 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 support_behavior.update(config);
 
                 // Make sure an operation mode is set
-                guard!(let Some(mode) = config.mode() else {
+                let Some(mode) = config.mode() else {
                     std::thread::sleep(std::time::Duration::from_millis(100));
                     timer.silence();
                     continue;
-                });
+                };
 
                 // Interupt the current behavior if the bot is stopped
                 if !config.is_running() {

@@ -1,5 +1,5 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use tauri::Window;
+use tauri::{Manager, Window};
 
 use crate::data::Point;
 
