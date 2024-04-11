@@ -1,5 +1,5 @@
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use tauri::{Manager, Window};
+use tauri::{Window};
 
 use crate::data::Point;
 
@@ -17,7 +17,7 @@ pub const IGNORE_AREA_BOTTOM: u32 = 110;
 pub fn get_window_id(window: &Window) -> Option<u64> {
     #[allow(unused_variables)]
     match window.raw_window_handle() {
-        RawWindowHandle::Xlib(handle) => Some(handle.window),
+        RawWindowHandle::Xlib(handle) => Some(handle.window as u64),
         RawWindowHandle::Win32(handle) => Some(handle.hwnd as u64),
         RawWindowHandle::AppKit(handle) => {
             #[cfg(target_os = "macos")]
