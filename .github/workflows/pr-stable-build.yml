@@ -1,11 +1,12 @@
-# avoid replacing current release artifacts keeping pr testing build
+# allowing test inside PRs
 
-name: "PR build testing"
+name: "PR build release"
 on:
     push:
         branches:
           - '**'        # matches every branch
-          - '!main'   # excludes master
+          - '!master'   # excludes master
+
 env:
     CI: false
 jobs:
@@ -30,4 +31,3 @@ jobs:
                   sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
             - name: install app dependencies and build it
               run: yarn && yarn build
-
