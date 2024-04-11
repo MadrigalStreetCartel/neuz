@@ -100,7 +100,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.use_party_skills(config);
         self.check_self_restorations(config, image);
 
-        if self.update_target_marker_next_frame && self.has_target == false {
+        if self.has_target == false {
             if config.is_in_party() {
                 self.select_party_leader(config);
             }
@@ -122,7 +122,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         }
 
         self.check_target_restorations(config, image);
-        if image.client_stats.target_on_screen {
+        if self.update_target_marker_next_frame &&  image.client_stats.target_on_screen {
             let dist = self.is_target_in_range(config, image);
             if dist == false {
                 return;
@@ -301,7 +301,7 @@ impl SupportBehavior<'_> {
         }
     }
     fn lose_target(&mut self) {
-        if self.update_target_marker_next_frame && self.has_target {
+        if self.has_target {
             play!(self.movement => [
                PressKey("Escape"),
                Wait(dur::Random(200..250)),
@@ -328,7 +328,7 @@ impl SupportBehavior<'_> {
     }
 
     fn follow_target(&mut self) {
-        if self.update_target_marker_next_frame && self.has_target {
+        if self.has_target {
             play!(self.movement => [
                 PressKey("Z"),
             ]);
