@@ -2,7 +2,7 @@ use std::{ sync::mpsc::sync_channel, time::Instant };
 use std::collections::HashMap;
 //use libscreenshot::shared::Area;
 use libscreenshot::{ ImageBuffer, WindowCaptureProvider };
-use rayon::iter::{ ParallelBridge, ParallelIterator };
+use rayon::iter::{ IntoParallelRefIterator, ParallelBridge, ParallelIterator };
 use slog::Logger;
 use tauri::Window;
 
@@ -64,6 +64,10 @@ impl<'a> ImageAnalyzer<'a> {
         const DETECTION_BUFFER: usize = 4096;
         let (snd, recv) = sync_channel::<(CloudDetectionCategorie, Point)>(DETECTION_BUFFER);
         let image = self.image.as_ref().unwrap();
+        let config = &config
+            .iter()
+            .filter(|x| x.enabled)
+            .collect::<Vec<_>>();
         let mut max_x = config
             .iter()
             .map(|x| x.bounds.w)
@@ -127,11 +131,9 @@ impl<'a> ImageAnalyzer<'a> {
                     if let Some(config) = matched_pixel {
                         #[allow(dropping_copy_types)]
                         drop(
-                            snd
-                                .try_send((config.detector.clone(), Point::new(x, y)))
-                                .map_err(|err| {
-                                    eprintln!("Error sending data: {}", err);
-                                })
+                            snd.try_send((config.config.clone(), Point::new(x, y))).map_err(|err| {
+                                eprintln!("Error sending data: {}", err);
+                            })
                         );
                         // Continue to next column
                         continue 'outer;
@@ -143,7 +145,7 @@ impl<'a> ImageAnalyzer<'a> {
         let clouds = {
             let mut clouds: HashMap<CloudDetectionCategorie, PointCloud> = HashMap::default();
             for i in 0..config.len() {
-                clouds.insert(config[i].detector, PointCloud::default());
+                clouds.insert(config[i].config, PointCloud::default());
             }
             while let Ok((config, point)) = recv.recv() {
                 if let Some(cloud) = clouds.get_mut(&config) {
@@ -153,71 +155,59 @@ impl<'a> ImageAnalyzer<'a> {
             clouds
         };
 
-        let mut pixel_clouds = {
-            let mut pixel_clouds: Vec<CloudDetection> = Vec::default();
-            for (detector, cloud) in clouds {
-                pixel_clouds.push(CloudDetection {
-                    kind: detector,
-                    cloud,
-                });
-            }
-            pixel_clouds
-        };
-        self.client_stats.update_v2(&pixel_clouds);
-        self.client_stats.has_tray_open = self.client_stats.detect_stat_tray();
-        self.client_stats.is_alive = {
-            if !self.client_stats.has_tray_open {
-                AliveState::StatsTrayClosed
-            } else if self.client_stats.hp.value > 0 {
-                AliveState::Alive
-            } else {
-                AliveState::Dead
-            }
-        };
-        self.client_stats.target_is_npc =
-            self.client_stats.target_hp.value == 100 && self.client_stats.target_mp.value == 0;
-        self.client_stats.target_is_mover = self.client_stats.target_mp.value > 0;
-        self.client_stats.target_is_alive = self.client_stats.target_hp.value > 0;
-        let mut _is_red_target = false;
-        let target: Option<Target> = {
-            let mut result = None;
-            for cloud in &pixel_clouds {
-                if result.is_some() {
-                    continue;
+        let mut detected_clouds = clouds
+            .par_iter()
+            .map(move |(detector, cloud)| {
+                CloudDetection {
+                    kind: *detector,
+                    cloud: cloud.clone(),
                 }
-                match cloud.kind {
-                    CloudDetectionCategorie::Mover(t) => {
-                        match t {
-                            CloudDetectionKind::Target(is_red) => {
-                                let target = cloud.process_target();
-                                if result.is_none() && target.is_some() {
-                                    if is_red {
-                                        _is_red_target = true;
-                                    }
-                                    result = target;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            result
-        };
-        self.client_stats.target_marker = target;
-        self.client_stats.target_on_screen = target.is_some();
+            })
+            .collect();
 
-        if self.client_stats.target_on_screen {
+        self.client_stats.update(&detected_clouds);
+        // remove stats clouds
+        detected_clouds.retain(|x| {
+            match x.kind {
+                CloudDetectionCategorie::Stat(_) => false,
+                _ => true,
+            }
+        });
+
+        let result = detected_clouds.par_iter().find_map_first(move |cloud| {
+            match cloud.kind {
+                CloudDetectionCategorie::Mover(t) => {
+                    match t {
+                        CloudDetectionKind::Target(is_red) => {
+                            let target = cloud.process_target();
+                            if target.is_some() {
+                                return Some((target, is_red));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+            None
+        });
+
+        let target = if let Some((target, _is_red)) = result {
             self.client_stats.target_distance = Some(
                 self.get_target_distance_to_player(target.unwrap())
             );
+            target
         } else {
             self.client_stats.target_distance = None;
-        }
+
+            None
+        };
+
+        self.client_stats.target_marker = target;
+        self.client_stats.target_on_screen = target.is_some();
 
         // remove used clouds
-        pixel_clouds.retain(|x| {
+        detected_clouds.retain(|x| {
             match x.kind {
                 CloudDetectionCategorie::Mover(t) => {
                     match t {
@@ -230,7 +220,7 @@ impl<'a> ImageAnalyzer<'a> {
             }
         });
 
-        pixel_clouds
+        detected_clouds
 
         // Set clouds
     }
@@ -265,6 +255,7 @@ impl<'a> ImageAnalyzer<'a> {
 
         target.get_target_distance_to(point)
     }
+
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'b>(
         &self,

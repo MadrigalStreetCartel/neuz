@@ -29,6 +29,14 @@ pub trait Behavior<'a> {
         false
     }
 
+    fn should_update_target_marker(&self) -> bool {
+        false
+    }
+
+    fn should_update_stats(&self) -> bool {
+        true
+    }
+
     /// Runs every frame
     fn run_iteration(
         &mut self,

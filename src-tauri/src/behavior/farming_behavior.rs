@@ -110,6 +110,14 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
     }
 
+    fn should_update_target_marker(&self) -> bool {
+        match self.state {
+            State::Attacking(_) => true,
+            State::VerifyTarget(_) => true,
+            _ => false,
+        }
+    }
+
     fn run_iteration(
         &mut self,
         frontend_info: &mut FrontendInfo,

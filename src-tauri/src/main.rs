@@ -13,12 +13,19 @@ use std::{ fs, io, os::windows::process, path::{ Path, PathBuf }, sync::Arc, tim
 use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
+use rayon::iter::{ IntoParallelRefMutIterator, ParallelIterator };
 use slog::{ Drain, Level, Logger };
 use tauri::{ LogicalSize, Manager, Size, Window };
 
 use crate::{
     behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
-    data::{ AliveState, MobType, CloudDetectionConfig, CloudDetectionKind, CloudDetectionCategorie },
+    data::{
+        AliveState,
+        MobType,
+        CloudDetectionConfig,
+        CloudDetectionKind,
+        CloudDetectionCategorie,
+    },
     image_analyzer::ImageAnalyzer,
     ipc::{ BotConfig, BotMode },
     movement::MovementAccessor,
@@ -377,20 +384,47 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         );
         send_info(&frontend_info.read());
 
-
-        let configs = &vec![
-            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::HP(false))),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::MP(false))),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::FP)),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::HP(true))),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::MP(true))),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Mover(CloudDetectionKind::Target(false))),
-            CloudDetectionConfig::new(CloudDetectionCategorie::Mover(CloudDetectionKind::Target(true))),
+        let mut configs = vec![
             CloudDetectionConfig::new(
-                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Aggressive))
+                // 0
+                CloudDetectionCategorie::Stat(CloudDetectionKind::HP(false)),
+                true
             ),
             CloudDetectionConfig::new(
-                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Passive))
+                // 1
+                CloudDetectionCategorie::Stat(CloudDetectionKind::MP(false)),
+                true
+            ),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::FP), true), // 2
+            CloudDetectionConfig::new(
+                // 3
+                CloudDetectionCategorie::Stat(CloudDetectionKind::HP(true)),
+                true
+            ),
+            CloudDetectionConfig::new(
+                // 4
+                CloudDetectionCategorie::Stat(CloudDetectionKind::MP(true)),
+                true
+            ),
+            CloudDetectionConfig::new(
+                // 5
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Target(false)),
+                false
+            ),
+            CloudDetectionConfig::new(
+                // 6
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Target(true)),
+                false
+            ),
+            CloudDetectionConfig::new(
+                // 7
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Aggressive)),
+                false
+            ),
+            CloudDetectionConfig::new(
+                // 8
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Passive)),
+                false
             )
         ];
 
@@ -495,6 +529,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 timer.silence();
                 continue;
             }
+            guard!(let Some(mode) = config.mode() else { continue; });
 
             frontend_info_mut.set_is_running(true);
 
@@ -503,11 +538,53 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
+                /* let  mut_config = configs.par_iter_mut();
+                mut_config.for_each(
+                    |config| {
+                        config.enabled = false;
+                    }
+                ); */
+
+                match mode {
+                    BotMode::Farming => {
+                        for id in [0, 1, 2, 3, 4].iter() {
+                            configs[*id as usize].enabled = farming_behavior.should_update_stats();
+                        }
+                        for id in [5, 6, 7, 8].iter(){
+                            configs[*id as usize].enabled = farming_behavior.should_update_targets();
+                        }
+                        for id in [5, 6].iter(){
+                            configs[*id as usize].enabled = farming_behavior.should_update_target_marker();
+                        }
+                    },
+                    BotMode::AutoShout => {
+                        for id in [0, 1, 2, 3, 4].iter() {
+                            configs[*id as usize].enabled = shout_behavior.should_update_stats();
+                        }
+                        for id in [5, 6, 7, 8].iter(){
+                            configs[*id as usize].enabled = shout_behavior.should_update_targets();
+                        }
+                        for id in [5, 6].iter(){
+                            configs[*id as usize].enabled = shout_behavior.should_update_target_marker();
+                        }
+                    },
+                    BotMode::Support => {
+                        for id in [0, 1, 2, 3, 4].iter() {
+                            configs[*id as usize].enabled = support_behavior.should_update_stats();
+                        }
+                        for id in [5, 6, 7, 8].iter(){
+                            configs[*id as usize].enabled = support_behavior.should_update_targets();
+                        }
+                        for id in [5, 6].iter(){
+                            configs[*id as usize].enabled = support_behavior.should_update_target_marker();
+                        }
+                    },
+                }
+
                 // Update stats
-                let pixel_clouds = image_analyzer.pixel_detection(configs);
+                let pixel_clouds = image_analyzer.pixel_detection(&configs);
 
                 // Run the current behavior
-                guard!(let Some(mode) = config.mode() else { continue; });
 
                 //Regardless if it's alive or not, if the bot is inactive should be dcd
                 if frontend_info_mut.is_afk_ready_to_disconnect() {
@@ -557,7 +634,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 match mode {
                     BotMode::Farming => {
                         if farming_behavior.should_update_targets() {
-                            farming_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                            farming_behavior.update_targets(
+                                image_analyzer.identify_mobs(&pixel_clouds)
+                            );
                         }
                         farming_behavior.run_iteration(
                             &mut frontend_info_mut,
@@ -567,7 +646,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     }
                     BotMode::AutoShout => {
                         if shout_behavior.should_update_targets() {
-                            shout_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                            shout_behavior.update_targets(
+                                image_analyzer.identify_mobs(&pixel_clouds)
+                            );
                         }
                         shout_behavior.run_iteration(
                             &mut frontend_info_mut,
@@ -577,7 +658,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                     }
                     BotMode::Support => {
                         if support_behavior.should_update_targets() {
-                            support_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                            support_behavior.update_targets(
+                                image_analyzer.identify_mobs(&pixel_clouds)
+                            );
                         }
                         support_behavior.run_iteration(
                             &mut frontend_info_mut,

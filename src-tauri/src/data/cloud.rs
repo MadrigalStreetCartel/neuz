@@ -6,17 +6,19 @@ use super::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CloudDetectionConfig {
-    pub detector: CloudDetectionCategorie,
+    pub config: CloudDetectionCategorie,
     pub bounds: bounds::Bounds,
     pub color_detection: ColorDetection,
+    pub enabled: bool,
 }
 
 impl CloudDetectionConfig {
-    pub fn new(detector: CloudDetectionCategorie) -> Self {
+    pub fn new(detector: CloudDetectionCategorie, enabled: bool) -> Self {
         let mut result = Self {
-            detector,
+            config: detector,
             bounds: detector.get_bounds(),
             color_detection: detector.get_colors().expect("No color detection found"),
+            enabled,
         };
 
         if !result.is_valid() {
@@ -49,16 +51,17 @@ impl CloudDetectionConfig {
 
 impl Clone for CloudDetectionConfig {
     fn clone(&self) -> Self {
-        CloudDetectionConfig::new(self.detector.clone())
+        CloudDetectionConfig::new(self.config.clone(), false)
     }
 }
 
 impl Default for CloudDetectionConfig {
     fn default() -> Self {
         Self {
-            detector: CloudDetectionCategorie::None,
+            config: CloudDetectionCategorie::None,
             bounds: bounds::Bounds::default(),
             color_detection: ColorDetection::default(),
+            enabled: false,
         }
     }
 }

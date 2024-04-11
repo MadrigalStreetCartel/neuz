@@ -62,7 +62,7 @@ impl ClientStats {
         }
     }
 
-    pub fn update_v2(&mut self, pixel_clouds: &Vec<CloudDetection>) {
+    pub fn update(&mut self, pixel_clouds: &Vec<CloudDetection>) {
         for pixel_cloud in pixel_clouds {
             match pixel_cloud.kind {
                 CloudDetectionCategorie::Stat(t) => {
@@ -95,6 +95,21 @@ impl ClientStats {
                 _ => {}
             }
         }
+
+        self.has_tray_open = self.detect_stat_tray();
+        self.is_alive = {
+            if !self.has_tray_open {
+                AliveState::StatsTrayClosed
+            } else if self.hp.value > 0 {
+                AliveState::Alive
+            } else {
+                AliveState::Dead
+            }
+        };
+        self.target_is_npc =
+            self.target_hp.value == 100 && self.target_mp.value == 0;
+        self.target_is_mover = self.target_mp.value > 0;
+        self.target_is_alive = self.target_hp.value > 0;
         //self._debug_print();
     }
 
