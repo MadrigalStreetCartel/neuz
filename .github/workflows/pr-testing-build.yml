@@ -3,9 +3,8 @@
 name: "PR build testing"
 on:
     push:
-        branches:
-          - '**'        # matches every branch
-          - '!main'   # excludes master
+      branches-ignore:
+          - main   # excludes master
 env:
     CI: false
 jobs:
