@@ -78,6 +78,10 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.stop(config);
     }
 
+    fn should_update_target_marker(&self) -> bool {
+        true
+    }
+
     fn run_iteration(
         &mut self,
         _frontend_info: &mut FrontendInfo,
