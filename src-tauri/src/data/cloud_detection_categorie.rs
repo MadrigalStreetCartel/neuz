@@ -13,9 +13,9 @@ const SELF_BOUNDS: Bounds = Bounds { // Player health panel aka stats tray
     h: 110,
 };
 
-const FULL_BOUNDS: Bounds = Bounds { // Full screen
-    x: 0,
-    y: 0,
+const FULL_BOUNDS: Bounds = Bounds { // Full screen not really full cause of status bar
+    x: 200,
+    y: 100,
     w: 800,
     h: 600,
 };

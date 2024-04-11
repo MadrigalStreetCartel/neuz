@@ -2,13 +2,17 @@ use std::{ sync::mpsc::sync_channel, time::Instant };
 use std::collections::HashMap;
 //use libscreenshot::shared::Area;
 use libscreenshot::{ ImageBuffer, WindowCaptureProvider };
-use rayon::iter::{ IntoParallelRefIterator, ParallelBridge, ParallelIterator };
+use rayon::iter::{
+    IntoParallelIterator,
+    IntoParallelRefIterator,
+    ParallelBridge,
+    ParallelIterator,
+};
 use slog::Logger;
 use tauri::Window;
 
 use crate::{
     data::{
-        AliveState,
         Bounds,
         ClientStats,
         CloudDetection,
@@ -64,10 +68,12 @@ impl<'a> ImageAnalyzer<'a> {
         const DETECTION_BUFFER: usize = 4096;
         let (snd, recv) = sync_channel::<(CloudDetectionCategorie, Point)>(DETECTION_BUFFER);
         let image = self.image.as_ref().unwrap();
+
         let config = &config
             .iter()
             .filter(|x| x.enabled)
             .collect::<Vec<_>>();
+
         let mut max_x = config
             .iter()
             .map(|x| x.bounds.w)
@@ -78,6 +84,7 @@ impl<'a> ImageAnalyzer<'a> {
             .map(|x| x.bounds.h)
             .max()
             .unwrap_or(0);
+
         let min_x = config
             .iter()
             .map(|x| x.bounds.x)
@@ -89,15 +96,17 @@ impl<'a> ImageAnalyzer<'a> {
             .min()
             .unwrap_or(0);
 
+        let image_width = image.width();
         if max_x == 0 {
-            max_x = image.width();
-        }
-
-        if max_y == 0 {
-            max_y = image.height();
+            max_x = image_width;
         }
 
         let image_height = image.height();
+        if max_y == 0 {
+            max_y = image_height;
+        }
+        let image_height = image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height);
+
         image
             .enumerate_rows()
             .par_bridge()
@@ -106,11 +115,12 @@ impl<'a> ImageAnalyzer<'a> {
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
                 if
                     y <= IGNORE_AREA_TOP ||
-                    y > image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height) ||
+                    y > image_height ||
                     y > IGNORE_AREA_TOP + max_y ||
                     y > max_y ||
                     y < min_y
                 {
+                    //println!("returning early on y: {}", y);
                     return;
                 }
 
@@ -166,13 +176,13 @@ impl<'a> ImageAnalyzer<'a> {
             .collect();
 
         self.client_stats.update(&detected_clouds);
-        // remove stats clouds
+        /*         // remove stats clouds
         detected_clouds.retain(|x| {
             match x.kind {
                 CloudDetectionCategorie::Stat(_) => false,
                 _ => true,
             }
-        });
+        }); */
 
         let result = detected_clouds.par_iter().find_map_first(move |cloud| {
             match cloud.kind {
@@ -274,40 +284,39 @@ impl<'a> ImageAnalyzer<'a> {
         let point = Point::new(mid_x, mid_y);
 
         // Calculate 2D euclidian distances to player
-        let mut distances = Vec::default();
-        for mob in mobs {
-            let distance = mob.get_target_distance_to(point);
-            distances.push((mob, distance));
-        }
+        let mut distances: Vec<(&Target, i32)> = mobs
+            .into_par_iter()
+            .map(|mob| {
+                let distance = mob.get_target_distance_to(point);
+                (mob, distance)
+            })
+            .collect();
 
         // Sort by distance
         distances.sort_by_key(|&(_, distance)| distance);
 
         // Remove mobs that are too far away
         distances = distances
-            .into_iter()
+            .into_par_iter()
             .filter(|&(_, distance)| distance <= max_distance)
             .collect();
 
         if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if
-                let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
-                    //*distance > 55
-                    let coords = mob.get_attack_coords();
-                    let mut result = true;
-                    for avoided_item in avoided_bounds {
-                        if avoided_item.0.contains_point(&coords) {
-                            //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
-                            result = false;
-                            break;
-                        }
-                    }
-                    result // && *distance > 20
-                    // let coords = mob.name_bounds.get_lowest_center_point();
-                    // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
-                })
-            {
+            let closest = distances.par_iter().find_first(|(mob, _distance)| {
+                //*distance > 55
+                let coords = mob.get_attack_coords();
+                let avoided_bounds = avoided_bounds
+                    .par_iter().find_first(|avoided_item| { !avoided_item.0.contains_point(&coords) });
+
+                if let Some(_) = avoided_bounds {
+                    true
+                } else {
+                    false
+                }
+            });
+
+            if let Some((mob, _distance)) = closest {
                 Some(mob)
             } else {
                 None

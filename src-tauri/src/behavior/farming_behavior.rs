@@ -102,7 +102,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         self.targets = targets;
     }
 
-    fn should_update_targets(&self) -> bool {
+    fn should_update_targets(&mut self) -> bool {
         if self.state == State::SearchingForEnemy {
             return true;
         } else {
@@ -110,7 +110,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
     }
 
-    fn should_update_target_marker(&self) -> bool {
+    fn should_update_target_marker(&mut self) -> bool {
         match self.state {
             State::Attacking(_) => true,
             State::VerifyTarget(_) => true,

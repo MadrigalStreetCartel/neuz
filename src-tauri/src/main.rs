@@ -672,6 +672,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend
                 send_info(&frontend_info.read());
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
 
             // Update last mode

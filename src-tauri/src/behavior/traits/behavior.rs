@@ -25,15 +25,15 @@ pub trait Behavior<'a> {
     /// Runs when the bot is disengaged passing on screen targets
     fn update_targets(&mut self, _targets: Vec<Target>) {}
 
-    fn should_update_targets(&self) -> bool {
+    fn should_update_targets(&mut self) -> bool {
         false
     }
 
-    fn should_update_target_marker(&self) -> bool {
+    fn should_update_target_marker(&mut self) -> bool {
         false
     }
 
-    fn should_update_stats(&self) -> bool {
+    fn should_update_stats(&mut self) -> bool {
         true
     }
 

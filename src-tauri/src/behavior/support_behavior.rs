@@ -37,6 +37,8 @@ pub struct SupportBehavior<'a> {
     target_buffing: bool,
     //is_on_flight: bool,
     buff_counter: u32,
+
+    update_target_marker_next_frame: bool,
 }
 
 impl<'a> Behavior<'a> for SupportBehavior<'a> {
@@ -58,6 +60,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
             self_buffing: false,
             target_buffing: false,
             buff_counter: 0,
+            update_target_marker_next_frame: true,
             //is_on_flight: false,
         }
     }
@@ -78,8 +81,9 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.stop(config);
     }
 
-    fn should_update_target_marker(&self) -> bool {
-        true
+    fn should_update_target_marker(&mut self) -> bool {
+        self.update_target_marker_next_frame = !self.update_target_marker_next_frame;
+        self.update_target_marker_next_frame
     }
 
     fn run_iteration(
@@ -96,7 +100,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.use_party_skills(config);
         self.check_self_restorations(config, image);
 
-        if self.has_target == false {
+        if self.update_target_marker_next_frame && self.has_target == false {
             if config.is_in_party() {
                 self.select_party_leader(config);
             }
@@ -297,7 +301,7 @@ impl SupportBehavior<'_> {
         }
     }
     fn lose_target(&mut self) {
-        if self.has_target {
+        if self.update_target_marker_next_frame && self.has_target {
             play!(self.movement => [
                PressKey("Escape"),
                Wait(dur::Random(200..250)),
@@ -324,7 +328,7 @@ impl SupportBehavior<'_> {
     }
 
     fn follow_target(&mut self) {
-        if self.has_target {
+        if self.update_target_marker_next_frame && self.has_target {
             play!(self.movement => [
                 PressKey("Z"),
             ]);
