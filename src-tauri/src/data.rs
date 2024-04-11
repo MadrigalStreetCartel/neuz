@@ -13,11 +13,11 @@ pub use self::color::*;
 mod point_cloud;
 pub use self::point_cloud::{point_selector, PointCloud};
 
-mod pixel_cloud_kind_categorie;
-pub use self::pixel_cloud_kind_categorie::PixelCloudKindCategorie;
+mod cloud_detection_kind;
+pub use self::cloud_detection_kind::CloudDetectionKind;
 
-mod pixel_cloud_kind;
-pub use self::pixel_cloud_kind::PixelCloudKind;
+mod cloud_detection_categorie;
+pub use self::cloud_detection_categorie::CloudDetectionCategorie;
 
 mod stats_info;
 pub use self::stats_info::ClientStats;

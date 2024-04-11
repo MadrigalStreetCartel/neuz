@@ -1,19 +1,19 @@
-use super::{ Bounds, Color, ColorDetection, MobType, PixelCloudKind };
-const TARGET_BOUNDS: Bounds = Bounds {
+use super::{ Bounds, Color, ColorDetection, MobType, CloudDetectionKind };
+const TARGET_BOUNDS: Bounds = Bounds { // Monster health panel
     x: 300,
     y: 30,
     w: 550,
     h: 60,
 };
 
-const SELF_BOUNDS: Bounds = Bounds {
+const SELF_BOUNDS: Bounds = Bounds { // Player health panel aka stats tray
     x: 105,
     y: 30,
     w: 225,
     h: 110,
 };
 
-const FULL_BOUNDS: Bounds = Bounds {
+const FULL_BOUNDS: Bounds = Bounds { // Full screen
     x: 0,
     y: 0,
     w: 800,
@@ -21,14 +21,14 @@ const FULL_BOUNDS: Bounds = Bounds {
 };
 
 #[derive(Debug, Copy, PartialEq, Eq, Default, Hash)]
-pub enum PixelCloudKindCategorie {
+pub enum CloudDetectionCategorie {
     #[default]
     None,
-    Mover(PixelCloudKind),
-    Stat(PixelCloudKind),
+    Mover(CloudDetectionKind),
+    Stat(CloudDetectionKind),
 }
 
-impl Clone for PixelCloudKindCategorie {
+impl Clone for CloudDetectionCategorie {
     fn clone(&self) -> Self {
         match self {
             Self::None => Self::None,
@@ -38,26 +38,26 @@ impl Clone for PixelCloudKindCategorie {
     }
 }
 
-impl PixelCloudKindCategorie {
+impl CloudDetectionCategorie {
     pub fn get_bounds(&self) -> Bounds {
         match self {
             Self::None => Bounds::default(),
             Self::Mover(_) => FULL_BOUNDS,
             Self::Stat(t) => {
                 match t {
-                    PixelCloudKind::HP(b) => {
+                    CloudDetectionKind::HP(b) => {
                         match b {
                             true => TARGET_BOUNDS,
                             false => SELF_BOUNDS,
                         }
                     }
-                    PixelCloudKind::MP(b) => {
+                    CloudDetectionKind::MP(b) => {
                         match b {
                             true => TARGET_BOUNDS,
                             false => SELF_BOUNDS,
                         }
                     }
-                    PixelCloudKind::FP => SELF_BOUNDS,
+                    CloudDetectionKind::FP => SELF_BOUNDS,
                     _ => Bounds::default(),
                 }
             }
@@ -78,7 +78,7 @@ impl PixelCloudKindCategorie {
             Self::Mover(_) => None,
             Self::Stat(t) => {
                 match t {
-                    PixelCloudKind::HP(_) =>
+                    CloudDetectionKind::HP(_) =>
                         Some(ColorDetection {
                             colors: vec![
                                 Color::new([174, 18, 55], None),
@@ -88,7 +88,7 @@ impl PixelCloudKindCategorie {
                             ],
                             tolerance: 5,
                         }),
-                    PixelCloudKind::MP(_) =>
+                    CloudDetectionKind::MP(_) =>
                         Some(ColorDetection {
                             colors: vec![
                                 Color::new([20, 84, 196], None),
@@ -98,7 +98,7 @@ impl PixelCloudKindCategorie {
                             ],
                             tolerance: 5,
                         }),
-                    PixelCloudKind::FP =>
+                    CloudDetectionKind::FP =>
                         Some(ColorDetection {
                             colors: vec![
                                 Color::new([45, 230, 29], None),
@@ -115,17 +115,17 @@ impl PixelCloudKindCategorie {
     }
 
     pub fn get_mob_colors(&self) -> Option<ColorDetection> {
-        if self == &Self::Mover(PixelCloudKind::Mob(MobType::Aggressive)) {
+        if self == &Self::Mover(CloudDetectionKind::Mob(MobType::Aggressive)) {
             return Some(ColorDetection {
                 colors: vec![Color::new([179, 23, 23], None)],
                 tolerance: 5,
             });
-        } else if self == &Self::Mover(PixelCloudKind::Mob(MobType::Passive)) {
+        } else if self == &Self::Mover(CloudDetectionKind::Mob(MobType::Passive)) {
             return Some(ColorDetection {
                 colors: vec![Color::new([234, 234, 149], None)],
                 tolerance: 5,
             });
-        } else if self == &Self::Mover(PixelCloudKind::Mob(MobType::Violet)) {
+        } else if self == &Self::Mover(CloudDetectionKind::Mob(MobType::Violet)) {
             return Some(ColorDetection {
                 colors: vec![Color::new([182, 144, 146], None)],
                 tolerance: 5,
@@ -136,12 +136,12 @@ impl PixelCloudKindCategorie {
     }
 
     pub fn get_target_colors(&self) -> Option<ColorDetection> {
-        if self == &Self::Mover(PixelCloudKind::Target(true)) {
+        if self == &Self::Mover(CloudDetectionKind::Target(true)) {
             return Some(ColorDetection {
                 colors: vec![Color::new([131, 148, 205], None)], // blueish
                 tolerance: 5,
             });
-        } else if self == &Self::Mover(PixelCloudKind::Target(false)) {
+        } else if self == &Self::Mover(CloudDetectionKind::Target(false)) {
             return Some(ColorDetection {
                 colors: vec![Color::new([246, 90, 106], None)], // redish
                 tolerance: 5,

@@ -17,7 +17,13 @@ use slog::{ Drain, Level, Logger };
 use tauri::{ LogicalSize, Manager, Size, Window };
 
 use crate::{
-    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior }, data::{AliveState, MobType, PixelCloudConfig, PixelCloudKind, PixelCloudKindCategorie}, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, BotMode }, movement::MovementAccessor, platform::{ eval_send_key, KeyMode }, utils::Timer
+    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
+    data::{ AliveState, MobType, CloudDetectionConfig, CloudDetectionKind, CloudDetectionCategorie },
+    image_analyzer::ImageAnalyzer,
+    ipc::{ BotConfig, BotMode },
+    movement::MovementAccessor,
+    platform::{ eval_send_key, KeyMode },
+    utils::Timer,
 };
 
 struct AppState {
@@ -370,6 +376,24 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             RwLock::new(FrontendInfo::deserialize_or_default())
         );
         send_info(&frontend_info.read());
+
+
+        let configs = &vec![
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::HP(false))),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::MP(false))),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::FP)),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::HP(true))),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Stat(CloudDetectionKind::MP(true))),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Mover(CloudDetectionKind::Target(false))),
+            CloudDetectionConfig::new(CloudDetectionCategorie::Mover(CloudDetectionKind::Target(true))),
+            CloudDetectionConfig::new(
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Aggressive))
+            ),
+            CloudDetectionConfig::new(
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(MobType::Passive))
+            )
+        ];
+
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -479,21 +503,8 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
-                let configs = &vec![
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::HP(false))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::MP(false))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::FP)),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::HP(true))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Stat(PixelCloudKind::MP(true))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Target(false))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Target(true))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Mob(MobType::Aggressive))),
-                    PixelCloudConfig::new(PixelCloudKindCategorie::Mover(PixelCloudKind::Mob(MobType::Passive))),
-                ];
-
                 // Update stats
-                //image_analyzer.client_stats.update(&mut image_analyzer.clone(), &logger);
-               let pixel_clouds = image_analyzer.pixel_detection(configs);
+                let pixel_clouds = image_analyzer.pixel_detection(configs);
 
                 // Run the current behavior
                 guard!(let Some(mode) = config.mode() else { continue; });
@@ -545,7 +556,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
                 match mode {
                     BotMode::Farming => {
-                        farming_behavior.set_pixel_clouds(pixel_clouds);
+                        if farming_behavior.should_update_targets() {
+                            farming_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                        }
                         farming_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
@@ -553,6 +566,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         );
                     }
                     BotMode::AutoShout => {
+                        if shout_behavior.should_update_targets() {
+                            shout_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                        }
                         shout_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
@@ -560,6 +576,9 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         );
                     }
                     BotMode::Support => {
+                        if support_behavior.should_update_targets() {
+                            support_behavior.update_targets(image_analyzer.identify_mobs(&pixel_clouds));
+                        }
                         support_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,

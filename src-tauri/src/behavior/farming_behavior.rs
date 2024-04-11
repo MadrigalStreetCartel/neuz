@@ -6,7 +6,7 @@ use tauri::{ Manager, Window };
 
 use super::Behavior;
 use crate::{
-    data::{ AliveState, Bounds, MobType, PixelCloud, Point, Target, TargetType },
+    data::{ AliveState, Bounds, MobType,  Point, Target, TargetType },
     image_analyzer::ImageAnalyzer,
     ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType },
     movement::MovementAccessor,
@@ -17,7 +17,7 @@ use crate::{
 
 const MAX_DISTANCE_FOR_AOE: i32 = 75;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
     NoEnemyFound,
     SearchingForEnemy,
@@ -52,7 +52,7 @@ pub struct FarmingBehavior<'a> {
     concurrent_mobs_under_attack: u32,
     wait_duration: Option<Duration>,
     wait_start: Instant,
-    pixel_clouds: Vec<PixelCloud>,
+    targets: Vec<Target>
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -84,7 +84,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             concurrent_mobs_under_attack: 0,
             wait_duration: None,
             wait_start: Instant::now(),
-            pixel_clouds: vec![],
+            targets: vec![],
         }
     }
 
@@ -96,6 +96,18 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 
     fn interupt(&mut self, _config: &BotConfig) {
         self.stop(_config);
+    }
+
+    fn update_targets(&mut self, targets: Vec<Target>) {
+        self.targets = targets;
+    }
+
+    fn should_update_targets(&self) -> bool {
+        if self.state == State::SearchingForEnemy {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     fn run_iteration(
@@ -128,7 +140,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
                 return;
             }
         }
-
         // Check state machine
         self.state = match self.state {
             State::NoEnemyFound => self.on_no_enemy_found(config),
@@ -144,10 +155,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
 }
 
 impl FarmingBehavior<'_> {
-
-    pub fn set_pixel_clouds(&mut self, clouds: Vec<PixelCloud>) {
-        self.pixel_clouds = clouds;
-    }
     fn wait_cooldown(&mut self) -> bool {
         if self.wait_duration.is_some() {
             if self.wait_start.elapsed() < self.wait_duration.unwrap() {
@@ -390,7 +397,7 @@ impl FarmingBehavior<'_> {
         if config.is_stop_fighting() {
             return State::VerifyTarget(Target::default());
         }
-        let mobs = image.identify_mobs(&self.pixel_clouds);
+        let mobs = self.targets.clone();
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
@@ -400,7 +407,7 @@ impl FarmingBehavior<'_> {
                 true => 325,
                 false => 1000,
             };
-            let mob_list = self.prioritize_aggro(config, image, mobs);
+            let mob_list = self.prioritize_aggro(config, image, &mobs);
 
             // inverted conditionals to make it easier to read
             // Check again if we have a list of mobs
@@ -444,7 +451,7 @@ impl FarmingBehavior<'_> {
         &mut self,
         config: &FarmingConfig,
         image: &mut ImageAnalyzer,
-        mobs: Vec<Target>
+        mobs: &Vec<Target>
     ) -> Vec<Target> {
         let mut mob_list: Vec<Target>;
 

@@ -4,7 +4,7 @@ mod movement_coordinator;
 pub use self::{
     movement_accessor::MovementAccessor,
     movement_coordinator::{
-        ActionDuration, Movement, MovementCoordinator, MovementDirection, RotationDirection,
+        ActionDuration, Movement, MovementCoordinator, RotationDirection,
     },
 };
 

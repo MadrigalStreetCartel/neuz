@@ -1,25 +1,18 @@
-use crate::image_analyzer::ImageAnalyzer;
+use crate::{image_analyzer::ImageAnalyzer, utils::Timer};
 
 use super::{
-    bounds,
-    ColorDetection,
-    MobType,
-    PixelCloudKind,
-    PixelCloudKindCategorie,
-    PointCloud,
-    Target,
-    TargetType,
+    bounds, point_selector, CloudDetectionCategorie, CloudDetectionKind, ColorDetection, MobType, PointCloud, Target, TargetType
 };
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct PixelCloudConfig {
-    pub detector: PixelCloudKindCategorie,
+pub struct CloudDetectionConfig {
+    pub detector: CloudDetectionCategorie,
     pub bounds: bounds::Bounds,
     pub color_detection: ColorDetection,
 }
 
-impl PixelCloudConfig {
-    pub fn new(detector: PixelCloudKindCategorie) -> Self {
+impl CloudDetectionConfig {
+    pub fn new(detector: CloudDetectionCategorie) -> Self {
         let mut result = Self {
             detector,
             bounds: detector.get_bounds(),
@@ -54,16 +47,16 @@ impl PixelCloudConfig {
     }
 }
 
-impl Clone for PixelCloudConfig {
+impl Clone for CloudDetectionConfig {
     fn clone(&self) -> Self {
-        PixelCloudConfig::new(self.detector.clone())
+        CloudDetectionConfig::new(self.detector.clone())
     }
 }
 
-impl Default for PixelCloudConfig {
+impl Default for CloudDetectionConfig {
     fn default() -> Self {
         Self {
-            detector: PixelCloudKindCategorie::None,
+            detector: CloudDetectionCategorie::None,
             bounds: bounds::Bounds::default(),
             color_detection: ColorDetection::default(),
         }
@@ -71,18 +64,19 @@ impl Default for PixelCloudConfig {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct PixelCloud {
-    pub kind: PixelCloudKindCategorie,
+pub struct CloudDetection {
+    pub kind: CloudDetectionCategorie,
     pub cloud: PointCloud,
 }
 
-impl PixelCloud {
-    pub fn _new(kind: PixelCloudKindCategorie, cloud: PointCloud) -> Self {
+impl CloudDetection {
+    pub fn _new(kind: CloudDetectionCategorie, cloud: PointCloud) -> Self {
         Self {
             kind,
             cloud,
         }
     }
+
 
     pub fn process_stats(&self, current_max_w: u32) -> (u32, u32) {
         if self.cloud.is_empty() {
@@ -100,7 +94,7 @@ impl PixelCloud {
     }
 
     pub fn process_target(&self) -> Option<Target> {
-        let target_markers = ImageAnalyzer::merge_cloud_into_mobs(
+        let target_markers = Self::merge_cloud_into_mobs(
             &self.cloud,
             TargetType::TargetMarker
         );
@@ -112,15 +106,62 @@ impl PixelCloud {
     pub fn process_mobs(&self) -> Vec<Target> {
         let mob_type: TargetType = {
             match self.kind {
-                PixelCloudKindCategorie::Mover(PixelCloudKind::Mob(t)) => TargetType::Mob(t),
+                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(t)) => TargetType::Mob(t),
                 _ => TargetType::Mob(MobType::Aggressive),
             }
         };
-        let mob_markers = ImageAnalyzer::merge_cloud_into_mobs(&self.cloud, mob_type);
+
+        if mob_type == TargetType::TargetMarker {
+            return vec![];
+        }
+        let mob_markers = Self::merge_cloud_into_mobs(&self.cloud, mob_type);
 
         mob_markers
             .into_iter()
             .map(|x| x.into())
+            .collect()
+    }
+
+    pub fn merge_cloud_into_mobs(
+        cloud: &PointCloud,
+        mob_type: TargetType //ignore_size: bool,
+    ) -> Vec<Target> {
+        let _timer = Timer::start_new("merge_cloud_into_mobs");
+
+        // Max merge distance
+        let max_distance_x: u32 = 50;
+        let max_distance_y: u32 = 3;
+
+        // Cluster coordinates in x-direction
+        let x_clusters = cloud.cluster_by_distance(max_distance_x, point_selector::x_axis);
+
+        let mut xy_clusters = Vec::default();
+        for x_cluster in x_clusters {
+            // Cluster current x-cluster coordinates in y-direction
+            let local_y_clusters = x_cluster.cluster_by_distance(
+                max_distance_y,
+                point_selector::y_axis
+            );
+            // Extend final xy-clusters with local y-clusters
+            xy_clusters.extend(local_y_clusters.into_iter());
+        }
+
+        // Create mobs from clusters
+        xy_clusters
+            .into_iter()
+            .map(|cluster| Target {
+                target_type: mob_type,
+                bounds: cluster.to_bounds(),
+            })
+            .filter(|mob| {
+                if mob_type == TargetType::TargetMarker {
+                    return true;
+                }
+                // Filter out small clusters (likely to cause misclicks)
+                mob.bounds.w > 11 &&
+                    // Filter out huge clusters (likely to be Violet Magician Troupe)
+                    mob.bounds.w < 180
+            })
             .collect()
     }
 }

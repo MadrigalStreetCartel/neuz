@@ -4,9 +4,9 @@ use slog::Logger;
 use tauri::Window;
 
 use super::{
-    PixelCloud,
-    PixelCloudKind,
-    PixelCloudKindCategorie,
+    CloudDetection,
+    CloudDetectionKind,
+    CloudDetectionCategorie,
     Target,
 };
 use crate::platform::{ eval_send_key, KeyMode };
@@ -62,12 +62,12 @@ impl ClientStats {
         }
     }
 
-    pub fn update_v2(&mut self, pixel_clouds: &Vec<PixelCloud>) {
+    pub fn update_v2(&mut self, pixel_clouds: &Vec<CloudDetection>) {
         for pixel_cloud in pixel_clouds {
             match pixel_cloud.kind {
-                PixelCloudKindCategorie::Stat(t) => {
+                CloudDetectionCategorie::Stat(t) => {
                     match t {
-                        PixelCloudKind::HP(is_target) => {
+                        CloudDetectionKind::HP(is_target) => {
                             if is_target {
                                 let value = pixel_cloud.process_stats(self.target_hp.max_w);
                                 self.target_hp.update_value(value);
@@ -76,7 +76,7 @@ impl ClientStats {
                                 self.hp.update_value(value);
                             }
                         }
-                        PixelCloudKind::MP(is_target) => {
+                        CloudDetectionKind::MP(is_target) => {
                             if is_target {
                                 let value = pixel_cloud.process_stats(self.target_mp.max_w);
                                 self.target_mp.update_value(value);
@@ -85,7 +85,7 @@ impl ClientStats {
                                 self.mp.update_value(value);
                             }
                         }
-                        PixelCloudKind::FP => {
+                        CloudDetectionKind::FP => {
                             let value = pixel_cloud.process_stats(self.fp.max_w);
                             self.fp.update_value(value);
                         }

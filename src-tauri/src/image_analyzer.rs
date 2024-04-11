@@ -8,20 +8,17 @@ use tauri::Window;
 
 use crate::{
     data::{
-        point_selector,
         AliveState,
         Bounds,
         ClientStats,
-        PixelCloud,
-        PixelCloudConfig,
-        PixelCloudKind,
-        PixelCloudKindCategorie,
+        CloudDetection,
+        CloudDetectionConfig,
+        CloudDetectionKind,
+        CloudDetectionCategorie,
         Point,
         PointCloud,
         Target,
-        TargetType,
     },
-    ipc::FarmingConfig,
     platform::{ IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP },
     utils::Timer,
 };
@@ -63,9 +60,9 @@ impl<'a> ImageAnalyzer<'a> {
         }
     }
 
-    pub fn pixel_detection(&mut self, config: &Vec<PixelCloudConfig>) -> Vec<PixelCloud> {
+    pub fn pixel_detection(&mut self, config: &Vec<CloudDetectionConfig>) -> Vec<CloudDetection> {
         const DETECTION_BUFFER: usize = 4096;
-        let (snd, recv) = sync_channel::<(PixelCloudKindCategorie, Point)>(DETECTION_BUFFER);
+        let (snd, recv) = sync_channel::<(CloudDetectionCategorie, Point)>(DETECTION_BUFFER);
         let image = self.image.as_ref().unwrap();
         let mut max_x = config
             .iter()
@@ -120,46 +117,46 @@ impl<'a> ImageAnalyzer<'a> {
                     } else if x < min_x {
                         continue;
                     }
-                    for config in config.iter() {
-                        // Check if the pixel matches any of the reference colors
-                        if config.is_within_bounds(x, y) && config.pixel_compare(&px.0) {
-                            #[allow(dropping_copy_types)]
-                            drop(
-                                snd
-                                    .try_send((config.detector.clone(), Point::new(x, y)))
-                                    .map_err(|err| {
-                                        eprintln!("Error sending data: {}", err);
-                                    })
-                            );
-                            // Continue to next column
-                            continue 'outer;
-                        }
+
+                    let matched_pixel = config
+                        .iter()
+                        .find(|config| {
+                            config.is_within_bounds(x, y) && config.pixel_compare(&px.0)
+                        });
+
+                    if let Some(config) = matched_pixel {
+                        #[allow(dropping_copy_types)]
+                        drop(
+                            snd
+                                .try_send((config.detector.clone(), Point::new(x, y)))
+                                .map_err(|err| {
+                                    eprintln!("Error sending data: {}", err);
+                                })
+                        );
+                        // Continue to next column
+                        continue 'outer;
                     }
                 }
             });
 
         // Receive points from channel
         let clouds = {
-            let mut clouds: HashMap<PixelCloudKindCategorie, PointCloud> = HashMap::default();
+            let mut clouds: HashMap<CloudDetectionCategorie, PointCloud> = HashMap::default();
             for i in 0..config.len() {
                 clouds.insert(config[i].detector, PointCloud::default());
             }
             while let Ok((config, point)) = recv.recv() {
                 if let Some(cloud) = clouds.get_mut(&config) {
                     cloud.push(point);
-                } else {
-                    let mut cloud = PointCloud::default();
-                    cloud.push(point);
-                    clouds.insert(config, cloud);
                 }
             }
             clouds
         };
 
         let mut pixel_clouds = {
-            let mut pixel_clouds: Vec<PixelCloud> = Vec::default();
+            let mut pixel_clouds: Vec<CloudDetection> = Vec::default();
             for (detector, cloud) in clouds {
-                pixel_clouds.push(PixelCloud {
+                pixel_clouds.push(CloudDetection {
                     kind: detector,
                     cloud,
                 });
@@ -189,9 +186,9 @@ impl<'a> ImageAnalyzer<'a> {
                     continue;
                 }
                 match cloud.kind {
-                    PixelCloudKindCategorie::Mover(t) => {
+                    CloudDetectionCategorie::Mover(t) => {
                         match t {
-                            PixelCloudKind::Target(is_red) => {
+                            CloudDetectionKind::Target(is_red) => {
                                 let target = cloud.process_target();
                                 if result.is_none() && target.is_some() {
                                     if is_red {
@@ -213,7 +210,7 @@ impl<'a> ImageAnalyzer<'a> {
 
         if self.client_stats.target_on_screen {
             self.client_stats.target_distance = Some(
-                self.get_target_marker_distance(target.unwrap())
+                self.get_target_distance_to_player(target.unwrap())
             );
         } else {
             self.client_stats.target_distance = None;
@@ -222,13 +219,13 @@ impl<'a> ImageAnalyzer<'a> {
         // remove used clouds
         pixel_clouds.retain(|x| {
             match x.kind {
-                PixelCloudKindCategorie::Mover(t) => {
+                CloudDetectionCategorie::Mover(t) => {
                     match t {
-                        PixelCloudKind::Target(_) => false,
+                        CloudDetectionKind::Target(_) => false,
                         _ => true,
                     }
                 }
-                PixelCloudKindCategorie::Stat(_) => false,
+                CloudDetectionCategorie::Stat(_) => false,
                 _ => true,
             }
         });
@@ -238,56 +235,13 @@ impl<'a> ImageAnalyzer<'a> {
         // Set clouds
     }
 
-    pub fn merge_cloud_into_mobs(
-        cloud: &PointCloud,
-        mob_type: TargetType //ignore_size: bool,
-    ) -> Vec<Target> {
-        let _timer = Timer::start_new("merge_cloud_into_mobs");
-
-        // Max merge distance
-        let max_distance_x: u32 = 50;
-        let max_distance_y: u32 = 3;
-
-        // Cluster coordinates in x-direction
-        let x_clusters = cloud.cluster_by_distance(max_distance_x, point_selector::x_axis);
-
-        let mut xy_clusters = Vec::default();
-        for x_cluster in x_clusters {
-            // Cluster current x-cluster coordinates in y-direction
-            let local_y_clusters = x_cluster.cluster_by_distance(
-                max_distance_y,
-                point_selector::y_axis
-            );
-            // Extend final xy-clusters with local y-clusters
-            xy_clusters.extend(local_y_clusters.into_iter());
-        }
-
-        // Create mobs from clusters
-        xy_clusters
-            .into_iter()
-            .map(|cluster| Target {
-                target_type: mob_type,
-                bounds: cluster.to_bounds(),
-            })
-            .filter(|mob| {
-                if mob_type == TargetType::TargetMarker {
-                    return true;
-                }
-                // Filter out small clusters (likely to cause misclicks)
-                mob.bounds.w > 11 &&
-                    // Filter out huge clusters (likely to be Violet Magician Troupe)
-                    mob.bounds.w < 180
-            })
-            .collect()
-    }
-
-    pub fn identify_mobs(&self, clouds: &Vec<PixelCloud>) -> Vec<Target> {
+    pub fn identify_mobs(&self, clouds: &Vec<CloudDetection>) -> Vec<Target> {
         let mut result: Vec<Target> = Vec::default();
         for cloud in clouds {
             match cloud.kind {
-                PixelCloudKindCategorie::Mover(t) => {
+                CloudDetectionCategorie::Mover(t) => {
                     match t {
-                        PixelCloudKind::Mob(_) => {
+                        CloudDetectionKind::Mob(_) => {
                             let mobs = cloud.process_mobs();
                             result.extend(mobs.into_iter());
                         }
@@ -300,25 +254,21 @@ impl<'a> ImageAnalyzer<'a> {
         result
     }
 
-    pub fn get_target_marker_distance(&self, target: Target) -> i32 {
+    pub fn get_target_distance_to_player(&self, target: Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
-        let mid_x = (image.width() / 2) as i32;
-        let mid_y = (image.height() / 2) as i32;
+        let mid_x = image.width() / 2;
+        let mid_y = image.height() / 2;
 
-        // Calculate 2D euclidian distances to player
-        let point = target.bounds.get_lowest_center_point();
+        let point = Point::new(mid_x, mid_y);
 
-        (
-            ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
-        ).sqrt() as i32
+        target.get_target_distance_to(point)
     }
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'b>(
         &self,
         mobs: &'a [Target],
-        //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
         _logger: &Logger
@@ -328,16 +278,14 @@ impl<'a> ImageAnalyzer<'a> {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
-        let mid_x = (image.width() / 2) as i32;
-        let mid_y = (image.height() / 2) as i32;
+        let mid_x = image.width() / 2;
+        let mid_y = image.height() / 2;
+        let point = Point::new(mid_x, mid_y);
 
         // Calculate 2D euclidian distances to player
         let mut distances = Vec::default();
         for mob in mobs {
-            let point = mob.get_attack_coords();
-            let distance = (
-                ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
-            ).sqrt() as i32;
+            let distance = mob.get_target_distance_to(point);
             distances.push((mob, distance));
         }
 
