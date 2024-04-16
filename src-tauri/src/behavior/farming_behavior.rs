@@ -270,7 +270,8 @@ impl FarmingBehavior<'_> {
         } else {
             let slot = self.get_slot_for(config, None, SlotType::PickupMotion, false);
             if let Some(index) = slot {
-                for _i in 1..10 { // TODO Configurable number of tries
+                for _i in 1..10 {
+                    // TODO Configurable number of tries
                     send_slot_eval(self.window, index.0, index.1);
                     std::thread::sleep(Duration::from_millis(300));
                 }
@@ -622,33 +623,28 @@ impl FarmingBehavior<'_> {
                     return State::SearchingForEnemy;
                 }
             }
-            if image.client_stats.target_is_alive {
-                self.get_slot_for(config, None, SlotType::AttackSkill, true);
+            self.get_slot_for(config, None, SlotType::AttackSkill, true);
 
-                if config.max_aoe_farming() > 1 {
-                    // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, );
+            if config.max_aoe_farming() > 1 {
+                // slog::debug!(self.logger, "on attacking: "; "self.concurrent_mobs_under_attack" => self.concurrent_mobs_under_attack, );
 
-                    //arbitrary checking we lower less than 70
-                    if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
-                        if image.client_stats.target_hp.value < 90 {
-                            self.concurrent_mobs_under_attack += 1;
-                            return self.abort_attack(image);
-                        }
-                        return self.state;
+                //arbitrary checking we lower less than 70
+                if self.concurrent_mobs_under_attack < config.max_aoe_farming() {
+                    if image.client_stats.target_hp.value < 90 {
+                        self.concurrent_mobs_under_attack += 1;
+                        return self.abort_attack(image);
                     }
+                    return self.state;
                 }
-
-                if let Some(target_distance) = image.client_stats.target_distance {
-                    // slog::debug!(self.logger,"checking distance"; "market_distance" => marker_distance);
-                    if target_distance < MAX_DISTANCE_FOR_AOE {
-                        self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
-                    }
-                }
-                return self.state;
-            } else {
-                self.is_attacking = false;
-                return State::SearchingForEnemy;
             }
+
+            if let Some(target_distance) = image.client_stats.target_distance {
+                // slog::debug!(self.logger,"checking distance"; "market_distance" => marker_distance);
+                if target_distance < MAX_DISTANCE_FOR_AOE {
+                    self.get_slot_for(config, None, SlotType::AOEAttackSkill, true);
+                }
+            }
+            return self.state;
         } else if image.client_stats.is_alive == AliveState::Alive {
             // Mob's dead
             match mob.target_type {
