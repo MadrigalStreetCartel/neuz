@@ -176,13 +176,6 @@ impl<'a> ImageAnalyzer<'a> {
             .collect();
 
         self.client_stats.update(&detected_clouds);
-        /*         // remove stats clouds
-        detected_clouds.retain(|x| {
-            match x.kind {
-                CloudDetectionCategorie::Stat(_) => false,
-                _ => true,
-            }
-        }); */
 
         let result = detected_clouds.par_iter().find_map_first(move |cloud| {
             match cloud.kind {

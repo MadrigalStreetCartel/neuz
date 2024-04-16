@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::MobType;
 
-#[derive(Debug, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, PartialEq, Eq, Hash, Clone)]
 pub enum CloudDetectionKind {
     HP(bool), // bool is for whether we search for player or target stats
     MP(bool),
@@ -31,18 +31,6 @@ impl CloudDetectionKind {
             Self::Target(b) => {
                 if *b { "Target(Red)".to_string() } else { "Target(Blue)".to_string() }
             }
-        }
-    }
-}
-
-impl Clone for CloudDetectionKind {
-    fn clone(&self) -> Self {
-        match self {
-            Self::HP(t) => Self::HP(*t),
-            Self::MP(t) => Self::MP(*t),
-            Self::FP => Self::FP,
-            Self::Mob(t) => Self::Mob(*t),
-            Self::Target(t) => Self::Target(*t),
         }
     }
 }

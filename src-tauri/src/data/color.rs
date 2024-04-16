@@ -35,6 +35,31 @@ pub struct ColorDetection {
 }
 
 impl ColorDetection {
+    pub fn from(color: Vec<[u8; 3]>) -> Self{
+        Self {
+            colors: {
+                let mut colors = vec![];
+                for c in color {
+                    colors.push(Color::new(c, None));
+                }
+                colors
+            },
+            tolerance: 5,
+        }
+    }
+
+/*     pub fn from_with_tolerance(color: Vec<[u8; 4]>, tolerance: u8) -> Self{
+        Self {
+            colors: {
+                let mut colors = vec![];
+                for c in color {
+                    colors.push(Color::new([c[0],c[1],c[2]], Some(c[3])));
+                }
+                colors
+            },
+            tolerance,
+        }
+    } */
     #[inline(always)]
     pub fn color_match(&self, color: &[u8; 4]) -> bool {
         // Color matching based on tolerance

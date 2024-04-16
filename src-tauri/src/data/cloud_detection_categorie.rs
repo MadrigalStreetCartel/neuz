@@ -20,22 +20,12 @@ const FULL_BOUNDS: Bounds = Bounds { // Full screen not really full cause of sta
     h: 600,
 };
 
-#[derive(Debug, Copy, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Copy, PartialEq, Eq, Default, Hash, Clone)]
 pub enum CloudDetectionCategorie {
     #[default]
     None,
     Mover(CloudDetectionKind),
     Stat(CloudDetectionKind),
-}
-
-impl Clone for CloudDetectionCategorie {
-    fn clone(&self) -> Self {
-        match self {
-            Self::None => Self::None,
-            Self::Mover(t) => Self::Mover(t.clone()),
-            Self::Stat(t) => Self::Stat(t.clone()),
-        }
-    }
 }
 
 impl CloudDetectionCategorie {
@@ -79,35 +69,24 @@ impl CloudDetectionCategorie {
             Self::Stat(t) => {
                 match t {
                     CloudDetectionKind::HP(_) =>
-                        Some(ColorDetection {
-                            colors: vec![
-                                Color::new([174, 18, 55], None),
-                                Color::new([188, 24, 62], None),
-                                Color::new([204, 30, 70], None),
-                                Color::new([220, 36, 78], None)
-                            ],
-                            tolerance: 5,
-                        }),
+                        Some(
+                            ColorDetection::from(
+                                vec![[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]]
+                            )
+                        ),
                     CloudDetectionKind::MP(_) =>
-                        Some(ColorDetection {
-                            colors: vec![
-                                Color::new([20, 84, 196], None),
-                                Color::new([36, 132, 220], None),
-                                Color::new([44, 164, 228], None),
-                                Color::new([56, 188, 232], None)
-                            ],
-                            tolerance: 5,
-                        }),
+                        Some(
+                            ColorDetection::from(
+                                vec![[20, 84, 196], [36, 132, 220], [44, 164, 228], [56, 188, 232]]
+                            )
+                        ),
+
                     CloudDetectionKind::FP =>
-                        Some(ColorDetection {
-                            colors: vec![
-                                Color::new([45, 230, 29], None),
-                                Color::new([28, 172, 28], None),
-                                Color::new([44, 124, 52], None),
-                                Color::new([20, 146, 20], None)
-                            ],
-                            tolerance: 5,
-                        }),
+                        Some(
+                            ColorDetection::from(
+                                vec![[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]]
+                            )
+                        ),
                     _ => None,
                 }
             }
