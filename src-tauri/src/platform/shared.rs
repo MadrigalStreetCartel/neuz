@@ -1,7 +1,5 @@
-use std::time::Duration;
-
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use tauri::Window;
+use tauri::{Window};
 
 use crate::data::Point;
 

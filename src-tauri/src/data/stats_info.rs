@@ -1,10 +1,13 @@
-use std::{ fmt, time::Instant };
+use std::{fmt, time::Instant};
 
 use slog::Logger;
 use tauri::Window;
 
-use super::{ PointCloud, Target };
-use crate::{ image_analyzer::{ Color, ImageAnalyzer }, platform::{ eval_send_key, KeyMode } };
+use super::{PointCloud, Target};
+use crate::{
+    image_analyzer::{Color, ImageAnalyzer},
+    platform::{eval_send_key, KeyMode},
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum StatusBarKind {
@@ -176,7 +179,7 @@ impl StatInfo {
         max_w: u32,
         value: u32,
         stat_kind: StatusBarKind,
-        image: Option<&ImageAnalyzer>
+        image: Option<&ImageAnalyzer>,
     ) -> Self {
         let mut res = Self {
             max_w,
@@ -204,7 +207,7 @@ impl StatInfo {
             status_bar_config.min_y,
             status_bar_config.max_x,
             status_bar_config.max_y,
-            Some(2)
+            Some(2),
         );
 
         // Receive points from channel
@@ -266,28 +269,17 @@ impl From<StatusBarKind> for StatusBarConfig {
 
         match kind {
             Hp => {
-                StatusBarConfig::new([
-                    [174, 18, 55],
-                    [188, 24, 62],
-                    [204, 30, 70],
-                    [220, 36, 78],
-                ])
+                StatusBarConfig::new([[174, 18, 55], [188, 24, 62], [204, 30, 70], [220, 36, 78]])
             }
 
-            Mp =>
-                StatusBarConfig::new([
-                    [20, 84, 196],
-                    [36, 132, 220],
-                    [44, 164, 228],
-                    [56, 188, 232],
-                ]),
+            Mp => StatusBarConfig::new([
+                [20, 84, 196],
+                [36, 132, 220],
+                [44, 164, 228],
+                [56, 188, 232],
+            ]),
             Fp => {
-                StatusBarConfig::new([
-                    [45, 230, 29],
-                    [28, 172, 28],
-                    [44, 124, 52],
-                    [20, 146, 20],
-                ])
+                StatusBarConfig::new([[45, 230, 29], [28, 172, 28], [44, 124, 52], [20, 146, 20]])
             }
 
             TargetHP => {

@@ -10,28 +10,27 @@ edition = "2021"
 rust-version = "1.57"
 
 [build-dependencies]
-tauri-build = { version = "1.4", features = [] }
+tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { version = "1.4", features = ["api-all"] }
-rand = "0.8.5"
-image = "0.24.2"
-guard = "0.5.1"
+tauri = { version = "1.6", features = ["api-all"] }
+rand = "0.8"
+image = "0.25"
 
 # Parallelization
 parking_lot = "0.12"
-rayon = "1.5"
+rayon = "1.10"
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # Logging
 slog = "2.7.0"
 slog-term = "2.9.0"
 slog-async = "2.7.0"
-sentry = "0.27.0"
-sentry-slog = "0.27.0"
+sentry = "0.32.0"
+sentry-slog = "0.32.0"
 
 # Platform access
 raw-window-handle = "0.5" # This has to be in sync with the version used by tauri
