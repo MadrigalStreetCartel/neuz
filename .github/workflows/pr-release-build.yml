@@ -11,6 +11,8 @@ env:
     CI: false
 jobs:
     publish-tauri:
+        permissions:
+          contents: write
         strategy:
             fail-fast: false
             matrix:
@@ -22,7 +24,7 @@ jobs:
             - name: setup node
               uses: actions/setup-node@v3
               with:
-                  node-version: 16
+                  node-version: 20
             - name: install Rust stable
               uses: dtolnay/rust-toolchain@stable
             - name: install dependencies (ubuntu only)
