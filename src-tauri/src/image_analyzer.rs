@@ -1,29 +1,22 @@
-use std::{ sync::mpsc::sync_channel, time::Instant };
 use std::collections::HashMap;
+use std::{sync::mpsc::sync_channel, time::Instant};
 //use libscreenshot::shared::Area;
-use libscreenshot::{ ImageBuffer, WindowCaptureProvider };
+use libscreenshot::{ImageBuffer, WindowCaptureProvider};
 use rayon::iter::{
-    IntoParallelIterator,
-    IntoParallelRefIterator,
-    ParallelBridge,
-    ParallelIterator,
+    IntoParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator,
 };
 use slog::Logger;
 use tauri::Window;
 
+use crate::client_state::state::ClientState;
+use crate::cloud_detection::{
+    CloudDetection, CloudDetectionConfig, CloudDetectionKind, CloudDetectionType,
+    CloudDetectionZone,
+};
+
 use crate::{
-    data::{
-        Bounds,
-        ClientStats,
-        CloudDetection,
-        CloudDetectionConfig,
-        CloudDetectionKind,
-        CloudDetectionCategorie,
-        Point,
-        PointCloud,
-        Target,
-    },
-    platform::{ IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP },
+    data::{Bounds, Point, PointCloud, Target},
+    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 
@@ -31,7 +24,7 @@ use crate::{
 pub struct ImageAnalyzer<'a> {
     image: Option<ImageBuffer>,
     pub window_id: u64,
-    pub client_stats: ClientStats,
+    pub client_state: ClientState,
     _logger: &'a Logger,
 }
 
@@ -41,7 +34,7 @@ impl<'a> ImageAnalyzer<'a> {
             _logger: logger,
             window_id: 0,
             image: None,
-            client_stats: ClientStats::new(window.to_owned(), logger),
+            client_state: ClientState::new(window.to_owned(), logger),
         }
     }
 
@@ -64,37 +57,20 @@ impl<'a> ImageAnalyzer<'a> {
         }
     }
 
-    pub fn pixel_detection(&mut self, config: &Vec<CloudDetectionConfig>) -> Vec<CloudDetection> {
+    pub fn pixel_detection(&mut self, config: &Vec<CloudDetectionConfig>) {
+        /* -> Vec<CloudDetection> */
         const DETECTION_BUFFER: usize = 4096;
-        let (snd, recv) = sync_channel::<(CloudDetectionCategorie, Point)>(DETECTION_BUFFER);
+        let (snd, recv) =
+            sync_channel::<(&CloudDetectionZone, CloudDetectionType, Point)>(DETECTION_BUFFER);
         let image = self.image.as_ref().unwrap();
 
-        let config = &config
-            .iter()
-            .filter(|x| x.enabled)
-            .collect::<Vec<_>>();
+        let config = &config.iter().filter(|x| x.enabled).collect::<Vec<_>>();
 
-        let mut max_x = config
-            .iter()
-            .map(|x| x.bounds.w)
-            .max()
-            .unwrap_or(0);
-        let mut max_y = config
-            .iter()
-            .map(|x| x.bounds.h)
-            .max()
-            .unwrap_or(0);
+        let mut max_x = config.iter().map(|x| x.bounds.w).max().unwrap_or(0);
+        let mut max_y = config.iter().map(|x| x.bounds.h).max().unwrap_or(0);
 
-        let min_x = config
-            .iter()
-            .map(|x| x.bounds.x)
-            .min()
-            .unwrap_or(0);
-        let min_y = config
-            .iter()
-            .map(|x| x.bounds.y)
-            .min()
-            .unwrap_or(0);
+        let min_x = config.iter().map(|x| x.bounds.x).min().unwrap_or(0);
+        let min_y = config.iter().map(|x| x.bounds.y).min().unwrap_or(0);
 
         let image_width = image.width();
         if max_x == 0 {
@@ -105,7 +81,9 @@ impl<'a> ImageAnalyzer<'a> {
         if max_y == 0 {
             max_y = image_height;
         }
-        let image_height = image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height);
+        let image_height = image_height
+            .checked_sub(IGNORE_AREA_BOTTOM)
+            .unwrap_or(image_height);
 
         image
             .enumerate_rows()
@@ -113,12 +91,11 @@ impl<'a> ImageAnalyzer<'a> {
             .for_each(move |(y, row)| {
                 // Skip this row if it's in an ignored area
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if
-                    y <= IGNORE_AREA_TOP ||
-                    y > image_height ||
-                    y > IGNORE_AREA_TOP + max_y ||
-                    y > max_y ||
-                    y < min_y
+                if y <= IGNORE_AREA_TOP
+                    || y > image_height
+                    || y > IGNORE_AREA_TOP + max_y
+                    || y > max_y
+                    || y < min_y
                 {
                     //println!("returning early on y: {}", y);
                     return;
@@ -132,121 +109,127 @@ impl<'a> ImageAnalyzer<'a> {
                         continue;
                     }
 
-                    let matched_pixel = config
-                        .iter()
-                        .find(|config| {
-                            config.is_within_bounds(x, y) && config.pixel_compare(&px.0)
-                        });
-
-                    if let Some(config) = matched_pixel {
-                        #[allow(dropping_copy_types)]
-                        drop(
-                            snd.try_send((config.config.clone(), Point::new(x, y))).map_err(|err| {
-                                eprintln!("Error sending data: {}", err);
-                            })
-                        );
-                        // Continue to next column
-                        continue 'outer;
+                    for _config in config {
+                        if _config.is_within_bounds(x, y) {
+                            if let Some(cat_config) = _config.pixel_compare(&px.0) {
+                                #[allow(dropping_copy_types)]
+                                drop(
+                                    snd.try_send((&_config.zone, cat_config, Point::new(x, y)))
+                                        .map_err(|err| {
+                                            eprintln!("Error sending data: {}", err);
+                                        }),
+                                );
+                                // Continue to next column
+                                continue 'outer;
+                            }
+                        }
                     }
                 }
             });
 
         // Receive points from channel
         let clouds = {
-            let mut clouds: HashMap<CloudDetectionCategorie, PointCloud> = HashMap::default();
+            let mut clouds: HashMap<&CloudDetectionZone, HashMap<CloudDetectionType, PointCloud>> =
+                HashMap::default();
             for i in 0..config.len() {
-                clouds.insert(config[i].config, PointCloud::default());
+                let mut hashmap = HashMap::default();
+                let _configs: Vec<CloudDetectionType> = config[i].zone.get_types();
+                for y in 0.._configs.len() {
+                    hashmap.insert(_configs[y], PointCloud::default());
+                }
+                clouds.insert(&config[i].zone, hashmap);
             }
-            while let Ok((config, point)) = recv.recv() {
-                if let Some(cloud) = clouds.get_mut(&config) {
-                    cloud.push(point);
+            while let Ok((zone, config, point)) = recv.recv() {
+                if let Some(cloud) = clouds.get_mut(&zone) {
+                    if let Some(cloud) = cloud.get_mut(&config) {
+                        cloud.push(point);
+                    }
                 }
             }
             clouds
         };
 
-        let mut detected_clouds = clouds
-            .par_iter()
-            .map(move |(detector, cloud)| {
-                CloudDetection {
-                    kind: *detector,
-                    cloud: cloud.clone(),
+        let detected_clouds = {
+            let mut detected_clouds: Vec<CloudDetection> = Vec::default();
+            for (zone, hashmap) in clouds {
+                for (config, cloud) in hashmap {
+                    detected_clouds.push(CloudDetection {
+                        zone: zone.clone(),
+                        kind: config.clone(),
+                        cloud,
+                    });
                 }
-            })
-            .collect();
+            }
+            detected_clouds
+        };
 
-        self.client_stats.update(&detected_clouds);
-
+        self.client_state.update(&detected_clouds);
         let result = detected_clouds.par_iter().find_map_first(move |cloud| {
             match cloud.kind {
-                CloudDetectionCategorie::Mover(t) => {
-                    match t {
-                        CloudDetectionKind::Target(is_red) => {
-                            let target = cloud.process_target();
-                            if target.is_some() {
-                                return Some((target, is_red));
-                            }
+                CloudDetectionType::Shape(t) => match t {
+                    CloudDetectionKind::TargetAggressive | CloudDetectionKind::TargetPassive => {
+                        let is_red = t == CloudDetectionKind::TargetAggressive;
+                        let target = cloud.process_target();
+                        if target.is_some() {
+                            return Some((target, is_red));
                         }
-                        _ => {}
                     }
-                }
+                    _ => {}
+                },
                 _ => {}
             }
             None
         });
 
         let target = if let Some((target, _is_red)) = result {
-            self.client_stats.target_distance = Some(
-                self.get_target_distance_to_player(target.unwrap())
-            );
+            self.client_state.target.distance =
+                Some(self.get_target_distance_to_player(target.unwrap()));
             target
         } else {
-            self.client_stats.target_distance = None;
+            self.client_state.target.distance = None;
 
             None
         };
 
-        self.client_stats.target_marker = target;
-        self.client_stats.target_on_screen = target.is_some();
+        self.client_state.target.marker = target;
+        self.client_state.target.is_on_screen = target.is_some();
+
+        self.client_state.found_targets = self.identify_mobs(&detected_clouds);
 
         // remove used clouds
-        detected_clouds.retain(|x| {
+        /*         detected_clouds.retain(|x| {
             match x.kind {
-                CloudDetectionCategorie::Mover(t) => {
+                CloudDetectionType::Shape(t) =>
                     match t {
-                        CloudDetectionKind::Target(_) => false,
+                        CloudDetectionKind::TargetAggressive | CloudDetectionKind::TargetPassive =>
+                            false,
                         _ => true,
                     }
-                }
-                CloudDetectionCategorie::Stat(_) => false,
-                _ => true,
+                CloudDetectionType::Text(_) => false,
+                CloudDetectionType::Stat(_) => false,
             }
         });
 
-        detected_clouds
+        detected_clouds */
 
         // Set clouds
     }
 
     pub fn identify_mobs(&self, clouds: &Vec<CloudDetection>) -> Vec<Target> {
-        let mut result: Vec<Target> = Vec::default();
-        for cloud in clouds {
-            match cloud.kind {
-                CloudDetectionCategorie::Mover(t) => {
-                    match t {
-                        CloudDetectionKind::Mob(_) => {
-                            let mobs = cloud.process_mobs();
-                            result.extend(mobs.into_iter());
-                        }
-                        _ => {}
+        clouds
+            .par_iter()
+            .filter_map(|cloud| match cloud.kind {
+                CloudDetectionType::Text(t) => match t {
+                    CloudDetectionKind::MobAggressive | CloudDetectionKind::MobPassive => {
+                        Some(cloud.process_mobs())
                     }
-                }
-                _ => {}
-            }
-        }
-        result
+                    _ => None,
+                },
+                _ => None,
+            })
+            .flatten()
+            .collect()
     }
-
     pub fn get_target_distance_to_player(&self, target: Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
@@ -265,7 +248,7 @@ impl<'a> ImageAnalyzer<'a> {
         mobs: &'a [Target],
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
-        _logger: &Logger
+        _logger: &Logger,
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
 
@@ -300,7 +283,8 @@ impl<'a> ImageAnalyzer<'a> {
                 //*distance > 55
                 let coords = mob.get_attack_coords();
                 let avoided_bounds = avoided_bounds
-                    .par_iter().find_first(|avoided_item| { !avoided_item.0.contains_point(&coords) });
+                    .par_iter()
+                    .find_first(|avoided_item| !avoided_item.0.contains_point(&coords));
 
                 if let Some(_) = avoided_bounds {
                     true

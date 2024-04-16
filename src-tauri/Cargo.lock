@@ -68,6 +68,7 @@ version = "0.1.0"
 dependencies = [
  "guard",
  "image",
+ "lazy_static",
  "libscreenshot",
  "parking_lot",
  "rand 0.8.5",

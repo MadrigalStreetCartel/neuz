@@ -35,7 +35,7 @@ pub struct ColorDetection {
 }
 
 impl ColorDetection {
-    pub fn from(color: Vec<[u8; 3]>) -> Self{
+    pub fn from(color: Vec<[u8; 3]>) -> Self {
         Self {
             colors: {
                 let mut colors = vec![];
@@ -48,7 +48,7 @@ impl ColorDetection {
         }
     }
 
-/*     pub fn from_with_tolerance(color: Vec<[u8; 4]>, tolerance: u8) -> Self{
+    /*     pub fn from_with_tolerance(color: Vec<[u8; 4]>, tolerance: u8) -> Self{
         Self {
             colors: {
                 let mut colors = vec![];

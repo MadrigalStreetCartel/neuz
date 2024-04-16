@@ -1,28 +1,27 @@
-use crate::{image_analyzer::ImageAnalyzer, utils::Timer};
-
-use super::{
-    bounds, point_selector, CloudDetectionCategorie, CloudDetectionKind, ColorDetection, MobType, PointCloud, Target, TargetType
+use crate::{
+    data::{point_selector, Bounds, MobType, PointCloud, Target, TargetType},
+    utils::Timer,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+use super::{CloudDetectionKind, CloudDetectionType, CloudDetectionZone};
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CloudDetectionConfig {
-    pub config: CloudDetectionCategorie,
-    pub bounds: bounds::Bounds,
-    pub color_detection: ColorDetection,
+    pub zone: CloudDetectionZone,
     pub enabled: bool,
+    pub bounds: Bounds,
 }
 
 impl CloudDetectionConfig {
-    pub fn new(detector: CloudDetectionCategorie, enabled: bool) -> Self {
-        let mut result = Self {
-            config: detector,
-            bounds: detector.get_bounds(),
-            color_detection: detector.get_colors().expect("No color detection found"),
+    pub fn new(zone: CloudDetectionZone, enabled: bool) -> Self {
+        let result = Self {
+            bounds: zone.get_bounds(),
+            zone,
             enabled,
         };
 
         if !result.is_valid() {
-            result = Self::default();
+            panic!("Invalid bounds for CloudDetectionConfig: {:?}", result);
         }
         result
     }
@@ -43,43 +42,30 @@ impl CloudDetectionConfig {
         self.is_within_x_bounds(x) && self.is_within_y_bounds(y)
     }
 
-    pub fn pixel_compare(&self, color: &[u8; 4]) -> bool {
-        let matched = self.color_detection.color_match(color);
-        matched
-    }
-}
-
-impl Clone for CloudDetectionConfig {
-    fn clone(&self) -> Self {
-        CloudDetectionConfig::new(self.config.clone(), false)
-    }
-}
-
-impl Default for CloudDetectionConfig {
-    fn default() -> Self {
-        Self {
-            config: CloudDetectionCategorie::None,
-            bounds: bounds::Bounds::default(),
-            color_detection: ColorDetection::default(),
-            enabled: false,
+    pub fn pixel_compare(&self, color: &[u8; 4]) -> Option<CloudDetectionType> {
+        if !self.enabled {
+            return None;
         }
+        for config in self.zone.get_types().iter() {
+            if config.get_colors().color_match(color) {
+                return Some(*config);
+            }
+        }
+        None
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CloudDetection {
-    pub kind: CloudDetectionCategorie,
+    pub kind: CloudDetectionType,
     pub cloud: PointCloud,
+    pub zone: CloudDetectionZone,
 }
 
 impl CloudDetection {
-    pub fn _new(kind: CloudDetectionCategorie, cloud: PointCloud) -> Self {
-        Self {
-            kind,
-            cloud,
-        }
+    pub fn _new(zone: CloudDetectionZone, kind: CloudDetectionType, cloud: PointCloud) -> Self {
+        Self { zone, kind, cloud }
     }
-
 
     pub fn process_stats(&self, current_max_w: u32) -> (u32, u32) {
         if self.cloud.is_empty() {
@@ -97,10 +83,7 @@ impl CloudDetection {
     }
 
     pub fn process_target(&self) -> Option<Target> {
-        let target_markers = Self::merge_cloud_into_mobs(
-            &self.cloud,
-            TargetType::TargetMarker
-        );
+        let target_markers = Self::merge_cloud_into_mobs(&self.cloud, TargetType::TargetMarker);
 
         // Find biggest target marker
         target_markers.into_iter().max_by_key(|x| x.bounds.size())
@@ -109,7 +92,12 @@ impl CloudDetection {
     pub fn process_mobs(&self) -> Vec<Target> {
         let mob_type: TargetType = {
             match self.kind {
-                CloudDetectionCategorie::Mover(CloudDetectionKind::Mob(t)) => TargetType::Mob(t),
+                CloudDetectionType::Text(CloudDetectionKind::MobAggressive) => {
+                    TargetType::Mob(MobType::Aggressive)
+                }
+                CloudDetectionType::Text(CloudDetectionKind::MobPassive) => {
+                    TargetType::Mob(MobType::Passive)
+                }
                 _ => TargetType::Mob(MobType::Aggressive),
             }
         };
@@ -119,15 +107,12 @@ impl CloudDetection {
         }
         let mob_markers = Self::merge_cloud_into_mobs(&self.cloud, mob_type);
 
-        mob_markers
-            .into_iter()
-            .map(|x| x.into())
-            .collect()
+        mob_markers.into_iter().map(|x| x.into()).collect()
     }
 
     pub fn merge_cloud_into_mobs(
         cloud: &PointCloud,
-        mob_type: TargetType //ignore_size: bool,
+        mob_type: TargetType, //ignore_size: bool,
     ) -> Vec<Target> {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
@@ -141,10 +126,8 @@ impl CloudDetection {
         let mut xy_clusters = Vec::default();
         for x_cluster in x_clusters {
             // Cluster current x-cluster coordinates in y-direction
-            let local_y_clusters = x_cluster.cluster_by_distance(
-                max_distance_y,
-                point_selector::y_axis
-            );
+            let local_y_clusters =
+                x_cluster.cluster_by_distance(max_distance_y, point_selector::y_axis);
             // Extend final xy-clusters with local y-clusters
             xy_clusters.extend(local_y_clusters.into_iter());
         }

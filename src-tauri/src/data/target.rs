@@ -1,4 +1,4 @@
-use super::{ Bounds, Point };
+use super::{Bounds, Point};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MobType {
@@ -36,8 +36,7 @@ impl Target {
         // Calculate 2D euclidian distances to player
         let point = self.bounds.get_lowest_center_point();
 
-        (
-            ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
-        ).sqrt() as i32
+        (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64).sqrt()
+            as i32
     }
 }

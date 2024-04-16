@@ -2,7 +2,10 @@ use slog::Logger;
 use tauri::Window;
 
 use crate::{
-    data::Target, image_analyzer::ImageAnalyzer, ipc::{BotConfig, FrontendInfo}, movement::MovementAccessor
+    data::Target,
+    image_analyzer::ImageAnalyzer,
+    ipc::{BotConfig, FrontendInfo},
+    movement::MovementAccessor,
 };
 
 pub trait Behavior<'a> {
