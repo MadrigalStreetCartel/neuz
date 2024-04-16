@@ -19,6 +19,9 @@ pub use self::cloud_detection_kind::CloudDetectionKind;
 mod cloud_detection_categorie;
 pub use self::cloud_detection_categorie::CloudDetectionCategorie;
 
+mod progressbar;
+pub use self::progressbar::ProgressBar;
+
 mod stats_info;
 pub use self::stats_info::ClientStats;
 pub use self::stats_info::AliveState;

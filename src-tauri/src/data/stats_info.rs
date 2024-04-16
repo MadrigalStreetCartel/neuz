@@ -4,10 +4,7 @@ use slog::Logger;
 use tauri::Window;
 
 use super::{
-    CloudDetection,
-    CloudDetectionKind,
-    CloudDetectionCategorie,
-    Target,
+    CloudDetection, CloudDetectionCategorie, CloudDetectionKind, ProgressBar, Target
 };
 use crate::platform::{ eval_send_key, KeyMode };
 
@@ -23,11 +20,11 @@ pub enum AliveState {
 #[derive(Debug, Clone)]
 pub struct ClientStats {
     pub has_tray_open: bool,
-    pub hp: StatInfo,
-    pub mp: StatInfo,
-    pub fp: StatInfo,
-    pub target_hp: StatInfo,
-    pub target_mp: StatInfo,
+    pub hp: ProgressBar,
+    pub mp: ProgressBar,
+    pub fp: ProgressBar,
+    pub target_hp: ProgressBar,
+    pub target_mp: ProgressBar,
     pub target_is_mover: bool,
     pub target_is_npc: bool,
     pub target_is_alive: bool,
@@ -43,12 +40,12 @@ impl ClientStats {
     pub fn new(window: Window, logger: &Logger) -> Self {
         Self {
             has_tray_open: false,
-            hp: StatInfo::new(0, 0),
-            mp: StatInfo::new(0, 0),
-            fp: StatInfo::new(0, 0),
+            hp: ProgressBar::new(0, 0),
+            mp: ProgressBar::new(0, 0),
+            fp: ProgressBar::new(0, 0),
             is_alive: AliveState::StatsTrayClosed,
-            target_hp: StatInfo::new(0, 0),
-            target_mp: StatInfo::new(0, 0),
+            target_hp: ProgressBar::new(0, 0),
+            target_mp: ProgressBar::new(0, 0),
             target_is_mover: false,
             target_is_npc: false,
             target_is_alive: false,
@@ -144,56 +141,6 @@ impl ClientStats {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct StatInfo {
-    pub max_w: u32,
-    pub value: u32,
-    pub last_value: u32,
-    pub last_update_time: Option<Instant>,
-}
-
-impl PartialEq for StatInfo {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl PartialOrd for StatInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.value.cmp(&other.value))
-    }
-}
-
-impl StatInfo {
-    pub fn new(max_w: u32, value: u32) -> Self {
-        let res = Self {
-            max_w,
-            value,
-            last_update_time: Some(Instant::now()),
-            last_value: 100,
-        };
-        res
-    }
-
-    pub fn reset_last_update_time(&mut self) {
-        self.last_update_time = Some(Instant::now());
-    }
-
-    pub fn update_value(&mut self, (value, max_w): (u32, u32)) -> bool {
-        let (old_max_w, old_value) = (self.max_w, self.value);
-
-        if max_w != old_max_w {
-            self.max_w = max_w;
-        }
-        if value != old_value {
-            self.value = value;
-            self.last_update_time = Some(Instant::now());
-            true
-        } else {
-            false
-        }
-    }
-}
 
 
 
