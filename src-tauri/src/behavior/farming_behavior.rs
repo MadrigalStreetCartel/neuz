@@ -568,7 +568,7 @@ impl FarmingBehavior<'_> {
         image: &mut ImageAnalyzer
     ) -> State {
         if image.client_state.target.is_on_screen && image.client_state.target.is_mover {
-            slog::debug!(self.logger, "Target is not a NPC"; "target_on_screen" => image.client_state.target.is_on_screen, "target_is_mover" => image.client_state.target.is_mover);
+            slog::debug!(self.logger, "Target is not a NPC"; "target_on_screen" => image.client_state.target.is_on_screen, "target_is_mover" => image.client_state.target.is_mover, "distance" => image.client_state.target.distance.unwrap_or(0));
             self.state = State::Attacking(mob);
         } else {
             self.avoid_last_click();
@@ -588,27 +588,11 @@ impl FarmingBehavior<'_> {
 
         if !self.is_attacking {
             self.rotation_movement_tries = 0;
-
-            // Detect if mob was attacked
-            /* if image.client_stats.target_hp.value < 100 && config.prevent_already_attacked() {
-                // TODO maybe remove this
-                let hp_last_update = image.client_stats.hp.last_update_time.unwrap();
-                // // If we didn't took any damages abort attack
-                // reducing to 500ms the time to check the last time the mob was attacked, 5s is too long.
-                if hp_last_update.elapsed().as_millis() > 500 {
-                    return self.abort_attack(image);
-                } else if self.stealed_target_count > 5 {
-                    self.stealed_target_count = 0;
-                    self.already_attack_count = 1;
-                    return self.state;
-                }
-            } else { */
             // engaging the mob
             self.obstacle_avoidance_count = 0;
             self.last_initial_attack_time = Instant::now();
             self.is_attacking = true;
             self.already_attack_count = 0;
-            /*  } */
         }
 
         if image.client_state.target.is_on_screen || image.client_state.target.is_alive {
