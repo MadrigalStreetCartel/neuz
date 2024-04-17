@@ -25,7 +25,7 @@ function after(duration = 0, callback) {
 }
 
 let checkMobTimeout = null;
-function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {}) {
+function mouseEvent(type, x, y, { checkMob = false, delay = 25, duration } = {}) {
     if (checkMobTimeout) {
 
         clearTimeout(checkMobTimeout)
