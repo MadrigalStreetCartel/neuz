@@ -10,7 +10,15 @@ mod movement;
 mod platform;
 mod utils;
 
-use std::{ fs, io, os::windows::process, path::{ Path, PathBuf }, sync::Arc, time::Duration };
+use std::{
+    fs,
+    io,
+    ops::Sub,
+    os::windows::process,
+    path::{ Path, PathBuf },
+    sync::Arc,
+    time::Duration,
+};
 
 use cloud_detection::CloudDetectionZone;
 use guard::guard;
@@ -367,6 +375,8 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window, &logger);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
+        let frame_limiter_budget: f64 = 1.0 / 5.0;
+
         // Create movement accessor
         let movement = MovementAccessor::new(window.clone() /*&accessor*/);
 
@@ -427,6 +437,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
         // Enter main loop
         loop {
+            let frame_limiter_started = std::time::Instant::now();
             let timer = Timer::start_new("main_loop");
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
@@ -652,6 +663,14 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             // Update last mode
             last_mode = config.mode();
             last_is_running = Some(config.is_running());
+
+            // apply frame limit
+            let frame_limiter_elapsed = frame_limiter_started.elapsed().as_secs_f64();
+            if frame_limiter_elapsed < (frame_limiter_budget as f64) {
+                let dur = Duration::from_secs_f64(frame_limiter_budget.sub(frame_limiter_elapsed));
+                //println!("Frame limiter: {:?}", dur);
+                std::thread::sleep(dur);
+            }
         }
     });
 }
