@@ -20,12 +20,9 @@ const MAX_DISTANCE_FOR_AOE: i32 = 75;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
-    NoEnemyFound,
     SearchingForEnemy,
-    EnemyFound(Target),
     VerifyTarget(Target),
     Attacking(Target),
-    AfterEnemyKill(Target),
 }
 
 pub struct FarmingBehavior<'a> {
@@ -132,12 +129,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             }
         } else {
             let should_return = match self.state {
-                State::NoEnemyFound => false,
                 State::SearchingForEnemy => false,
-                State::EnemyFound(_) => false,
                 State::VerifyTarget(_) => false,
                 State::Attacking(_) => false,
-                State::AfterEnemyKill(_) => true,
             };
             if should_return {
                 return;
@@ -145,12 +139,9 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         }
         // Check state machine
         self.state = match self.state {
-            State::NoEnemyFound => self.on_no_enemy_found(config),
             State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
-            State::EnemyFound(mob) => self.on_enemy_found(mob),
             State::VerifyTarget(mob) => self.on_verify_target(config, mob, image),
-            State::Attacking(mob) => self.on_attacking(config, mob, image),
-            State::AfterEnemyKill(_) => self.after_enemy_kill(frontend_info, config),
+            State::Attacking(mob) => self.on_attacking(frontend_info, config, mob, image),
         };
 
         frontend_info.set_is_attacking(self.is_attacking);
@@ -404,7 +395,7 @@ impl FarmingBehavior<'_> {
         let mobs = image.client_state.found_targets.clone();
         if mobs.is_empty() {
             // Transition to next state
-            State::NoEnemyFound
+            self.on_no_enemy_found(config)
         } else {
             // Calculate max distance of mobs
             let max_distance = match config.circle_pattern_rotation_duration() == 0 {
@@ -417,7 +408,7 @@ impl FarmingBehavior<'_> {
             // Check again if we have a list of mobs
             if mob_list.is_empty() {
                 // Transition to next state
-                State::NoEnemyFound
+                self.on_no_enemy_found(config)
             } else {
                 self.rotation_movement_tries = 0;
                 //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
@@ -442,7 +433,7 @@ impl FarmingBehavior<'_> {
                     })
                 {
                     // Transition to next state
-                    State::EnemyFound(*mob)
+                    self.on_enemy_found(*mob)
                 } else {
                     // Transition to next state
                     State::SearchingForEnemy
@@ -588,6 +579,7 @@ impl FarmingBehavior<'_> {
 
     fn on_attacking(
         &mut self,
+        frontend_info: &mut FrontendInfo,
         config: &FarmingConfig,
         mob: Target,
         image: &mut ImageAnalyzer
@@ -678,7 +670,7 @@ impl FarmingBehavior<'_> {
             self.concurrent_mobs_under_attack = 0;
             self.is_attacking = false;
 
-            return State::AfterEnemyKill(mob);
+            return self.after_enemy_kill(frontend_info, config);
         } else {
             self.is_attacking = false;
             return State::SearchingForEnemy;
