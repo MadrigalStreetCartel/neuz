@@ -375,6 +375,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window, &logger);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
 
+        let frame_limiter_enabled = true;
         let frame_limiter_budget: f64 = 1.0 / 5.0;
 
         // Create movement accessor
@@ -666,7 +667,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // apply frame limit
             let frame_limiter_elapsed = frame_limiter_started.elapsed().as_secs_f64();
-            if frame_limiter_elapsed < (frame_limiter_budget as f64) {
+            if frame_limiter_enabled && frame_limiter_elapsed < (frame_limiter_budget as f64) {
                 let dur = Duration::from_secs_f64(frame_limiter_budget.sub(frame_limiter_elapsed));
                 //println!("Frame limiter: {:?}", dur);
                 std::thread::sleep(dur);
