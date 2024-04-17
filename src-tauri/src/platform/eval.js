@@ -1,6 +1,7 @@
+let mob_clicker_interval = null
 const client = document.querySelector('canvas')
 const input = document.querySelector('input')
-const DEBUG = false && $env.DEBUG
+const DEBUG = true && $env.DEBUG
 function addTargetMarker(color = 'red', x = 0, y = 0,) {
     if (!DEBUG) return
     const targetMarker = document.createElement('div')
@@ -16,6 +17,8 @@ function addTargetMarker(color = 'red', x = 0, y = 0,) {
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
+
+
 function dispatchEvent(event) {
     return client.dispatchEvent(event)
 }
@@ -25,19 +28,19 @@ function after(duration = 0, callback) {
 }
 
 let checkMobTimeout = null;
-function mouseEvent(type, x, y, { checkMob = false, delay = 15, duration } = {}) {
+function mouseEvent(type, x, y, { checkMob = false, delay = 20, duration } = {}) {
     if (checkMobTimeout) {
 
         clearTimeout(checkMobTimeout)
         checkMobTimeout = null
     }
-    function waitDuration(type) {
+    function waitDuration(type, props = {}) {
         if (duration) {
             after(duration, () => {
                 dispatchEvent(new MouseEvent(type ?? 'mouseup', { clientX: x, clientY: y }))
             })
         } else if (type) {
-            dispatchEvent(new MouseEvent(type, { key }))
+            dispatchEvent(new MouseEvent(type, props))
         }
     }
     switch (type) {
@@ -46,11 +49,11 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 15, duration } = {})
             break;
         case 'press':
             dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-            waitDuration('mouseup')
+            waitDuration('mouseup', { clientX: x, clientY: y })
             break;
         case 'hold':
             dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-            waitDuration()
+            waitDuration('mouseup', { clientX: x, clientY: y })
             break;
         case 'release':
             dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
@@ -59,19 +62,28 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 15, duration } = {})
             dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
 
             if (checkMob) {
-                checkMobTimeout = setTimeout(() => {
+                if (mob_clicker_interval) {
+                    clearInterval(mob_clicker_interval)
+                }
+
+                mob_clicker_interval = setInterval(() => {
                     if (isMob()) {
-                        dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-                        dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
-                        /* after(50, () => {
-                            dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        }) */
+                        mouseEvent('press', x, y)
                         addTargetMarker('green', x, y)
-                    } else {
-                        //dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        addTargetMarker('red', x, y)
+                        clearInterval(mob_clicker_interval)
                     }
-                }, delay)
+                }, 0)
+                /*  checkMobTimeout = setTimeout(() => {
+                     if (isMob()) {
+                         dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
+                         dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
+
+                         addTargetMarker('green', x, y)
+                     } else {
+                         //dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
+                         addTargetMarker('red', x, y)
+                     }
+                 }, delay) */
             } else if (!checkMob) {
                 addTargetMarker('blue', x, y)
                 dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))

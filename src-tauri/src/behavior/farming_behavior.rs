@@ -183,14 +183,7 @@ impl FarmingBehavior<'_> {
 
     /// Update avoid bounds cooldowns timers
     fn update_avoid_bounds(&mut self) {
-        let mut result: Vec<(Bounds, Instant, u128)> = vec![];
-        for n in 0..self.avoided_bounds.len() {
-            let current = self.avoided_bounds[n];
-            if current.1.elapsed().as_millis() < current.2 {
-                result.push(current);
-            }
-        }
-        self.avoided_bounds = result;
+        self.avoided_bounds.retain(|current| { current.1.elapsed().as_millis() < current.2 });
     }
 
     /// Check whether pickup pet should be unsummoned
@@ -488,6 +481,7 @@ impl FarmingBehavior<'_> {
             let marker = Bounds::new(point.x - 1, point.y - 1, 2, 2);
             self.avoided_bounds.push((marker, Instant::now(), 5000));
         }
+        std::thread::sleep(Duration::from_millis(100));
     }
 
     fn on_enemy_found(&mut self, mob: Target) -> State {
@@ -500,7 +494,7 @@ impl FarmingBehavior<'_> {
         eval_mob_click(self.window, point);
 
         // Wait a few ms before transitioning state
-        std::thread::sleep(Duration::from_millis(150));
+        std::thread::sleep(Duration::from_millis(200));
         //self.wait(Duration::from_millis(150));
         self.is_attacking = false;
         State::VerifyTarget(mob)
