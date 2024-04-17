@@ -195,8 +195,8 @@ impl FarmingBehavior<'_> {
 
     /// Check whether pickup pet should be unsummoned
     fn update_pickup_pet(&mut self, config: &FarmingConfig) {
-        if let Some(pickup_pet_slot_index) = config.slot_index(SlotType::PickupPet) {
-            if let Some(last_time) = self.last_summon_pet_time {
+        if let Some(last_time) = self.last_summon_pet_time {
+            if let Some(pickup_pet_slot_index) = config.slot_index(SlotType::PickupPet) {
                 if
                     last_time.elapsed().as_millis() >
                     (
