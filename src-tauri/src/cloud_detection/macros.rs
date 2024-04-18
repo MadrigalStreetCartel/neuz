@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! create_cloud_detection_kinds {
-    ($name:ident, { $($variant:ident = $array:expr;)* }) => {
+    ($name:ident, { $($variant:ident = ($array:expr, $tolerance:expr);)* }) => {
             use std::collections::HashMap;
             use std::fmt::Display;
             use lazy_static::lazy_static;
@@ -25,7 +25,7 @@ macro_rules! create_cloud_detection_kinds {
             lazy_static! {
                 pub static ref COLORS_MAP: HashMap<String, ColorDetection> = {
                     let mut m = HashMap::new();
-                    $(m.insert(stringify!($variant).to_string(), ColorDetection::from($array.to_vec()));)*
+                    $(m.insert(stringify!($variant).to_string(), ColorDetection::from_hsv($array.to_vec(), $tolerance).set_label(stringify!($variant).to_string()).to_owned());)*
                     m
                 };
             }
