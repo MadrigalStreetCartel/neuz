@@ -3,7 +3,7 @@ use std::time::Duration;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tauri::Window;
 
-use crate::data::Point;
+use crate::data::{Bounds, Point};
 
 #[derive(Debug)]
 pub enum KeyMode {
@@ -72,4 +72,16 @@ pub fn eval_simple_click(window: &Window, pos: Point) {
 
 pub fn eval_send_message(window: &Window, text: &str) {
     drop(window.eval(format!("setInputChat({0})", text).as_str()));
+}
+
+pub fn eval_draw_bounds(window: &Window, bounds: Bounds) {
+    drop(
+        window.eval(
+            format!(
+                "drawBounds({0}, {1}, {2}, {3});",
+                bounds.x, bounds.y, bounds.w, bounds.h
+            )
+            .as_str(),
+        ),
+    );
 }

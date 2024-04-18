@@ -7,11 +7,11 @@ pub use self::bounds::Bounds;
 mod point;
 pub use self::point::Point;
 
+mod color;
+pub use self::color::*;
+
 mod point_cloud;
 pub use self::point_cloud::{point_selector, PointCloud};
 
-mod stats_info;
-pub use self::stats_info::ClientStats;
-pub use self::stats_info::AliveState;
-
-mod pixel_detection;
+mod progressbar;
+pub use self::progressbar::ProgressBar;

@@ -2,6 +2,7 @@ use slog::Logger;
 use tauri::Window;
 
 use crate::{
+    data::Target,
     image_analyzer::ImageAnalyzer,
     ipc::{BotConfig, FrontendInfo},
     movement::MovementAccessor,
@@ -21,7 +22,23 @@ pub trait Behavior<'a> {
     /// Runs when another behavior is activated
     fn stop(&mut self, config: &BotConfig);
 
+    /// Runs when the bot is disengaged
     fn interupt(&mut self, config: &BotConfig);
+
+    /// Runs when the bot is disengaged passing on screen targets
+    fn update_targets(&mut self, _targets: Vec<Target>) {}
+
+    fn should_update_targets(&mut self) -> bool {
+        false
+    }
+
+    fn should_update_target_marker(&mut self) -> bool {
+        false
+    }
+
+    fn should_update_stats(&mut self) -> bool {
+        true
+    }
 
     /// Runs every frame
     fn run_iteration(

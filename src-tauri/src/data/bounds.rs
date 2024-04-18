@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::Point;
 
 /// A bounding box in 2D space.
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Default, Serialize, Deserialize, Clone, Copy, Hash)]
 pub struct Bounds {
     pub x: u32,
     pub y: u32,
@@ -18,6 +18,10 @@ impl Bounds {
 
     pub fn get_lowest_center_point(&self) -> Point {
         Point::new(self.x + self.w / 2, self.y + self.h)
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.w > 0 && self.h > 0 && self.w > self.x && self.h > self.y
     }
 
     /// Get the size in square pixels.

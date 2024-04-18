@@ -1,6 +1,8 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod behavior;
+mod client_state;
+mod cloud_detection;
 mod data;
 mod image_analyzer;
 mod ipc;
@@ -8,18 +10,29 @@ mod movement;
 mod platform;
 mod utils;
 
-use std::{ fs, io, os::windows::process, path::{ Path, PathBuf }, sync::Arc, time::Duration };
+use std::{
+    fs,
+    io,
+    ops::Sub,
+    os::windows::process,
+    path::{ Path, PathBuf },
+    sync::Arc,
+    time::Duration,
+};
 
+use cloud_detection::CloudDetectionZone;
 use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
+
 use slog::{ Drain, Level, Logger };
 use tauri::{ LogicalSize, Manager, Size, Window };
 
 use crate::{
     behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
+    client_state::player::PlayerAliveState,
+    cloud_detection::{ CloudDetectionConfig, CloudDetectionKind, CloudDetectionType },
     image_analyzer::ImageAnalyzer,
-    data::AliveState,
     ipc::{ BotConfig, BotMode },
     movement::MovementAccessor,
     platform::{ eval_send_key, KeyMode },
@@ -359,8 +372,11 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let eval_js = eval_js.replace("$env.DEBUG", "false");
         drop(window.eval(&eval_js));
 
-        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
+        let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window, &logger);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
+
+        let frame_limiter_enabled = true;
+        let frame_limiter_budget: f64 = 1.0 / 5.0;
 
         // Create movement accessor
         let movement = MovementAccessor::new(window.clone() /*&accessor*/);
@@ -370,14 +386,59 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         let mut shout_behavior = ShoutBehavior::new(&logger, &movement, &window);
         let mut support_behavior = SupportBehavior::new(&logger, &movement, &window);
 
+        let mut started = false;
         let mut last_mode: Option<BotMode> = None;
         let mut last_is_running: Option<bool> = None;
         let mut frontend_info: Arc<RwLock<FrontendInfo>> = Arc::new(
             RwLock::new(FrontendInfo::deserialize_or_default())
         );
         send_info(&frontend_info.read());
+
+        let configs = &mut vec![
+            CloudDetectionConfig::new(
+                CloudDetectionZone::Player(
+                    vec![
+                        CloudDetectionType::Stat(CloudDetectionKind::Hp),
+                        CloudDetectionType::Stat(CloudDetectionKind::Mp),
+                        CloudDetectionType::Stat(CloudDetectionKind::Fp)
+                    ]
+                ),
+                true
+            ),
+            CloudDetectionConfig::new(
+                CloudDetectionZone::Enemy(
+                    vec![
+                        CloudDetectionType::Stat(CloudDetectionKind::Hp),
+                        CloudDetectionType::Stat(CloudDetectionKind::Mp)
+                    ]
+                ),
+                false
+            ),
+            CloudDetectionConfig::new(
+                CloudDetectionZone::Full(
+                    vec![
+                        // Mobs
+                        CloudDetectionType::Text(CloudDetectionKind::MobAggressive),
+                        CloudDetectionType::Text(CloudDetectionKind::MobPassive)
+                    ]
+                ),
+                false
+            ),
+            CloudDetectionConfig::new(
+                CloudDetectionZone::Full(
+                    vec![
+                        // target markers
+                        CloudDetectionType::Shape(CloudDetectionKind::TargetAggressive),
+                        CloudDetectionType::Shape(CloudDetectionKind::TargetPassive)
+                    ]
+                ),
+                false
+            )
+        ];
+
         // Enter main loop
         loop {
+            let frame_limiter_started = std::time::Instant::now();
             let timer = Timer::start_new("main_loop");
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
@@ -410,6 +471,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 if !config.is_running() {
                     if let Some(last_is_running_value) = last_is_running.as_mut() {
                         if *last_is_running_value {
+                            started = false;
                             match mode {
                                 BotMode::Farming => farming_behavior.interupt(config),
                                 BotMode::Support => support_behavior.interupt(config),
@@ -438,15 +500,27 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                             BotMode::Support => support_behavior.stop(config),
                             BotMode::AutoShout => shout_behavior.stop(config),
                         }
-
-                        // Start the current behavior
-                        match mode {
-                            BotMode::Farming => farming_behavior.start(config),
-                            BotMode::Support => support_behavior.start(config),
-                            BotMode::AutoShout => shout_behavior.start(config),
-                        }
+                        started = false;
                         last_mode = None;
                     }
+                }
+                if !started {
+                    // Ensure all UIs are closed
+                    for _ in 0..10 {
+                        eval_send_key(&window, "Escape", KeyMode::Press);
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                    // open stats tray
+                    eval_send_key(&window, "T", KeyMode::Press);
+                    std::thread::sleep(Duration::from_millis(5));
+
+                    // Start the current behavior
+                    match mode {
+                        BotMode::Farming => farming_behavior.start(config),
+                        BotMode::Support => support_behavior.start(config),
+                        BotMode::AutoShout => shout_behavior.start(config),
+                    }
+                    started = true;
                 }
 
                 if !config.farming_config().is_stop_fighting() {
@@ -477,6 +551,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 timer.silence();
                 continue;
             }
+            guard!(let Some(mode) = config.mode() else { continue; });
 
             frontend_info_mut.set_is_running(true);
 
@@ -485,21 +560,42 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
-                // Update stats
-                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
+                match mode {
+                    BotMode::Farming => {
+                        configs[0].enabled = farming_behavior.should_update_stats();
+                        configs[1].enabled = farming_behavior.should_update_stats();
+                        configs[2].enabled = farming_behavior.should_update_targets();
+                        configs[3].enabled = farming_behavior.should_update_target_marker();
+                    }
+                    BotMode::AutoShout => {
+                        configs[0].enabled = shout_behavior.should_update_stats();
+                        configs[1].enabled = shout_behavior.should_update_stats();
+                        configs[2].enabled = shout_behavior.should_update_targets();
+                        configs[3].enabled = shout_behavior.should_update_target_marker();
+                    }
+                    BotMode::Support => {
+                        configs[0].enabled = support_behavior.should_update_stats();
+                        configs[1].enabled = support_behavior.should_update_stats();
+                        configs[2].enabled = support_behavior.should_update_targets();
+                        configs[3].enabled = support_behavior.should_update_target_marker();
+                    }
+                }
+
+                // Update stats & targets
+                /* let _pixel_clouds =  */
+                image_analyzer.pixel_detection(configs);
+                //slog::debug!(logger, "Pixel clouds remainings"; "clouds" => _pixel_clouds.len());
 
                 // Run the current behavior
-                guard!(let Some(mode) = config.mode() else { continue; });
-
                 //Regardless if it's alive or not, if the bot is inactive should be dcd
                 if frontend_info_mut.is_afk_ready_to_disconnect() {
                     app_handle.exit(0);
                     return;
                 }
-                let is_alive = image_analyzer.client_stats.is_alive;
+                let is_alive = image_analyzer.client_state.player.is_alive;
                 let return_earlier = match is_alive {
-                    AliveState::StatsTrayClosed => true,
-                    AliveState::Alive => {
+                    PlayerAliveState::StatsTrayClosed => true,
+                    PlayerAliveState::Alive => {
                         if !frontend_info_mut.is_alive() {
                             frontend_info_mut.set_is_alive(true);
                             let should_disconnect = should_disconnect_on_death(config);
@@ -511,7 +607,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         }
                         false
                     }
-                    AliveState::Dead => {
+                    PlayerAliveState::Dead => {
                         if frontend_info_mut.is_alive() {
                             let should_disconnect = should_disconnect_on_death(config);
                             if should_disconnect {
@@ -562,11 +658,20 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                 // Send infos to frontend
                 send_info(&frontend_info.read());
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
 
             // Update last mode
             last_mode = config.mode();
             last_is_running = Some(config.is_running());
+
+            // apply frame limit
+            let frame_limiter_elapsed = frame_limiter_started.elapsed().as_secs_f64();
+            if frame_limiter_enabled && frame_limiter_elapsed < (frame_limiter_budget as f64) {
+                let dur = Duration::from_secs_f64(frame_limiter_budget.sub(frame_limiter_elapsed));
+                //println!("Frame limiter: {:?}", dur);
+                std::thread::sleep(dur);
+            }
         }
     });
 }
