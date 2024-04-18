@@ -32,6 +32,7 @@ pub struct FarmingBehavior<'a> {
     window: &'a Window,
     state: State,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
+    start_searching_time: Option<Instant>,
     last_initial_attack_time: Instant,
     //searching_for_enemy_timeout: Instant,
     last_kill_time: Instant,
@@ -64,6 +65,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             state: State::SearchingForEnemy, //Start with buff before attacking
             slots_usage_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
+            start_searching_time: None,
             //searching_for_enemy_timeout: Instant::now(),
             last_kill_time: Instant::now(),
             avoided_bounds: vec![],
@@ -385,6 +387,10 @@ impl FarmingBehavior<'_> {
         if config.is_stop_fighting() {
             return State::VerifyTarget(Target::default());
         }
+        if let Some(start_searching_time) = self.start_searching_time {
+        } else {
+            self.start_searching_time = Some(Instant::now());
+        }
         let mobs = image.client_state.found_targets.clone();
         if mobs.is_empty() {
             // Transition to next state
@@ -563,6 +569,9 @@ impl FarmingBehavior<'_> {
     ) -> State {
         if image.client_state.target.is_on_screen && image.client_state.target.is_mover {
             slog::debug!(self.logger, "Target is not a NPC"; "target_on_screen" => image.client_state.target.is_on_screen, "target_is_mover" => image.client_state.target.is_mover, "distance" => image.client_state.target.distance.unwrap_or(0));
+            slog::debug!(self.logger, "Searching time"; "start_searching_time" => self.start_searching_time.unwrap().elapsed().as_millis());
+            self.start_searching_time = None;
+
             self.state = State::Attacking(mob);
         } else {
             self.avoid_last_click();
