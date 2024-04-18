@@ -8,6 +8,7 @@ pub struct GameTarget {
     pub is_alive: bool,
     pub is_npc: bool,
     pub is_on_screen: bool,
+    pub is_red: bool,
     pub marker: Option<Target>,
     pub distance: Option<i32>,
 }
@@ -21,6 +22,7 @@ impl GameTarget {
             is_alive: false,
             is_npc: false,
             is_on_screen: false,
+            is_red: false,
             marker: None,
             distance: None,
         }
