@@ -388,9 +388,13 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             RwLock::new(FrontendInfo::deserialize_or_default())
         );
         send_info(&frontend_info.read());
+
+        let frame_limiter_enabled = true;
+        let frame_limiter = 1.0/5.0;
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
+            let frame_limiter_curent_start = std::time::Instant::now();
             let config = &*config.read();
             let mut frontend_info_mut = *frontend_info.read();
 
@@ -579,6 +583,12 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             // Update last mode
             last_mode = config.mode();
             last_is_running = Some(config.is_running());
+            if frame_limiter_enabled {
+                let frame_limiter_current_duration = frame_limiter_curent_start.elapsed();
+                if frame_limiter_current_duration.as_secs_f64() < frame_limiter {
+                    std::thread::sleep(Duration::from_secs_f64(frame_limiter - frame_limiter_current_duration.as_secs_f64()));
+                }
+            }
         }
     });
 }
