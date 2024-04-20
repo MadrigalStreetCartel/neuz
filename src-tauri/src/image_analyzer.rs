@@ -10,9 +10,9 @@ use slog::Logger;
 use tauri::Window;
 
 use crate::{
-    data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
+    data::{ point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType },
     ipc::FarmingConfig,
-    platform::{IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
+    platform::{ eval_draw_bounds, eval_shown_debug_overlay, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP },
     utils::Timer,
 };
 
@@ -32,6 +32,11 @@ pub struct ImageAnalyzer {
     image: Option<ImageBuffer>,
     pub window_id: u64,
     pub client_stats: ClientStats,
+    window: Window,
+
+    // frame counting
+    frame_count: u64,
+    last_frame_time: Instant,
 }
 
 impl ImageAnalyzer {
@@ -40,6 +45,10 @@ impl ImageAnalyzer {
             window_id: 0,
             image: None,
             client_stats: ClientStats::new(window.to_owned()),
+            window: window.to_owned(),
+
+            frame_count: 0,
+            last_frame_time: Instant::now(),
         }
     }
 
@@ -52,9 +61,23 @@ impl ImageAnalyzer {
         if self.window_id == 0 {
             return;
         }
+        // calculate fps
+        let now = Instant::now();
+        let elapsed = now - self.last_frame_time;
+        if elapsed.as_secs() >= 1 {
+            let fps = self.frame_count;
+            self.frame_count = 0;
+            self.last_frame_time = now;
+            self.window.eval(&format!("debugOverlay.setFps({});", fps)).unwrap();
+        } else {
+            self.frame_count += 1;
+        }
 
+        eval_shown_debug_overlay(&self.window, false);
         if let Some(provider) = libscreenshot::get_window_capture_provider() {
             if let Ok(image) = provider.capture_window(self.window_id) {
+                eval_shown_debug_overlay(&self.window, true);
+                self.frame_count += 1;
                 self.image = Some(image);
             } else {
                 slog::warn!(logger, "Failed to capture window"; "window_id" => self.window_id);
@@ -69,7 +92,7 @@ impl ImageAnalyzer {
         min_y: u32,
         mut max_x: u32,
         mut max_y: u32,
-        tolerence: Option<u8>,
+        tolerence: Option<u8>
     ) -> Receiver<Point> {
         let (snd, recv) = sync_channel::<Point>(4096);
         let image = self.image.as_ref().unwrap();
@@ -89,13 +112,12 @@ impl ImageAnalyzer {
                 // Skip this row if it's in an ignored area
                 let image_height = image.height();
                 #[allow(clippy::absurd_extreme_comparisons)] // not always 0 (macOS)
-                if y <= IGNORE_AREA_TOP
-                    || y > image_height
-                        .checked_sub(IGNORE_AREA_BOTTOM)
-                        .unwrap_or(image_height)
-                    || y > IGNORE_AREA_TOP + max_y
-                    || y > max_y
-                    || y < min_y
+                if
+                    y <= IGNORE_AREA_TOP ||
+                    y > image_height.checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(image_height) ||
+                    y > IGNORE_AREA_TOP + max_y ||
+                    y > max_y ||
+                    y < min_y
                 {
                     return;
                 }
@@ -115,9 +137,11 @@ impl ImageAnalyzer {
                             // drop(snd.try_send(Point::new(x, y)));
                             // drop(snd.send(Point::new(x, y)));
                             #[allow(dropping_copy_types)]
-                            drop(snd.try_send(Point::new(x, y)).map_err(|err| {
-                                eprintln!("Error sending data: {}", err);
-                            }));
+                            drop(
+                                snd.try_send(Point::new(x, y)).map_err(|err| {
+                                    eprintln!("Error sending data: {}", err);
+                                })
+                            );
 
                             // Continue to next column
                             continue 'outer;
@@ -129,9 +153,10 @@ impl ImageAnalyzer {
     }
 
     fn merge_cloud_into_mobs(
+        window: &Window,
         config: Option<&FarmingConfig>,
         cloud: &PointCloud,
-        mob_type: TargetType, //ignore_size: bool,
+        mob_type: TargetType //ignore_size: bool,
     ) -> Vec<Target> {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
@@ -145,8 +170,10 @@ impl ImageAnalyzer {
         let mut xy_clusters = Vec::default();
         for x_cluster in x_clusters {
             // Cluster current x-cluster coordinates in y-direction
-            let local_y_clusters =
-                x_cluster.cluster_by_distance(max_distance_y, point_selector::y_axis);
+            let local_y_clusters = x_cluster.cluster_by_distance(
+                max_distance_y,
+                point_selector::y_axis
+            );
             // Extend final xy-clusters with local y-clusters
             xy_clusters.extend(local_y_clusters.into_iter());
         }
@@ -159,6 +186,9 @@ impl ImageAnalyzer {
                 bounds: cluster.to_bounds(),
             })
             .filter(|mob| {
+                if mob_type != TargetType::TargetMarker {
+                    eval_draw_bounds(window, mob.bounds);
+                }
                 if let Some(config) = config {
                     // Filter out small clusters (likely to cause misclicks)
                     mob.bounds.w > config.min_mobs_name_width() &&
@@ -174,13 +204,19 @@ impl ImageAnalyzer {
     /// Check if pixel `c` matches reference pixel `r` with the given `tolerance`.
     #[inline(always)]
     fn pixel_matches(c: &[u8; 4], r: &[u8; 3], tolerance: u8) -> bool {
-        let matches_inner = |a: u8, b: u8| match (a, b) {
-            (a, b) if a == b => true,
-            (a, b) if a > b => a.saturating_sub(b) <= tolerance,
-            (a, b) if a < b => b.saturating_sub(a) <= tolerance,
-            _ => false,
+        let matches_inner = |a: u8, b: u8| {
+            match (a, b) {
+                (a, b) if a == b => true,
+                (a, b) if a > b => a.saturating_sub(b) <= tolerance,
+                (a, b) if a < b => b.saturating_sub(a) <= tolerance,
+                _ => false,
+            }
         };
-        let perm = [(c[0], r[0]), (c[1], r[1]), (c[2], r[2])];
+        let perm = [
+            (c[0], r[0]),
+            (c[1], r[1]),
+            (c[2], r[2]),
+        ];
         perm.iter().all(|&(a, b)| matches_inner(a, b))
     }
 
@@ -234,17 +270,13 @@ impl ImageAnalyzer {
                     }
                     if Self::pixel_matches(&px.0, &ref_color_pas, config.passive_tolerence()) {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                    } else if Self::pixel_matches(
-                        &px.0,
-                        &ref_color_agg,
-                        config.aggressive_tolerence(),
-                    ) {
+                    } else if
+                        Self::pixel_matches(&px.0, &ref_color_agg, config.aggressive_tolerence())
+                    {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
-                    } else if Self::pixel_matches(
-                        &px.0,
-                        &ref_color_violet,
-                        config.violet_tolerence(),
-                    ) {
+                    } else if
+                        Self::pixel_matches(&px.0, &ref_color_violet, config.violet_tolerence())
+                    {
                         drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Violet))));
                     }
                 }
@@ -260,19 +292,22 @@ impl ImageAnalyzer {
 
         // Categorize mobs
         let mobs_pas = Self::merge_cloud_into_mobs(
+            &self.window,
             Some(config),
             &PointCloud::new(mob_coords_pas),
-            TargetType::Mob(MobType::Passive),
+            TargetType::Mob(MobType::Passive)
         );
         let mobs_agg = Self::merge_cloud_into_mobs(
+            &self.window,
             Some(config),
             &PointCloud::new(mob_coords_agg),
-            TargetType::Mob(MobType::Aggressive),
+            TargetType::Mob(MobType::Aggressive)
         );
         let _mobs_violet = Self::merge_cloud_into_mobs(
+            &self.window,
             Some(config),
             &PointCloud::new(mob_coords_violet),
-            TargetType::Mob(MobType::Violet),
+            TargetType::Mob(MobType::Violet)
         );
 
         // Return all mobs
@@ -326,8 +361,12 @@ impl ImageAnalyzer {
         // }
 
         // Identify target marker entities
-        let target_markers =
-            Self::merge_cloud_into_mobs(None, &PointCloud::new(coords), TargetType::TargetMarker);
+        let target_markers = Self::merge_cloud_into_mobs(
+            &self.window,
+            None,
+            &PointCloud::new(coords),
+            TargetType::TargetMarker
+        );
 
         if !blue_target && target_markers.is_empty() {
             return self.identify_target_marker(true);
@@ -346,8 +385,9 @@ impl ImageAnalyzer {
         // Calculate 2D euclidian distances to player
         let point = target.bounds.get_lowest_center_point();
 
-        (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64).sqrt()
-            as i32
+        (
+            ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
+        ).sqrt() as i32
     }
     /// Distance: `[0..=500]`
     pub fn find_closest_mob<'a>(
@@ -356,7 +396,7 @@ impl ImageAnalyzer {
         //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
-        _logger: &Logger,
+        _logger: &Logger
     ) -> Option<&'a Target> {
         let _timer = Timer::start_new("find_closest_mob");
 
@@ -370,9 +410,9 @@ impl ImageAnalyzer {
         let mut distances = Vec::default();
         for mob in mobs {
             let point = mob.get_attack_coords();
-            let distance = (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2))
-                as f64)
-                .sqrt() as i32;
+            let distance = (
+                ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
+            ).sqrt() as i32;
             distances.push((mob, distance));
         }
 
@@ -387,21 +427,23 @@ impl ImageAnalyzer {
 
         if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
-                //*distance > 55
-                let coords = mob.get_attack_coords();
-                let mut result = true;
-                for avoided_item in avoided_bounds {
-                    if avoided_item.0.contains_point(&coords) {
-                        //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
-                        result = false;
-                        break;
+            if
+                let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
+                    //*distance > 55
+                    let coords = mob.get_attack_coords();
+                    let mut result = true;
+                    for avoided_item in avoided_bounds {
+                        if avoided_item.0.contains_point(&coords) {
+                            //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
+                            result = false;
+                            break;
+                        }
                     }
-                }
-                result // && *distance > 20
-                       // let coords = mob.name_bounds.get_lowest_center_point();
-                       // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
-            }) {
+                    result // && *distance > 20
+                    // let coords = mob.name_bounds.get_lowest_center_point();
+                    // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+                })
+            {
                 Some(mob)
             } else {
                 None

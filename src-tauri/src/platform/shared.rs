@@ -1,9 +1,9 @@
-use std::time::Duration;
+use std::{ f32::consts::E, time::Duration };
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{ HasRawWindowHandle, RawWindowHandle };
 use tauri::Window;
 
-use crate::data::Point;
+use crate::data::{Bounds, Point};
 
 #[derive(Debug)]
 pub enum KeyMode {
@@ -26,7 +26,8 @@ pub fn get_window_id(window: &Window) -> Option<u64> {
             unsafe {
                 use std::ffi::c_void;
                 let ns_window_ptr = handle.ns_window as *const c_void;
-                libscreenshot::platform::macos::macos_helper::ns_window_to_window_id(ns_window_ptr)
+                libscreenshot::platform::macos::macos_helper
+                    ::ns_window_to_window_id(ns_window_ptr)
                     .map(|id| id as u64)
             }
             #[cfg(not(target_os = "macos"))]
@@ -57,12 +58,8 @@ pub fn send_slot_eval(window: &Window, slot_bar_index: usize, k: usize) {
 pub fn eval_mob_click(window: &Window, pos: Point) {
     drop(
         window.eval(
-            format!(
-                "mouseEvent('moveClick', {0}, {1}, {{checkMob: true}});",
-                pos.x, pos.y
-            )
-            .as_str(),
-        ),
+            format!("mouseEvent('moveClick', {0}, {1}, {{checkMob: true}});", pos.x, pos.y).as_str()
+        )
     );
 }
 
@@ -72,4 +69,28 @@ pub fn eval_simple_click(window: &Window, pos: Point) {
 
 pub fn eval_send_message(window: &Window, text: &str) {
     drop(window.eval(format!("setInputChat({0})", text).as_str()));
+}
+
+pub fn eval_toggle_debug_overlay(window: &Window) {
+    drop(window.eval(format!("debugOverlay.toggle()").as_str()));
+}
+
+pub fn eval_shown_debug_overlay(window: &Window, shown: bool) {
+    let show_eval = format!("debugOverlay.showOverlays()");
+    let hide_eval = format!("debugOverlay.hideOverlays()");
+    let eval = {
+        if shown { show_eval } else { hide_eval }
+    };
+    if !shown {
+        //eval_clear_bounds(window);
+    }
+    drop(window.eval(eval.as_str()));
+}
+
+pub fn eval_draw_bounds(window: &Window, bounds: Bounds) {
+    drop(window.eval(format!("drawBounds({0}, {1}, {2}, {3})", bounds.x, bounds.y, bounds.w, bounds.h).as_str()));
+}
+
+pub fn eval_clear_bounds(window: &Window) {
+    drop(window.eval("debugOverlay.boundsOverlay.clear()"));
 }

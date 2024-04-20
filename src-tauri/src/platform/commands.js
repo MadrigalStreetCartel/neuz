@@ -1,21 +1,40 @@
-const client = document.querySelector('canvas')
-const input = document.querySelector('input')
-const DEBUG = false && $env.DEBUG
 function addTargetMarker(color = 'red', x = 0, y = 0,) {
     if (!DEBUG) return
     const targetMarker = document.createElement('div')
-    const targetMarkerStyle = `position: fixed; width: 2px; height: 2px; background-color: ${color}; border-radius: 50%;z-index: 9999;left: ${x}px;top: ${y}px;`
+    const targetMarkerStyle = `position: fixed; width: 4px; height: 4px; background-color: ${color}; border-radius: 50%;z-index: 9999;left: ${x - 2}px;top: ${y - 2}px;`
     targetMarker.style = targetMarkerStyle
-    document.body.appendChild(targetMarker)
+    debugOverlay.element.appendChild(targetMarker)
 
     setTimeout(() => {
         targetMarker.remove()
     }, 1000)
 }
 
+function drawBounds(x, y, w, h) {
+    if (!DEBUG) return
+    let bounds = debugOverlay.boundsOverlay.addBounds(x, y, w, h, 4)
+
+    setTimeout(() => {
+        debugOverlay.boundsOverlay.removeBounds(bounds)
+    }, 1000)
+
+}
+
+
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
+
+function sendSlot(slotBarIndex, slotIndex) {
+    keyboardEvent('press', `F${slotBarIndex + 1}`)
+    keyboardEvent('press', slotIndex)
+}
+
+function setInputChat(text) {
+    input.value = text
+    input.select()
+}
+
 function dispatchEvent(event) {
     return client.dispatchEvent(event)
 }
@@ -106,12 +125,3 @@ function keyboardEvent(keyMode, key, duration = null) {
     }
 }
 
-function sendSlot(slotBarIndex, slotIndex) {
-    keyboardEvent('press', `F${slotBarIndex + 1}`)
-    keyboardEvent('press', slotIndex)
-}
-
-function setInputChat(text) {
-    input.value = text
-    input.select()
-}

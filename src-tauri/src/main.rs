@@ -303,6 +303,27 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
         profile_id
     ).clone();
+    let window = app_handle.get_window("client").unwrap();
+    let modules: &[&str] = &[
+        include_str!("./platform/init.js"),
+        include_str!("./platform/clientUI/utils.js"),
+        include_str!("./platform/clientUI/UI.js"),
+        include_str!("./platform/clientUI/main.js"),
+        include_str!("./platform/commands.js"),
+    ];
+    let mut eval_js = String::new();
+    for module in modules {
+        eval_js.push_str(module);
+    }
+    //println!("{}", eval_js);
+
+    #[cfg(dev)]
+    let eval_js = eval_js.replace("$env.DEBUG", "true");
+    #[cfg(not(dev))]
+    let eval_js = eval_js.replace("$env.DEBUG", "false");
+
+
+    drop(window.eval(&eval_js));
 
     std::thread::spawn(move || {
         let logger = logger.clone();
@@ -349,15 +370,6 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
         // Send initial config to frontend
         send_config(&config.read());
-
-        let window = app_handle.get_window("client").unwrap();
-        let eval_js = include_str!("./platform/eval.js");
-
-        #[cfg(dev)]
-        let eval_js = eval_js.replace("$env.DEBUG", "true");
-        #[cfg(not(dev))]
-        let eval_js = eval_js.replace("$env.DEBUG", "false");
-        drop(window.eval(&eval_js));
 
         let mut image_analyzer: ImageAnalyzer = ImageAnalyzer::new(&window);
         image_analyzer.window_id = platform::get_window_id(&window).unwrap_or(0);
