@@ -37,6 +37,8 @@ sentry-slog = "0.27.0"
 raw-window-handle = "0.5" # This has to be in sync with the version used by tauri
 libscreenshot = { git = "https://github.com/MadrigalStreetCartel/libscreenshot"}
 
+# Utils
+palette = "0.7.5"
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
