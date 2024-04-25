@@ -23,7 +23,7 @@ impl Bounds {
     /// Get the size in square pixels.
     #[inline]
     pub fn size(&self) -> usize {
-        self.w as usize * self.h as usize
+        (self.w as usize) * (self.h as usize)
     }
 
     /// Expand the bounds in all directions by the given amount.
@@ -52,6 +52,55 @@ impl Bounds {
             && point.x <= self.x + self.w
             && point.y >= self.y
             && point.y <= self.y + self.h
+    }
+
+    #[inline]
+    pub fn contains_bounds(&self, other: &Bounds) -> bool {
+        other.x >= self.x
+            && other.x + other.w <= self.x + self.w
+            && other.y >= self.y
+            && other.y + other.h <= self.y + self.h
+    }
+
+    /// Merge ONLY if the given bounds is directly inside the bounds.
+    #[inline]
+    pub fn merge_bounds(&self, other: &Bounds) -> Option<Bounds> {
+        let self_is_bigger = self.size() > other.size();
+        let other_in_self = self.contains_bounds(other);
+        let self_in_other = {
+            if other_in_self {
+                false
+            } else {
+                other.contains_bounds(self)
+            }
+        };
+
+        if self_in_other {
+            Some(*self)
+        } else if other_in_self {
+            Some(*other)
+        } else {
+            None
+        }
+    }
+
+    /// Returns point of corners of the bounds.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn corners(&self) -> [Point; 4] {
+        [
+            Point::new(self.x, self.y),
+            Point::new(self.x + self.w, self.y),
+            Point::new(self.x, self.y + self.h),
+            Point::new(self.x + self.w, self.y + self.h),
+        ]
+    }
+
+    /// Returns pixel detection area.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn to_detection_area(&self) -> [u32; 4] {
+        [self.x, self.y, self.x + self.w, self.y + self.h]
     }
 }
 
