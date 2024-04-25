@@ -24,6 +24,16 @@ function drawBounds(x, y, w, h) {
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
+let clickPos = null
+
+setInterval(() => {
+    if (clickPos !== null && isMob()) {
+        dispatchEvent(new MouseEvent('mousedown', { clientX: clickPos.x, clientY: clickPos.y }))
+        dispatchEvent(new MouseEvent('mouseup', { clientX: clickPos.x, clientY: clickPos.y }))
+        addTargetMarker('green', clickPos.x, clickPos.y)
+        clickPos = null
+    }
+}, 0)
 
 function sendSlot(slotBarIndex, slotIndex) {
     keyboardEvent('press', `F${slotBarIndex + 1}`)
@@ -44,11 +54,12 @@ function after(duration = 0, callback) {
 }
 
 let checkMobTimeout = null;
-function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {}) {
+function mouseEvent(type, x, y, { checkMob = false, delay = 100, duration } = {}) {
     if (checkMobTimeout) {
 
         clearTimeout(checkMobTimeout)
         checkMobTimeout = null
+        clickPos = null
     }
     function waitDuration(type) {
         if (duration) {
@@ -78,18 +89,9 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {})
             dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
 
             if (checkMob) {
+                clickPos = { x, y }
                 checkMobTimeout = setTimeout(() => {
-                    if (isMob()) {
-                        dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-                        dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
-                        /* after(50, () => {
-                            dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        }) */
-                        addTargetMarker('green', x, y)
-                    } else {
-                        //dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        addTargetMarker('red', x, y)
-                    }
+                    clickPos = null
                 }, delay)
             } else if (!checkMob) {
                 addTargetMarker('blue', x, y)

@@ -9,7 +9,7 @@ class Bounds {
 
         let bounds_label = document.createElement('p')
         bounds_label.innerText = `${this.w}x${this.h}`
-        bounds_label.style = `position: absolute; top: -15px; left: 0; color: red; background-color: violet; padding: 2px; font-size: 12px;`
+        bounds_label.style = `position: fixed; left: ${this.x}px;top: ${this.y - this.h-12}px; color: black; background-color: violet; padding: 2px; font-size: 12px;`
 
         this.element.appendChild(bounds_label)
     }

@@ -1,6 +1,6 @@
 let client;
 let input;
-const DEBUG = true /* && $env.DEBUG */
+const DEBUG = true && $env.DEBUG
 if (DEBUG) {
     console._log = console.log
     console._error = console.error
