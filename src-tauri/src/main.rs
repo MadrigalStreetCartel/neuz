@@ -418,7 +418,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         send_info(&frontend_info.read());
 
         let frame_limiter_enabled = true;
-        let frame_limiter = 1.0 / 5.0;
+        let frame_limiter = 1.0 / 3.0;
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -553,18 +553,18 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                             if !should_disconnect {
                                 // close chat after beign rez
                                 eval_send_key(&window, "Escape", KeyMode::Press);
-                                std::thread::sleep(Duration::from_millis(1000));
+                                std::thread::sleep(Duration::from_millis(100));
                             }
                         }
                         false
                     }
                     AliveState::Dead => {
                         if frontend_info_mut.is_alive() {
-                            let should_disconnect = should_disconnect_on_death(config);
+                           /*  let should_disconnect = should_disconnect_on_death(config);
                             if should_disconnect {
                                 app_handle.exit(0);
                             }
-
+ */
                             frontend_info_mut.set_is_alive(false);
                             frontend_info = Arc::new(RwLock::new(frontend_info_mut));
                             // Send infos to frontend

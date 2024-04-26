@@ -1,18 +1,15 @@
-use image::{Rgb, Rgba};
-use palette::{convert::IntoColorUnclamped, FromColor, Hsv, IntoColor};
-use std::{
-    sync::mpsc::{sync_channel, Receiver},
-    time::Instant,
-};
+use image::Rgba;
+use palette::{ FromColor, Hsv };
+use std::{ sync::mpsc::{ sync_channel, Receiver }, time::Instant };
 
 //use libscreenshot::shared::Area;
-use libscreenshot::{ImageBuffer, WindowCaptureProvider};
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use libscreenshot::{ ImageBuffer, WindowCaptureProvider };
+use rayon::iter::{ ParallelBridge, ParallelIterator };
 use slog::Logger;
 use tauri::Window;
 
 use crate::{
-    data::{point_selector, Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetType},
+    data::{ Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetMarkerType, TargetType },
     ipc::FarmingConfig,
     platform::{eval_draw_bounds, eval_shown_debug_overlay, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
@@ -93,71 +90,62 @@ impl ImageAnalyzer {
         }
     }
 
-    pub fn image_process<F>(&self, bounds: Vec<(Bounds, Option<F>)>)
-    where
-        F: Fn(u32, u32, &[u8; 4]) -> () + Sync + Send,
+    pub fn image_process<F>(&self, bounds: Vec<&Bounds>, callback: F)
+        where F: Fn(&Bounds, u32, u32, &[u8; 4]) -> () + Sync + Send
     {
         let image = self.image.as_ref().unwrap();
         if bounds.is_empty() {
             return;
         }
-        for (bound, callback) in bounds {
-            if let None = callback {
-                // TODO use a guard
-                continue;
-            }
+        for bound in bounds {
             let [min_x, min_y, max_x, max_y] = bound.to_detection_area();
-            let safe_height = image
-                .height()
-                .checked_sub(IGNORE_AREA_BOTTOM)
-                .unwrap_or(max_x);
-            image.enumerate_rows().par_bridge().for_each(|(y, row)| {
-                if y <= IGNORE_AREA_TOP
-                    || y > safe_height
-                    || y > IGNORE_AREA_TOP + max_y
-                    || y > max_y
-                    || y < min_y
-                {
-                    return;
-                }
-                'outer: for (x, _, px) in row {
-                    let px = px as &Rgba<u8>;
-                    if px.0[3] != 255 || x >= max_x {
+            let safe_height = image.height().checked_sub(IGNORE_AREA_BOTTOM).unwrap_or(max_x);
+            image
+                .enumerate_rows()
+                .par_bridge()
+                .for_each(|(y, row)| {
+                    if
+                        y <= IGNORE_AREA_TOP ||
+                        y > safe_height ||
+                        y > IGNORE_AREA_TOP + max_y ||
+                        y > max_y ||
+                        y < min_y
+                    {
                         return;
-                    } else if x < min_x {
-                        continue 'outer;
                     }
-                    callback.as_ref().expect("having a guard is cool")(x, y, &px.0);
-                }
-            });
+                    /* 'outer:  */ for (x, _, px) in row {
+                        let px = px as &Rgba<u8>;
+                        if px.0[3] != 255 || x >= max_x {
+                            return;
+                        } else if x < min_x {
+                            continue;
+                        }
+                        callback(bound, x, y, &px.0);
+                    }
+                });
         }
     }
 
     pub fn pixel_detection(
         &self,
-        colors: &[(
-            Bounds,
-            Hsv,
-            HsvTolerance,
-            Box<dyn Fn(u32, u32) + Sync + Send>,
-        )],
+        colors: &[(Bounds, Hsv, HsvTolerance, Box<dyn Fn(u32, u32) + Sync + Send>)]
     ) {
         self.image_process(
             colors
                 .iter()
-                .map(|(b, ref_color, tolerance, cb)| {
-                    (
-                        *b,
-                        Some(Box::new(move |x, y, pixel: &[u8; 4]| {
-                            let pixel_hsv = palette::Srgb::new(pixel[0], pixel[1], pixel[2]);
-                            let pixel_hsv = Hsv::from_color(pixel_hsv.into_format());
-                            if Self::pixel_matches(&pixel_hsv, ref_color, *tolerance) {
-                                cb(x, y);
-                            }
-                        })),
-                    )
-                })
+                .map(|(b, ref_color, tolerance, cb)| b)
                 .collect::<Vec<_>>(),
+            move |bounds, x, y, pixel: &[u8; 4]| {
+                let pixel_hsv = palette::Srgb::new(pixel[0], pixel[1], pixel[2]);
+                let pixel_hsv = Hsv::from_color(pixel_hsv.into_format());
+                let (_, ref_color, tolerance, cb) = colors
+                    .iter()
+                    .find(|(b, _, _, _)| (b as *const _) == (bounds as *const _))
+                    .unwrap();
+                if Self::pixel_matches(&pixel_hsv, ref_color, *tolerance) {
+                    cb(x, y);
+                }
+            }
         );
     }
 
@@ -165,7 +153,7 @@ impl ImageAnalyzer {
         window: &Window,
         config: Option<&FarmingConfig>,
         cloud: &PointCloud,
-        mob_type: TargetType, //ignore_size: bool,
+        mob_type: TargetType //ignore_size: bool,
     ) -> Vec<Target> {
         let _timer = Timer::start_new("merge_cloud_into_mobs");
 
@@ -194,12 +182,16 @@ impl ImageAnalyzer {
                 bounds: cluster.to_bounds(),
             })
             .filter(|mob| {
-                let is_valid = mob.bounds.w >= min_w
-                    && mob.bounds.h >= min_h
-                    && mob.bounds.w <= max_w
-                    && mob.bounds.h <= max_h;
-                if mob_type != TargetType::TargetMarker && is_valid {
-                    eval_draw_bounds(window, false, mob.bounds);
+                let is_valid =
+                    mob.bounds.w >= min_w &&
+                    mob.bounds.h >= min_h &&
+                    mob.bounds.w <= max_w &&
+                    mob.bounds.h <= max_h;
+                if let TargetType::Mob(_) = mob_type {
+                    //slog::debug!(logger, ""; "Mob bounds" => mob.bounds);
+                    if is_valid {
+                        eval_draw_bounds(window, false, mob.bounds);
+                    }
                 }
                 if let Some(config) = config {
                     // Filter targets
@@ -214,8 +206,9 @@ impl ImageAnalyzer {
 
     #[inline(always)]
     pub fn pixel_matches(color_ref: &Hsv, color_pixel: &Hsv, tolerance: HsvTolerance) -> bool {
-        let h_dif =
-            (color_ref.hue.into_positive_degrees() - color_pixel.hue.into_positive_degrees()).abs();
+        let h_dif = (
+            color_ref.hue.into_positive_degrees() - color_pixel.hue.into_positive_degrees()
+        ).abs();
         if h_dif > tolerance[0] {
             return false;
         }
@@ -245,28 +238,30 @@ impl ImageAnalyzer {
             0,
             0,
             self.image.as_ref().unwrap().width(),
-            self.image.as_ref().unwrap().height(),
+            self.image.as_ref().unwrap().height()
         );
-        self.pixel_detection(&[
-            (
-                bounds,
-                Hsv::new(60.0, 0.36, 0.91),
-                [0.0, 0.2, 0.08],
-                Box::new(move |x, y| {
-                    #[allow(dropping_copy_types)]
-                    drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
-                }),
-            ),
-            (
-                bounds,
-                Hsv::new(0.0, 0.98, 0.918),
-                [0.1, 0.1, 0.2],
-                Box::new(move |x, y| {
-                    #[allow(dropping_copy_types)]
-                    drop(snd_clone.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
-                }),
-            ),
-        ]);
+        self.pixel_detection(
+            &[
+                (
+                    bounds,
+                    Hsv::new(60.0, 0.36, 0.91),
+                    [0.0, 0.2, 0.08],
+                    Box::new(move |x, y| {
+                        #[allow(dropping_copy_types)]
+                        drop(snd.send(MobPixel(x, y, TargetType::Mob(MobType::Passive))));
+                    }),
+                ),
+                (
+                    bounds,
+                    Hsv::new(0.0, 0.98, 0.918),
+                    [0.1, 0.1, 0.2],
+                    Box::new(move |x, y| {
+                        #[allow(dropping_copy_types)]
+                        drop(snd_clone.send(MobPixel(x, y, TargetType::Mob(MobType::Aggressive))));
+                    }),
+                ),
+            ]
+        );
         while let Ok(px) = recv.recv() {
             match px.2 {
                 TargetType::Mob(MobType::Passive) => mob_coords_pas.push(Point::new(px.0, px.1)),
@@ -274,7 +269,6 @@ impl ImageAnalyzer {
                 _ => unreachable!(),
             }
         }
-
         // Categorize mobs
         let mobs_pas = Self::merge_cloud_into_mobs(
             &self.window,
@@ -286,70 +280,106 @@ impl ImageAnalyzer {
             &self.window,
             Some(config),
             &PointCloud::new(mob_coords_agg),
-            TargetType::Mob(MobType::Aggressive),
+            TargetType::Mob(MobType::Aggressive)
         );
 
         // Return all mobs
         Vec::from_iter(mobs_agg.into_iter().chain(mobs_pas))
     }
-    pub fn identify_target_marker(&self, blue_target: bool) -> Option<Target> {
+    pub fn identify_target_marker(&self) -> Option<Target> {
         let _timer = Timer::start_new("identify_target_marker");
-        let mut coords = Vec::default();
+        let mut passive_coords = Vec::default();
+        let mut aggressive_coords = Vec::default();
+        let passive_color = (Hsv::new(240.0, 0.37, 0.25), &[0.0, 0.01, 0.01]);
+        let aggressive_color = (Hsv::new(4.5, 0.68, 0.61), &[0.02, 0.01, 0.01]);
 
-        // Reference color
-        let ref_color: (Hsv, &HsvTolerance) = {
-            if blue_target {
-                (Hsv::new(240.0, 0.37, 0.25), &[0.0, 0.01, 0.01]) //A4B4E1 -- blueish - more center of the arrow
-            } else {
-                (Hsv::new(4.5, 0.68, 0.61), &[0.02, 0.01, 0.01]) //F65A6A -- redish
-            }
-        };
-
-        let (snd, recv) = sync_channel::<Point>(4096);
+        let (passive_snd, passive_recv) = sync_channel::<Point>(4096);
+        let (aggressive_snd, aggressive_recv) = sync_channel::<Point>(4096);
         let bounds = Bounds::new(
             0,
             0,
             self.image.as_ref().unwrap().width(),
-            self.image.as_ref().unwrap().height(),
+            self.image.as_ref().unwrap().height()
         );
-        self.image_process(vec![(
-            bounds,
-            Some(move |x, y, pixel: &[u8; 4]| {
-                if Self::pixel_matches(
-                    &Hsv::from_color(
-                        palette::Srgb::new(pixel[0], pixel[1], pixel[2]).into_format(),
-                    ),
-                    &ref_color.0,
-                    *ref_color.1,
-                ) {
-                    #[allow(dropping_copy_types)]
-                    drop(snd.send(Point::new(x, y)));
+
+        self.pixel_detection(
+            &[
+                (
+                    bounds,
+                    passive_color.0,
+                    *passive_color.1,
+                    Box::new(move |x, y| {
+                        #[allow(dropping_copy_types)]
+                        drop(passive_snd.send(Point::new(x, y)));
+                    }),
+                ),
+                (
+                    bounds,
+                    aggressive_color.0,
+                    *aggressive_color.1,
+                    Box::new(move |x, y| {
+                        #[allow(dropping_copy_types)]
+                        drop(aggressive_snd.send(Point::new(x, y)));
+                    }),
+                ),
+            ]
+        );
+
+        let mut process = move |
+            window: &Window,
+            recv: Receiver<Point>,
+            target_type: TargetMarkerType
+        | {
+            let coords: &mut Vec<Point> = match target_type {
+                TargetMarkerType::Passive => &mut passive_coords,
+                TargetMarkerType::Aggressive => &mut aggressive_coords,
+                _ => unreachable!(),
+            };
+            while let Ok(point) = recv.recv() {
+                coords.push(point);
+            }
+            Self::merge_cloud_into_mobs(
+                &self.window ,
+                None,
+                &PointCloud::new(coords),
+                TargetType::TargetMarker(target_type)
+            )
+        };
+
+        let passive_markers = process(
+            &self.window ,
+            passive_recv,
+            TargetMarkerType::Passive
+        );
+        let aggressive_markers = process(
+            &self.window ,
+            aggressive_recv,
+            TargetMarkerType::Aggressive
+        );
+
+        // take biggest Target of both
+        let passive_marker = passive_markers.into_iter().max_by_key(|target| target.bounds.size());
+        let aggressive_marker = aggressive_markers
+            .into_iter()
+            .max_by_key(|target| target.bounds.size());
+
+        // return the biggest Target
+        if let Some(passive_marker) = passive_marker {
+            if let Some(aggressive_marker) = aggressive_marker {
+                if passive_marker.bounds.size() > aggressive_marker.bounds.size() {
+                    Some(passive_marker)
+                } else {
+                    Some(aggressive_marker)
                 }
-            }),
-        )]);
-
-        // // Receive points from channel
-        while let Ok(point) = recv.recv() {
-            coords.push(point);
+            } else {
+                Some(passive_marker)
+            }
+        } else {
+            aggressive_marker
         }
-
-        // Identify target marker entities
-        let target_markers = Self::merge_cloud_into_mobs(
-            &self.window,
-            None,
-            &PointCloud::new(coords),
-            TargetType::TargetMarker,
-        );
-
-        if !blue_target && target_markers.is_empty() {
-            return self.identify_target_marker(true);
-        }
-
-        // Find biggest target marker
-        target_markers.into_iter().max_by_key(|x| x.bounds.size())
     }
 
-    pub fn get_target_marker_distance(&self, target: Target) -> i32 {
+    pub fn get_target_marker_distance(&self, target: &Target) -> i32 {
         let image = self.image.as_ref().unwrap();
 
         // Calculate middle point of player
@@ -359,18 +389,19 @@ impl ImageAnalyzer {
         // Calculate 2D euclidian distances to player
         let point = target.bounds.get_lowest_center_point();
 
-        (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64).sqrt()
-            as i32
+        (
+            ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
+        ).sqrt() as i32
     }
     /// Distance: `[0..=500]`
-    pub fn find_closest_mob<'a>(
+    pub fn find_closest_mob<'c>(
         &self,
-        mobs: &'a [Target],
+        mobs: &'c [Target],
         //avoid_bounds: Option<&Bounds>,
         avoid_list: Option<&Vec<(Bounds, Instant, u128)>>,
         max_distance: i32,
-        _logger: &Logger,
-    ) -> Option<&'a Target> {
+        _logger: &Logger
+    ) -> Option<&'c Target> {
         let _timer = Timer::start_new("find_closest_mob");
 
         let image = self.image.as_ref().unwrap();
@@ -383,14 +414,26 @@ impl ImageAnalyzer {
         let mut distances = Vec::default();
         for mob in mobs {
             let point = mob.get_attack_coords();
-            let distance = (((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2))
-                as f64)
-                .sqrt() as i32;
+            let distance = (
+                ((mid_x - (point.x as i32)).pow(2) + (mid_y - (point.y as i32)).pow(2)) as f64
+            ).sqrt() as i32;
             distances.push((mob, distance));
         }
 
-        // Sort by distance
-        distances.sort_by_key(|&(_, distance)| distance);
+        // Sort by Aggressive to passive then distance
+        distances.sort_by(|a, b| {
+            let _a = match a.0.target_type {
+                TargetType::Mob(MobType::Aggressive) => 0,
+                TargetType::Mob(MobType::Passive) => 1,
+                _ => 2,
+            };
+            let _b = match b.0.target_type {
+                TargetType::Mob(MobType::Aggressive) => 0,
+                TargetType::Mob(MobType::Passive) => 1,
+                _ => 2,
+            };
+            _a.cmp(&_b).then_with(|| a.1.cmp(&b.1))
+        });
 
         // Remove mobs that are too far away
         distances = distances
@@ -400,21 +443,23 @@ impl ImageAnalyzer {
 
         if let Some(avoided_bounds) = avoid_list {
             // Try finding closest mob that's not the mob to be avoided
-            if let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
-                //*distance > 55
-                let coords = mob.get_attack_coords();
-                let mut result = true;
-                for avoided_item in avoided_bounds {
-                    if avoided_item.0.contains_point(&coords) {
-                        //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
-                        result = false;
-                        break;
+            if
+                let Some((mob, _distance)) = distances.iter().find(|(mob, _distance)| {
+                    //*distance > 55
+                    let coords = mob.get_attack_coords();
+                    let mut result = true;
+                    for avoided_item in avoided_bounds {
+                        if avoided_item.0.contains_point(&coords) {
+                            //slog::debug!(logger, ""; "Avoided bounds" => avoided_item.0);
+                            result = false;
+                            break;
+                        }
                     }
-                }
-                result // && *distance > 20
-                       // let coords = mob.name_bounds.get_lowest_center_point();
-                       // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
-            }) {
+                    result // && *distance > 20
+                    // let coords = mob.name_bounds.get_lowest_center_point();
+                    // !avoid_bounds.grow_by(100).contains_point(&coords) && *distance > 200
+                })
+            {
                 Some(mob)
             } else {
                 None

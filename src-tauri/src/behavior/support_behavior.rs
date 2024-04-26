@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{ Duration, Instant };
 
 use slog::Logger;
 use tauri::Window;
@@ -6,12 +6,7 @@ use tauri::Window;
 use super::Behavior;
 
 use crate::{
-    data::Point,
-    image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
-    movement::{prelude::*, MovementAccessor},
-    platform::{eval_simple_click, send_slot_eval},
-    play,
+    data::Point, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, FrontendInfo, SlotType, SupportConfig }, movement::{ prelude::*, MovementAccessor }, platform::{eval_simple_click, send_slot_eval}, play
 };
 const HEAL_SKILL_CAST_TIME: u64 = 2000;
 const BUFF_CAST_TIME: u64 = 2500;
@@ -82,7 +77,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         &mut self,
         _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
-        image: &mut ImageAnalyzer,
+        image: &mut ImageAnalyzer
     ) {
         let config = config.support_config();
         self.update_slots_usage(config);
@@ -132,7 +127,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 None,
                 SlotType::BuffSkill,
                 false,
-                Some(self.self_buff_usage_last_time),
+                Some(self.self_buff_usage_last_time)
             );
 
             self.send_buff(config, self_buff, true);
@@ -182,11 +177,7 @@ impl SupportBehavior<'_> {
         ]);
 
         self.avoid_obstacle_direction = {
-            if self.avoid_obstacle_direction == "D" {
-                "A".to_owned()
-            } else {
-                "D".to_owned()
-            }
+            if self.avoid_obstacle_direction == "D" { "A".to_owned() } else { "D".to_owned() }
         };
     }
     fn is_target_in_range(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
@@ -198,8 +189,9 @@ impl SupportBehavior<'_> {
                         self.move_circle_pattern();
                     } else {
                         if let Some(last_far_from_target) = self.last_far_from_target {
-                            if last_far_from_target.elapsed().as_millis() > 3000
-                                && last_target_distance < distance
+                            if
+                                last_far_from_target.elapsed().as_millis() > 3000 &&
+                                last_target_distance < distance
                             {
                                 self.last_far_from_target = Some(Instant::now());
                                 self.move_circle_pattern();
@@ -224,7 +216,7 @@ impl SupportBehavior<'_> {
         &mut self,
         config: &SupportConfig,
         buff: Option<(usize, usize)>,
-        is_self_buff: bool,
+        is_self_buff: bool
     ) {
         if buff.is_some() {
             if is_self_buff {
@@ -306,7 +298,7 @@ impl SupportBehavior<'_> {
             // Open party menu
             PressKey("P"),
         ]);
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(200));
         let point = Point::new(213, 440); //moving to the "position of the party window
         eval_simple_click(self.window, point);
         play!(self.movement => [
@@ -367,14 +359,10 @@ impl SupportBehavior<'_> {
         threshold: Option<u32>,
         slot_type: SlotType,
         send: bool,
-        last_slots_usage: Option<[[Option<Instant>; 10]; 9]>,
+        last_slots_usage: Option<[[Option<Instant>; 10]; 9]>
     ) -> Option<(usize, usize)> {
         let is_self_buff = {
-            if let Some(_) = last_slots_usage {
-                true
-            } else {
-                false
-            }
+            if let Some(_) = last_slots_usage { true } else { false }
         };
         let slot_usage = {
             if let Some(last_slots_usage) = last_slots_usage {
@@ -404,8 +392,10 @@ impl SupportBehavior<'_> {
     }
 
     fn use_party_skills(&mut self, config: &SupportConfig) {
-        let party_skills =
-            config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
+        let party_skills = config.get_all_usable_slot_for_type(
+            SlotType::PartySkill,
+            self.slots_usage_last_time
+        );
         for slot_index in party_skills {
             self.send_slot(slot_index, false);
         }
@@ -418,8 +408,13 @@ impl SupportBehavior<'_> {
         if pill.is_none() {
             let heal = self.get_slot_for(config, health_stat, SlotType::HealSkill, false, None);
             if heal.is_none() {
-                let aoe_heal =
-                    self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
+                let aoe_heal = self.get_slot_for(
+                    config,
+                    health_stat,
+                    SlotType::AOEHealSkill,
+                    true,
+                    None
+                );
                 if aoe_heal.is_none() {
                     self.get_slot_for(config, health_stat, SlotType::Food, true, None);
                 } else {
@@ -458,24 +453,12 @@ impl SupportBehavior<'_> {
                 target_health_stat,
                 SlotType::AOEHealSkill,
                 true,
-                None,
+                None
             );
             if aoe_heal.is_some() {
-                self.get_slot_for(
-                    config,
-                    target_health_stat,
-                    SlotType::AOEHealSkill,
-                    true,
-                    None,
-                );
+                self.get_slot_for(config, target_health_stat, SlotType::AOEHealSkill, true, None);
                 std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(
-                    config,
-                    target_health_stat,
-                    SlotType::AOEHealSkill,
-                    true,
-                    None,
-                );
+                self.get_slot_for(config, target_health_stat, SlotType::AOEHealSkill, true, None);
                 std::thread::sleep(Duration::from_millis(100));
             }
         } else {

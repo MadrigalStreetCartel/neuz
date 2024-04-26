@@ -1,28 +1,21 @@
-use std::time::{Duration, Instant};
+use std::time::{ Duration, Instant };
 
 use rand::prelude::SliceRandom;
 use slog::Logger;
-use tauri::{Manager, Window};
+use tauri::{ Manager, Window };
 
 use super::Behavior;
 use crate::{
-    data::{AliveState, Bounds, MobType, Point, Target, TargetType},
-    image_analyzer::ImageAnalyzer,
-    ipc::{BotConfig, FarmingConfig, FrontendInfo, SlotType},
-    movement::MovementAccessor,
-    platform::{eval_mob_click, send_slot_eval},
-    play,
-    utils::DateTime,
+    data::{ AliveState, Bounds, MobType, Point, Target, TargetType }, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType }, movement::MovementAccessor, platform::{eval_mob_click, send_slot_eval}, play, utils::DateTime
 };
 
 const MAX_DISTANCE_FOR_AOE: i32 = 75;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
     NoEnemyFound,
     SearchingForEnemy,
     EnemyFound(Target),
-    VerifyTarget(Target),
     Attacking(Target),
     AfterEnemyKill(Target),
 }
@@ -30,11 +23,12 @@ enum State {
 pub struct FarmingBehavior<'a> {
     rng: rand::rngs::ThreadRng,
     logger: &'a Logger,
-    movement: &'a MovementAccessor,
     window: &'a Window,
+    movement: &'a MovementAccessor,
     state: State,
     slots_usage_last_time: [[Option<Instant>; 10]; 9],
     last_initial_attack_time: Instant,
+    search_enemy_timer: Instant,
     //searching_for_enemy_timeout: Instant,
     last_kill_time: Instant,
     avoided_bounds: Vec<(Bounds, Instant, u128)>,
@@ -52,6 +46,7 @@ pub struct FarmingBehavior<'a> {
     concurrent_mobs_under_attack: u32,
     wait_duration: Option<Duration>,
     wait_start: Instant,
+    last_target: Option<Target>,
 }
 
 impl<'a> Behavior<'a> for FarmingBehavior<'a> {
@@ -66,6 +61,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             state: State::SearchingForEnemy, //Start with buff before attacking
             slots_usage_last_time: [[None; 10]; 9],
             last_initial_attack_time: Instant::now(),
+            search_enemy_timer: Instant::now(),
             //searching_for_enemy_timeout: Instant::now(),
             last_kill_time: Instant::now(),
             avoided_bounds: vec![],
@@ -83,6 +79,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
             concurrent_mobs_under_attack: 0,
             wait_duration: None,
             wait_start: Instant::now(),
+            last_target: None,
         }
     }
 
@@ -100,7 +97,7 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         &mut self,
         frontend_info: &mut FrontendInfo,
         config: &BotConfig,
-        image: &mut ImageAnalyzer,
+        image: &mut ImageAnalyzer
     ) {
         let config = config.farming_config();
         // Update all needed timestamps
@@ -118,7 +115,6 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
                 State::NoEnemyFound => false,
                 State::SearchingForEnemy => false,
                 State::EnemyFound(_) => false,
-                State::VerifyTarget(_) => false,
                 State::Attacking(_) => false,
                 State::AfterEnemyKill(_) => true,
             };
@@ -130,9 +126,27 @@ impl<'a> Behavior<'a> for FarmingBehavior<'a> {
         // Check state machine
         self.state = match self.state {
             State::NoEnemyFound => self.on_no_enemy_found(config),
-            State::SearchingForEnemy => self.on_searching_for_enemy(config, image),
+            State::SearchingForEnemy => {
+                if let Some(mob) = self.last_target {
+                    if State::SearchingForEnemy == self.on_verify_target(mob, image) {
+                        self.on_searching_for_enemy(config, image)
+                    } else {
+                        self.last_target = None;
+                        self.on_attacking(config, mob, image)
+                    }
+                } else {
+                    if config.is_stop_fighting() {
+                        if image.client_stats.target_is_alive {
+                            self.on_attacking(config, Target::default(), image)
+                        } else {
+                            self.state
+                        }
+                    } else {
+                        self.on_searching_for_enemy(config, image)
+                    }
+                }
+            }
             State::EnemyFound(mob) => self.on_enemy_found(mob),
-            State::VerifyTarget(mob) => self.on_verify_target(config, mob, image),
             State::Attacking(mob) => self.on_attacking(config, mob, image),
             State::AfterEnemyKill(_) => self.after_enemy_kill(frontend_info, config),
         };
@@ -190,16 +204,15 @@ impl FarmingBehavior<'_> {
     fn update_pickup_pet(&mut self, config: &FarmingConfig) {
         if let Some(pickup_pet_slot_index) = config.slot_index(SlotType::PickupPet) {
             if let Some(last_time) = self.last_summon_pet_time {
-                if last_time.elapsed().as_millis()
-                    > (config
-                        .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
-                        .unwrap_or(3000) as u128)
+                if
+                    last_time.elapsed().as_millis() >
+                    (
+                        config
+                            .get_slot_cooldown(pickup_pet_slot_index.0, pickup_pet_slot_index.1)
+                            .unwrap_or(3000) as u128
+                    )
                 {
-                    send_slot_eval(
-                        self.window,
-                        pickup_pet_slot_index.0,
-                        pickup_pet_slot_index.1,
-                    );
+                  send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
                     self.last_summon_pet_time = None;
                 }
             }
@@ -231,10 +244,14 @@ impl FarmingBehavior<'_> {
         config: &FarmingConfig,
         threshold: Option<u32>,
         slot_type: SlotType,
-        send: bool,
+        send: bool
     ) -> Option<(usize, usize)> {
-        if let Some(slot_index) =
-            config.get_usable_slot_index(slot_type, threshold, self.slots_usage_last_time)
+        if
+            let Some(slot_index) = config.get_usable_slot_index(
+                slot_type,
+                threshold,
+                self.slots_usage_last_time
+            )
         {
             if send {
                 //slog::debug!(self.logger, "Slot usage"; "slot_type" => slot_type.to_string(), "value" => threshold);
@@ -287,8 +304,12 @@ impl FarmingBehavior<'_> {
             if pill.is_none() {
                 let heal = self.get_slot_for(config, health_stat, SlotType::HealSkill, true);
                 if heal.is_none() {
-                    let aoe_heal =
-                        self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true);
+                    let aoe_heal = self.get_slot_for(
+                        config,
+                        health_stat,
+                        SlotType::AOEHealSkill,
+                        true
+                    );
                     if aoe_heal.is_none() {
                         self.get_slot_for(config, health_stat, SlotType::Food, true);
                     } else {
@@ -311,16 +332,20 @@ impl FarmingBehavior<'_> {
     }
 
     fn use_party_skills(&mut self, config: &FarmingConfig) {
-        let party_skills =
-            config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
+        let party_skills = config.get_all_usable_slot_for_type(
+            SlotType::PartySkill,
+            self.slots_usage_last_time
+        );
         for slot_index in party_skills {
             self.send_slot(slot_index);
         }
     }
     fn on_no_enemy_found(&mut self, config: &FarmingConfig) -> State {
+        drop(self.window.eval("mobClicker.clear()"));
         if let Some(last_no_ennemy_time) = self.last_no_ennemy_time {
-            if config.mobs_timeout() > 0
-                && last_no_ennemy_time.elapsed().as_millis() > config.mobs_timeout()
+            if
+                config.mobs_timeout() > 0 &&
+                last_no_ennemy_time.elapsed().as_millis() > config.mobs_timeout()
             {
                 self.window.app_handle().exit(0);
             }
@@ -370,10 +395,10 @@ impl FarmingBehavior<'_> {
     fn on_searching_for_enemy(
         &mut self,
         config: &FarmingConfig,
-        image: &mut ImageAnalyzer,
+        image: &mut ImageAnalyzer
     ) -> State {
         if config.is_stop_fighting() {
-            return State::VerifyTarget(Target::default());
+            return self.state;
         }
         //let mobs = image.identify_mobs(config);
         let mobs = image.identify_mobs(config);
@@ -386,17 +411,14 @@ impl FarmingBehavior<'_> {
                 true => 325,
                 false => 1000,
             };
-            let mob_list = self.prioritize_aggro(config, image, mobs);
+            let mob_list = mobs;
 
             // inverted conditionals to make it easier to read
             // Check again if we have a list of mobs
-            if mob_list.is_empty() {
-                // Transition to next state
-                State::NoEnemyFound
-            } else {
-                self.rotation_movement_tries = 0;
-                //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
-                if let Some(mob) = ({
+
+            //slog::debug!(self.logger, "Found mobs"; "mob_type" => mob_type, "mob_count" => mob_list.len());
+            if
+                let Some(mob) = ({
                     // Try avoiding detection of last killed mob
                     if self.avoided_bounds.is_empty() {
                         image.find_closest_mob(mob_list.as_slice(), None, max_distance, self.logger)
@@ -405,58 +427,19 @@ impl FarmingBehavior<'_> {
                             mob_list.as_slice(),
                             Some(&self.avoided_bounds),
                             max_distance,
-                            self.logger,
+                            self.logger
                         )
                     }
-                }) {
-                    // Transition to next state
-                    State::EnemyFound(*mob)
-                } else {
-                    // Transition to next state
-                    State::SearchingForEnemy
-                }
-            }
-        }
-    }
-
-    fn prioritize_aggro(
-        &mut self,
-        config: &FarmingConfig,
-        image: &mut ImageAnalyzer,
-        mobs: Vec<Target>,
-    ) -> Vec<Target> {
-        let mut mob_list: Vec<Target>;
-
-        // Get aggressive mobs to prioritize them
-        if config.prioritize_aggro() {
-            mob_list = mobs
-                .iter()
-                .filter(|m| m.target_type == TargetType::Mob(MobType::Aggressive))
-                .cloned()
-                .collect::<Vec<_>>();
-
-            // Check if there's aggressive mobs otherwise collect passive mobs
-            if (mob_list.is_empty()
-                || (self.last_killed_type == MobType::Aggressive
-                    && mob_list.len() == 1
-                    && self.last_kill_time.elapsed().as_millis() < 5000))
-                && image.client_stats.hp.value >= config.min_hp_attack()
+                })
             {
-                mob_list = mobs
-                    .iter()
-                    .filter(|m| m.target_type == TargetType::Mob(MobType::Passive))
-                    .cloned()
-                    .collect::<Vec<_>>();
+                self.rotation_movement_tries = 0;
+                // Transition to next state
+                State::EnemyFound(*mob)
+            } else {
+                // Transition to next state
+                State::SearchingForEnemy
             }
-        } else {
-            mob_list = mobs
-                .iter()
-                .filter(|m| m.target_type != TargetType::Mob(MobType::Violet)) // removing violets from coordinates
-                .cloned()
-                .collect::<Vec<_>>();
         }
-
-        mob_list
     }
 
     fn avoid_last_click(&mut self) {
@@ -476,10 +459,11 @@ impl FarmingBehavior<'_> {
         eval_mob_click(self.window, point);
 
         // Wait a few ms before transitioning state
-        std::thread::sleep(Duration::from_millis(150));
+        //std::thread::sleep(Duration::from_millis(50));
         //self.wait(Duration::from_millis(150));
         self.is_attacking = false;
-        State::VerifyTarget(mob)
+        self.last_target = Some(mob);
+        State::SearchingForEnemy
     }
 
     fn abort_attack(&mut self, image: &mut ImageAnalyzer) -> State {
@@ -503,6 +487,7 @@ impl FarmingBehavior<'_> {
         play!(self.movement => [
             PressKey("Escape"),
         ]);
+        self.search_enemy_timer = Instant::now();
         State::SearchingForEnemy
     }
 
@@ -537,16 +522,14 @@ impl FarmingBehavior<'_> {
         }
     }
 
-    fn on_verify_target(
-        &mut self,
-        config: &FarmingConfig,
-        mob: Target,
-        image: &mut ImageAnalyzer,
-    ) -> State {
-        if image.client_stats.target_on_screen && image.client_stats.target_is_mover {
-            slog::debug!(self.logger, "Target is not a NPC"; "target_on_screen" => image.client_stats.target_on_screen, "target_is_mover" => image.client_stats.target_is_mover);
+    fn on_verify_target(&mut self, mob: Target, image: &mut ImageAnalyzer) -> State {
+        if image.client_stats.target_is_mover && !image.client_stats.target_is_npc {
+            slog::trace!(self.logger, "Target is not a NPC"; "target_on_screen" => image.client_stats.target_on_screen, "target_is_mover" => image.client_stats.target_is_mover);
+            slog::debug!(self.logger, "Target"; "Time to find" => format!("{:?}", self.search_enemy_timer.elapsed()));
+
             self.state = State::Attacking(mob);
         } else {
+            std::thread::sleep(Duration::from_millis(50));
             self.avoid_last_click();
             self.state = State::SearchingForEnemy;
         }
@@ -557,7 +540,7 @@ impl FarmingBehavior<'_> {
         &mut self,
         config: &FarmingConfig,
         mob: Target,
-        image: &mut ImageAnalyzer,
+        image: &mut ImageAnalyzer
     ) -> State {
         //self.check_restorations(config, image);
 
@@ -587,17 +570,15 @@ impl FarmingBehavior<'_> {
         }
 
         if image.client_stats.target_is_alive {
-            let last_target_hp_update = image
-                .client_stats
-                .target_hp
-                .last_update_time
+            let last_target_hp_update = image.client_stats.target_hp.last_update_time
                 .unwrap()
                 .elapsed()
                 .as_millis();
 
             // Obstacle avoidance
-            if !image.client_stats.target_on_screen
-                || last_target_hp_update > config.obstacle_avoidance_cooldown()
+            if
+                !image.client_stats.target_on_screen ||
+                last_target_hp_update > config.obstacle_avoidance_cooldown()
             {
                 //slog::debug!(self.logger, "Obstacle avoidance"; "target_on_screen" => image.client_stats.target_on_screen, "last_target_hp_update" => last_target_hp_update, "obstacle_avoidance_cooldown" => config.obstacle_avoidance_cooldown());
                 if image.client_stats.target_hp.value == 100 {
@@ -639,10 +620,7 @@ impl FarmingBehavior<'_> {
                 TargetType::Mob(MobType::Passive) => {
                     self.last_killed_type = MobType::Passive;
                 }
-                TargetType::Mob(MobType::Violet) => {
-                    self.last_killed_type = MobType::Violet;
-                }
-                TargetType::TargetMarker => {}
+                TargetType::TargetMarker(_) => {}
             }
             self.concurrent_mobs_under_attack = 0;
             self.is_attacking = false;
@@ -656,7 +634,7 @@ impl FarmingBehavior<'_> {
     fn after_enemy_kill(
         &mut self,
         frontend_info: &mut FrontendInfo,
-        config: &FarmingConfig,
+        config: &FarmingConfig
     ) -> State {
         self.kill_count += 1;
         frontend_info.set_kill_count(self.kill_count);
@@ -667,6 +645,8 @@ impl FarmingBehavior<'_> {
 
         // Pickup items
         self.pickup_items(config);
+
+        self.search_enemy_timer = Instant::now();
 
         // Transition state
         State::SearchingForEnemy
@@ -688,27 +668,32 @@ impl FarmingBehavior<'_> {
         };
         let time_to_kill_as_secs = elapsed_time_to_kill.as_secs_f32();
 
-        let kill_per_minute =
-            DateTime::format_float(60.0 / (time_to_kill_as_secs + search_time_as_secs), 0);
+        let kill_per_minute = DateTime::format_float(
+            60.0 / (time_to_kill_as_secs + search_time_as_secs),
+            0
+        );
         let kill_per_hour = DateTime::format_float(kill_per_minute * 60.0, 0);
 
-        let elapsed_search_time_string =
-            format!("{}secs", DateTime::format_float(search_time_as_secs, 2));
-        let elapsed_time_to_kill_string =
-            format!("{}secs", DateTime::format_float(time_to_kill_as_secs, 2));
+        let elapsed_search_time_string = format!(
+            "{}secs",
+            DateTime::format_float(search_time_as_secs, 2)
+        );
+        let elapsed_time_to_kill_string = format!(
+            "{}secs",
+            DateTime::format_float(time_to_kill_as_secs, 2)
+        );
 
         let elapsed = format!(
             "Elapsed time : since start {} to kill {} to find {} ",
-            started_formatted, elapsed_time_to_kill_string, elapsed_search_time_string
+            started_formatted,
+            elapsed_time_to_kill_string,
+            elapsed_search_time_string
         );
         slog::debug!(self.logger, "Monster was killed {}", elapsed);
 
         frontend_info.set_kill_stats(
             (kill_per_minute, kill_per_hour),
-            (
-                elapsed_search_time.as_millis(),
-                elapsed_time_to_kill.as_millis(),
-            ),
+            (elapsed_search_time.as_millis(), elapsed_time_to_kill.as_millis())
         )
     }
 }

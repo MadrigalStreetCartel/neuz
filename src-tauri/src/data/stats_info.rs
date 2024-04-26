@@ -1,6 +1,6 @@
-use std::{collections::HashMap, f32::consts::E, fmt, sync::mpsc::sync_channel, time::Instant};
+use std::{ collections::HashMap, fmt, sync::mpsc::sync_channel, time::Instant };
 
-use palette::{FromColor, Hsv, Srgb};
+use palette::Hsv;
 use slog::Logger;
 use tauri::Window;
 
@@ -20,6 +20,10 @@ pub enum StatusBarKind {
     TargetMP,
 }
 impl StatusBarKind {
+    pub fn get_config(&self) -> StatusBarConfig {
+        StatusBarConfig::get(*self)
+    }
+
     pub fn update_from_bounds(&self, bounds: Option<&Bounds>, stats: &mut ClientStats) -> bool {
         match self {
             StatusBarKind::Hp => {
@@ -104,61 +108,40 @@ impl ClientStats {
 
     // update all bars values at once
     pub fn update(&mut self, image: &ImageAnalyzer, _logger: &Logger) {
-        let (hp_snd, hp_recv) = sync_channel::<Point>(4096);
-        let (mp_snd, mp_recv) = sync_channel::<Point>(4096);
-        let (fp_snd, fp_recv) = sync_channel::<Point>(4096);
+        let mut should_debug = vec![];
+        //self.js_bridge.eval_show_detection_bounds( true);
 
-        let (target_hp_snd, target_hp_recv) = sync_channel::<Point>(4096);
-        let (target_mp_snd, target_mp_recv) = sync_channel::<Point>(4096);
+        let receivers: &mut HashMap<
+            StatusBarKind,
+            std::sync::mpsc::Receiver<Point>
+        > = &mut HashMap::default();
 
-        let receivers = HashMap::from([
-            (StatusBarKind::Hp, hp_recv),
-            (StatusBarKind::Mp, mp_recv),
-            (StatusBarKind::Fp, fp_recv),
-            (StatusBarKind::TargetHP, target_hp_recv),
-            (StatusBarKind::TargetMP, target_mp_recv),
-        ]);
-        let hp_config = StatusBarConfig::get(self.hp.stat_kind);
-        let mp_config = StatusBarConfig::get(self.mp.stat_kind);
-        let fp_config = StatusBarConfig::get(self.fp.stat_kind);
+        let mut create_detection_config = |kind: StatusBarKind| {
+            let (snd, rcv) = sync_channel::<Point>(1024);
+            let config = kind.get_config();
+            receivers.insert(kind, rcv);
+            (
+                config.bounds,
+                config.color,
+                config.tolerance,
+                Box::new(move |x, y| snd.send(Point::new(x, y)).unwrap()) as Box<
+                    dyn Fn(u32, u32) + Send + Sync + 'static
+                >,
+            )
+        };
 
-        let target_hp_config = StatusBarConfig::get(self.target_hp.stat_kind);
-        let target_mp_config = StatusBarConfig::get(self.target_mp.stat_kind);
+        image.pixel_detection(
+            &[
+                StatusBarKind::Hp,
+                StatusBarKind::Mp,
+                StatusBarKind::Fp,
 
-        image.pixel_detection(&[
-            (
-                hp_config.bounds,
-                hp_config.color,
-                hp_config.tolerance,
-                Box::new(move |x, y| hp_snd.send(Point::new(x, y)).unwrap()),
-            ),
-            (
-                mp_config.bounds,
-                mp_config.color,
-                mp_config.tolerance,
-                Box::new(move |x, y| mp_snd.send(Point::new(x, y)).unwrap()),
-            ),
-            (
-                fp_config.bounds,
-                fp_config.color,
-                fp_config.tolerance,
-                Box::new(move |x, y| fp_snd.send(Point::new(x, y)).unwrap()),
-            ),
-            (
-                target_hp_config.bounds,
-                target_hp_config.color,
-                target_hp_config.tolerance,
-                Box::new(move |x, y| target_hp_snd.send(Point::new(x, y)).unwrap()),
-            ),
-            (
-                target_mp_config.bounds,
-                target_mp_config.color,
-                target_mp_config.tolerance,
-                Box::new(move |x, y| target_mp_snd.send(Point::new(x, y)).unwrap()),
-            ),
-        ]);
+                StatusBarKind::TargetHP,
+                StatusBarKind::TargetMP,
+            ].map(|kind| { create_detection_config(kind) })
+        );
 
-        let mut recv_bounds: HashMap<StatusBarKind, PointCloud> = HashMap::default();
+        let mut recv_bounds: HashMap<&StatusBarKind, PointCloud> = HashMap::default();
         for (key, recv) in receivers {
             recv_bounds.insert(key, PointCloud::default());
             while let Ok(point) = recv.recv() {
@@ -166,15 +149,13 @@ impl ClientStats {
                 cloud.push(point);
             }
         }
-        let mut should_debug = vec![];
+
         for (key, cloud) in recv_bounds {
-            let clouds: Vec<Bounds> = cloud
-                .cluster_by_distance_2d(50, 1)
-                .into_iter()
-                .map(|cluster| cluster.to_bounds())
-                .collect();
-            let cloud = clouds.first();
-            let changed = key.update_from_bounds(cloud, self);
+            let mut bounds: Option<Bounds> = None;
+            if let Some(_cloud) = cloud.cluster_by_distance_2d(50, 1).first() {
+                bounds = Some(_cloud.clone().to_bounds());
+            }
+            let changed = key.update_from_bounds(bounds.as_ref(), self);
             should_debug.push(changed);
         }
 
@@ -188,31 +169,28 @@ impl ClientStats {
                 AliveState::Dead
             }
         };
+        self.target_is_alive = self.target_hp.value > 0;
         self.target_is_npc = self.target_hp.value == 100 && self.target_mp.value == 0;
         self.target_is_mover = self.target_mp.value > 0;
-        self.target_is_alive = self.target_hp.value > 0;
-        let blue_target = image.identify_target_marker(true);
-        let target = if blue_target.is_some() {
-            blue_target
-        } else {
-            image.identify_target_marker(false)
-        };
-        self.target_marker = target;
-        if let Some(target) = target {
-            self.target_on_screen = true;
-            let new_dist = image.get_target_marker_distance(target);
-            if let Some(dist) = self.target_distance {
-                if dist != new_dist {
+        if self.target_is_alive {
+            self.target_marker = image.identify_target_marker();
+
+            if let Some(target) = self.target_marker {
+                self.target_on_screen = true;
+                let new_dist = image.get_target_marker_distance(&target);
+                if let Some(dist) = self.target_distance {
+                    if dist != new_dist {
+                        should_debug.push(true);
+                    }
+                }
+                self.target_distance = Some(new_dist);
+            } else {
+                self.target_on_screen = false;
+                if self.target_distance.is_some() {
                     should_debug.push(true);
                 }
+                self.target_distance = None;
             }
-            self.target_distance = Some(new_dist);
-        } else {
-            self.target_on_screen = false;
-            if self.target_distance.is_some() {
-                should_debug.push(true);
-            }
-            self.target_distance = None;
         }
 
         //        slog::debug!(_logger, "Stats detection"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value, "Enemy HP" => self.target_hp.value, "Character is" => self.is_alive(), "Enemy is NPC" => self.target_is_npc, "Enemy is Mover" => self.target_is_mover, "Enemy is alive" => self.target_is_alive, "Enemy on screen" => self.target_on_screen, "Enemy distance" => self.target_distance.unwrap_or(-1));
@@ -244,12 +222,12 @@ impl ClientStats {
             }
         };
         if self.is_alive == AliveState::StatsTrayClosed {
-            slog::debug!(logger, "Stats tray closed");
+            slog::trace!(logger, "Stats tray closed");
             return;
         }
-        slog::debug!(logger, "Player Stats"; "HP" => self.hp.value, "MP" => self.mp.value, "FP" => self.fp.value);
-        if true || self.target_is_alive {
-            slog::debug!(logger, "Target Stats"; "HP" => self.target_hp.value, "MP" => self.target_mp.value, "Is NPC" => self.target_is_npc, "Is Mover" => self.target_is_mover, "Is Alive" => self.target_is_alive, "On Screen" => self.target_on_screen, "Distance" => self.target_distance.unwrap_or(-1));
+        slog::trace!(logger, "Player Stats"; "FP" => self.fp.value, "MP" => self.mp.value,"HP" => self.hp.value, "Is Alive" => alive_str);
+        if self.target_is_alive {
+            slog::trace!(logger, "Target Stats";   "Distance" => self.target_distance.unwrap_or(-1), "On Screen" => self.target_on_screen, "Is NPC" => self.target_is_npc, "Is Mover" => self.target_is_mover, "Is Alive" => self.target_is_alive, "MP" => self.target_mp.value, "HP" => self.target_hp.value);
         }
     }
 }
@@ -364,16 +342,20 @@ impl From<StatusBarKind> for StatusBarConfig {
             Fp => StatusBarConfig::new(&[117.4, 0.85, 0.75], Some(&[1.0, 0.02, 0.9])),
 
             TargetHP => {
-                let mut target_hp_bar =
-                    StatusBarConfig::new(&[346.2, 0.85, 0.8], Some(&[2.0, 0.01, 0.13]));
+                let mut target_hp_bar = StatusBarConfig::new(
+                    &[346.2, 0.85, 0.8],
+                    Some(&[2.0, 0.01, 0.13])
+                );
                 target_hp_bar.bounds = target_bounds;
 
                 target_hp_bar
             }
 
             TargetMP => {
-                let mut target_mp_bar =
-                    StatusBarConfig::new(&[208.0, 0.82, 0.85], Some(&[2.0, 0.01, 0.13]));
+                let mut target_mp_bar = StatusBarConfig::new(
+                    &[208.0, 0.82, 0.85],
+                    Some(&[2.0, 0.01, 0.13])
+                );
                 target_mp_bar.bounds = target_bounds;
 
                 target_mp_bar
