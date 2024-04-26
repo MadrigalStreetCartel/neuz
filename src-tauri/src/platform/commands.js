@@ -10,13 +10,13 @@ function addTargetMarker(color = 'red', x = 0, y = 0,) {
     }, 1000)
 }
 
-function drawBounds(x, y, w, h) {
+function drawBounds(x, y, w, h, duration = 1000) {
     if (!DEBUG) return
     let bounds = debugOverlay.boundsOverlay.addBounds(x, y, w, h, 4)
 
     setTimeout(() => {
         debugOverlay.boundsOverlay.removeBounds(bounds)
-    }, 1000)
+    }, duration)
 
 }
 
@@ -24,16 +24,60 @@ function drawBounds(x, y, w, h) {
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
-let clickPos = null
 
-setInterval(() => {
-    if (clickPos !== null && isMob()) {
-        dispatchEvent(new MouseEvent('mousedown', { clientX: clickPos.x, clientY: clickPos.y }))
-        dispatchEvent(new MouseEvent('mouseup', { clientX: clickPos.x, clientY: clickPos.y }))
-        addTargetMarker('green', clickPos.x, clickPos.y)
-        clickPos = null
+let mobClicker = {
+    is_mob: false,
+    waiting: null,
+    queue: [],
+    click: function (x, y) {
+        dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
+        dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
+        this.onClick(x, y)
+    },
+    add: function (x, y) {
+        this.queue.push({ x, y })
+    },
+    clear: function () {
+        this.waiting = null
+        this.queue = []
+        this.is_mob = false
+    },
+    onClick: function (x, y) {
+        console.log('click', x, y)
+    },
+    onMove: function (x, y) {
+        console.log('move', x, y)
+    },
+    run: function () {
+        if (!this.waiting) {
+            if (this.queue.length > 0) {
+                this.is_mob = isMob()
+                let pos = this.queue.shift()
+                if (pos) {
+                    dispatchEvent(new MouseEvent('mousemove', { clientX: pos.x, clientY: pos.y }))
+                    this.onMove(pos.x, pos.y)
+                    this.waiting = pos
+                    setTimeout(() => {
+                        this.waiting = null
+                    }, 33)
+                }
+            }
+        } else {
+            this.is_mob = isMob()
+            if (this.is_mob) {
+                this.click(this.waiting.x, this.waiting.y)
+                this.clear()
+            }
+        }
     }
-}, 0)
+}
+document.addEventListener('DOMContentLoaded', () => {
+    setInterval(() => {
+        mobClicker.run()
+
+    }, 0)
+})
+
 
 function sendSlot(slotBarIndex, slotIndex) {
     keyboardEvent('press', `F${slotBarIndex + 1}`)
@@ -54,13 +98,7 @@ function after(duration = 0, callback) {
 }
 
 let checkMobTimeout = null;
-function mouseEvent(type, x, y, { checkMob = false, delay = 100, duration } = {}) {
-    if (checkMobTimeout) {
-
-        clearTimeout(checkMobTimeout)
-        checkMobTimeout = null
-        clickPos = null
-    }
+function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {}) {
     function waitDuration(type) {
         if (duration) {
             after(duration, () => {
@@ -86,14 +124,11 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 100, duration } = {}
             dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
             break;
         case 'moveClick':
-            dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
 
             if (checkMob) {
-                clickPos = { x, y }
-                checkMobTimeout = setTimeout(() => {
-                    clickPos = null
-                }, delay)
+                mobClicker.add(x, y)
             } else if (!checkMob) {
+                dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
                 addTargetMarker('blue', x, y)
                 dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
                 dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))

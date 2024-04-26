@@ -56,7 +56,4 @@ let debugOverlay = createOverlay(null, {
 document.addEventListener('DOMContentLoaded', () => {
     console._log("init", document, document.readyState)
     debugOverlay.mount(document.body)
-    // pass mouse events to the game
-    let events = ['mousemove', 'mousedown', 'mouseup', 'click', 'contextmenu', 'wheel', 'mousewheel', 'keydown', 'keyup']
-    events.forEach((eventName) => duplicateEvent(eventName, client, [debugOverlay.element/* , this.boundsOverlay.element */]))
 })
