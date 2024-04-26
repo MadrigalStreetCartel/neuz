@@ -83,12 +83,12 @@ impl ClientStats {
     pub fn new(window: Window) -> Self {
         let res = Self {
             has_tray_open: false,
-            hp: StatInfo::new(0, 100, StatusBarKind::Hp, None),
-            mp: StatInfo::new(0, 100, StatusBarKind::Mp, None),
-            fp: StatInfo::new(0, 100, StatusBarKind::Fp, None),
+            hp: StatInfo::new(0, 0, StatusBarKind::Hp),
+            mp: StatInfo::new(0, 0, StatusBarKind::Mp),
+            fp: StatInfo::new(0, 0, StatusBarKind::Fp),
             is_alive: AliveState::StatsTrayClosed,
-            target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP, None),
-            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP, None),
+            target_hp: StatInfo::new(0, 0, StatusBarKind::TargetHP),
+            target_mp: StatInfo::new(0, 0, StatusBarKind::TargetMP),
             target_is_mover: false,
             target_is_npc: false,
             target_is_alive: false,
@@ -280,20 +280,14 @@ impl StatInfo {
         max_w: u32,
         value: u32,
         stat_kind: StatusBarKind,
-        image: Option<&ImageAnalyzer>,
     ) -> Self {
-        let mut res = Self {
+        Self {
             max_w,
             value,
             stat_kind,
             last_update_time: Some(Instant::now()),
-            last_value: 100,
-        };
-        /*         if let Some(image) = image {
-            res.update_value(image);
-        } */
-
-        res
+            last_value: 0,
+        }
     }
 
     pub fn reset_last_update_time(&mut self) {
