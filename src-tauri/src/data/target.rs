@@ -4,13 +4,22 @@ use super::{Bounds, Point};
 pub enum MobType {
     Passive,
     Aggressive,
-    Violet,
 }
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum _MobRank {
+    Small,
+    Normal,
+    Captain,
+    GiantOrViolet,
+    Boss,
+    Insane
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TargetMarkerType {
     Passive,
     Aggressive,
-    Flying,
+    _Flying,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
