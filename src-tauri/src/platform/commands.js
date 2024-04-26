@@ -1,21 +1,94 @@
-const client = document.querySelector('canvas')
-const input = document.querySelector('input')
-const DEBUG = false && $env.DEBUG
 function addTargetMarker(color = 'red', x = 0, y = 0,) {
     if (!DEBUG) return
     const targetMarker = document.createElement('div')
-    const targetMarkerStyle = `position: fixed; width: 2px; height: 2px; background-color: ${color}; border-radius: 50%;z-index: 9999;left: ${x}px;top: ${y}px;`
+    const targetMarkerStyle = `position: fixed; width: 4px; height: 4px; background-color: ${color}; border-radius: 50%;z-index: 9999;left: ${x - 2}px;top: ${y - 2}px;`
     targetMarker.style = targetMarkerStyle
-    document.body.appendChild(targetMarker)
+    debugOverlay.element.appendChild(targetMarker)
 
     setTimeout(() => {
         targetMarker.remove()
     }, 1000)
 }
 
+function drawBounds(x, y, w, h, duration = 1000) {
+    if (!DEBUG) return
+    let bounds = debugOverlay.boundsOverlay.addBounds(x, y, w, h, 4)
+
+    setTimeout(() => {
+        debugOverlay.boundsOverlay.removeBounds(bounds)
+    }, duration)
+
+}
+
+
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
+
+let mobClicker = {
+    is_mob: false,
+    waiting: null,
+    queue: [],
+    click: function (x, y) {
+        dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
+        dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
+        this.onClick(x, y)
+    },
+    add: function (x, y) {
+        this.queue.push({ x, y })
+    },
+    clear: function () {
+        this.waiting = null
+        this.queue = []
+        this.is_mob = false
+    },
+    onClick: function (x, y) {
+        console.log('click', x, y)
+    },
+    onMove: function (x, y) {
+        console.log('move', x, y)
+    },
+    run: function () {
+        if (!this.waiting) {
+            if (this.queue.length > 0) {
+                this.is_mob = isMob()
+                let pos = this.queue.shift()
+                if (pos) {
+                    dispatchEvent(new MouseEvent('mousemove', { clientX: pos.x, clientY: pos.y }))
+                    this.onMove(pos.x, pos.y)
+                    this.waiting = pos
+                    setTimeout(() => {
+                        this.waiting = null
+                    }, 33)
+                }
+            }
+        } else {
+            this.is_mob = isMob()
+            if (this.is_mob) {
+                this.click(this.waiting.x, this.waiting.y)
+                this.clear()
+            }
+        }
+    }
+}
+document.addEventListener('DOMContentLoaded', () => {
+    setInterval(() => {
+        mobClicker.run()
+
+    }, 0)
+})
+
+
+function sendSlot(slotBarIndex, slotIndex) {
+    keyboardEvent('press', `F${slotBarIndex + 1}`)
+    keyboardEvent('press', slotIndex)
+}
+
+function setInputChat(text) {
+    input.value = text
+    input.select()
+}
+
 function dispatchEvent(event) {
     return client.dispatchEvent(event)
 }
@@ -26,11 +99,6 @@ function after(duration = 0, callback) {
 
 let checkMobTimeout = null;
 function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {}) {
-    if (checkMobTimeout) {
-
-        clearTimeout(checkMobTimeout)
-        checkMobTimeout = null
-    }
     function waitDuration(type) {
         if (duration) {
             after(duration, () => {
@@ -56,23 +124,11 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {})
             dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
             break;
         case 'moveClick':
-            dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
 
             if (checkMob) {
-                checkMobTimeout = setTimeout(() => {
-                    if (isMob()) {
-                        dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-                        dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
-                        /* after(50, () => {
-                            dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        }) */
-                        addTargetMarker('green', x, y)
-                    } else {
-                        //dispatchEvent(new MouseEvent('mousemove', { clientX: 0, clientY: 0 }))
-                        addTargetMarker('red', x, y)
-                    }
-                }, delay)
+                mobClicker.add(x, y)
             } else if (!checkMob) {
+                dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
                 addTargetMarker('blue', x, y)
                 dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
                 dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
@@ -106,12 +162,3 @@ function keyboardEvent(keyMode, key, duration = null) {
     }
 }
 
-function sendSlot(slotBarIndex, slotIndex) {
-    keyboardEvent('press', `F${slotBarIndex + 1}`)
-    keyboardEvent('press', slotIndex)
-}
-
-function setInputChat(text) {
-    input.value = text
-    input.select()
-}

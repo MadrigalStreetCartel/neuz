@@ -30,6 +30,10 @@ impl PointCloud {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.points.len()
+    }
+
     pub fn push(&mut self, point: Point) {
         self.points.push(point);
     }
@@ -105,6 +109,37 @@ impl PointCloud {
             [n] if n.points.is_empty() => Vec::default(),
             _ => clusters,
         }
+    }
+    pub fn cluster_by_distance_2d(
+        &self,
+        max_distance_x: u32,
+        max_distance_y: u32,
+    ) -> Vec<PointCloud> {
+        let mut sorted_points = self.points.clone();
+        sorted_points.sort_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y))); // Tri par x, puis par y pour la cohérence
+
+        let mut clusters = vec![PointCloud::default()];
+        for point in sorted_points {
+            let mut placed = false;
+            'outer: for cluster in &mut clusters {
+                if let Some(last_point) = cluster.points.last() {
+                    let dx = last_point.x.abs_diff(point.x);
+                    let dy = last_point.y.abs_diff(point.y);
+                    if dx <= max_distance_x && dy <= max_distance_y {
+                        cluster.push(point);
+                        placed = true;
+                        break 'outer;
+                    }
+                }
+            }
+            if !placed {
+                let mut new_cluster = PointCloud::default();
+                new_cluster.push(point);
+                clusters.push(new_cluster);
+            }
+        }
+        clusters.retain(|cluster| !cluster.is_empty());
+        clusters
     }
 }
 
