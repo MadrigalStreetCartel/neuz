@@ -1,9 +1,7 @@
-use std::{f32::consts::E, time::Duration};
-
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{ HasRawWindowHandle, RawWindowHandle };
 use tauri::Window;
 
-use crate::data::{Bounds, Point};
+use crate::data::{ Bounds, Point };
 
 #[derive(Debug)]
 pub enum KeyMode {
