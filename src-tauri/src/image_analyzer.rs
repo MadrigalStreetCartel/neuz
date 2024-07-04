@@ -11,7 +11,7 @@ use tauri::Window;
 use crate::{
     data::{ Bounds, ClientStats, MobType, Point, PointCloud, Target, TargetMarkerType, TargetType },
     ipc::FarmingConfig,
-    platform::{eval_draw_bounds, eval_shown_debug_overlay, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
+    platform::{eval_shown_debug_overlay, IGNORE_AREA_BOTTOM, IGNORE_AREA_TOP},
     utils::Timer,
 };
 type HsvTolerance = [f32; 3];
@@ -187,12 +187,6 @@ impl ImageAnalyzer {
                     mob.bounds.h >= min_h &&
                     mob.bounds.w <= max_w &&
                     mob.bounds.h <= max_h;
-                if let TargetType::Mob(_) = mob_type {
-                    //slog::debug!(logger, ""; "Mob bounds" => mob.bounds);
-                    if is_valid {
-                        eval_draw_bounds(window, false, mob.bounds);
-                    }
-                }
                 if let Some(config) = config {
                     // Filter targets
 

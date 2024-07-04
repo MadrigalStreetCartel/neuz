@@ -6,7 +6,13 @@ use tauri::{ Manager, Window };
 
 use super::Behavior;
 use crate::{
-    data::{ AliveState, Bounds, MobType, Point, Target, TargetType }, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType }, movement::MovementAccessor, platform::{eval_mob_click, send_slot_eval}, play, utils::DateTime
+    data::{ AliveState, Bounds, MobType, Point, Target, TargetType },
+    image_analyzer::ImageAnalyzer,
+    ipc::{ BotConfig, FarmingConfig, FrontendInfo, SlotType },
+    movement::MovementAccessor,
+    platform::{ eval_draw_groups, eval_mob_click, send_slot_eval },
+    play,
+    utils::DateTime,
 };
 
 const MAX_DISTANCE_FOR_AOE: i32 = 75;
@@ -212,7 +218,7 @@ impl FarmingBehavior<'_> {
                             .unwrap_or(3000) as u128
                     )
                 {
-                  send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
+                    send_slot_eval(self.window, pickup_pet_slot_index.0, pickup_pet_slot_index.1);
                     self.last_summon_pet_time = None;
                 }
             }
@@ -402,6 +408,14 @@ impl FarmingBehavior<'_> {
         }
         //let mobs = image.identify_mobs(config);
         let mobs = image.identify_mobs(config);
+        eval_draw_groups(
+            self.window,
+            true,
+            mobs
+                .iter()
+                .map(|m| m.bounds.grow_by(5))
+                .collect()
+        );
         if mobs.is_empty() {
             // Transition to next state
             State::NoEnemyFound
