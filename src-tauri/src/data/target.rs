@@ -4,18 +4,38 @@ use super::{Bounds, Point};
 pub enum MobType {
     Passive,
     Aggressive,
-    Violet,
+}
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum _MobRank {
+    Small,
+    Normal,
+    Captain,
+    GiantOrViolet,
+    Boss,
+    Insane
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TargetMarkerType {
+    Passive,
+    Aggressive,
+    _Flying,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TargetType {
     Mob(MobType),
-    #[default]
-    TargetMarker,
+    TargetMarker(TargetMarkerType),
+}
+
+impl Default for TargetType {
+    fn default() -> Self {
+        TargetType::TargetMarker(TargetMarkerType::Passive)
+    }
 }
 
 /// A target in 2D space.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Target {
     pub target_type: TargetType,
     pub bounds: Bounds,

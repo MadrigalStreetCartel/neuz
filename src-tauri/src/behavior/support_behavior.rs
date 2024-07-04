@@ -6,12 +6,7 @@ use tauri::Window;
 use super::Behavior;
 
 use crate::{
-    data::Point,
-    image_analyzer::ImageAnalyzer,
-    ipc::{ BotConfig, FrontendInfo, SlotType, SupportConfig },
-    movement::{ prelude::*, MovementAccessor },
-    platform::{ eval_simple_click, send_slot_eval },
-    play,
+    data::Point, image_analyzer::ImageAnalyzer, ipc::{ BotConfig, FrontendInfo, SlotType, SupportConfig }, movement::{ prelude::*, MovementAccessor }, platform::{eval_simple_click, send_slot_eval}, play
 };
 const HEAL_SKILL_CAST_TIME: u64 = 2000;
 const BUFF_CAST_TIME: u64 = 2500;
@@ -188,11 +183,6 @@ impl SupportBehavior<'_> {
     fn is_target_in_range(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
         let distance = self.get_target_distance(image);
         if let Some(distance) = distance {
-            if distance == 9999 {
-                self.move_circle_pattern();
-                return false;
-            }
-
             if distance > (config.get_max_main_distance() as i32) {
                 if let Some(last_target_distance) = self.last_target_distance {
                     if distance > (config.get_max_main_distance() as i32) * 2 {
@@ -295,9 +285,9 @@ impl SupportBehavior<'_> {
     fn lose_target(&mut self) {
         if self.has_target {
             play!(self.movement => [
-               PressKey("Escape"),
-               Wait(dur::Random(200..250)),
-           ]);
+                PressKey("Escape"),
+                Wait(dur::Random(200..250)),
+            ]);
         }
     }
 
@@ -308,15 +298,15 @@ impl SupportBehavior<'_> {
             // Open party menu
             PressKey("P"),
         ]);
-        std::thread::sleep(Duration::from_millis(150));
+        std::thread::sleep(Duration::from_millis(200));
         let point = Point::new(213, 440); //moving to the "position of the party window
         eval_simple_click(self.window, point);
         play!(self.movement => [
-        PressKey("Z"),
-        Wait(dur::Fixed(10)),
-        PressKey("P"),
+            PressKey("P"),
+            Wait(dur::Fixed(10)),
+            PressKey("Z"),
         ]);
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(200));
     }
 
     fn follow_target(&mut self) {

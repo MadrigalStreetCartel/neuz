@@ -1,9 +1,7 @@
-use std::time::Duration;
-
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{ HasRawWindowHandle, RawWindowHandle };
 use tauri::Window;
 
-use crate::data::Point;
+use crate::data::{ Bounds, Point };
 
 #[derive(Debug)]
 pub enum KeyMode {
@@ -72,4 +70,59 @@ pub fn eval_simple_click(window: &Window, pos: Point) {
 
 pub fn eval_send_message(window: &Window, text: &str) {
     drop(window.eval(format!("setInputChat({0})", text).as_str()));
+}
+
+pub fn eval_toggle_debug_overlay(window: &Window) {
+    drop(window.eval(format!("debugOverlay.toggle()").as_str()));
+}
+
+pub fn eval_shown_debug_overlay(window: &Window, shown: bool) {
+    let show_eval = format!("debugOverlay.showOverlays()");
+    let hide_eval = format!("debugOverlay.hideOverlays()");
+    let eval = {
+        if shown {
+            show_eval
+        } else {
+            hide_eval
+        }
+    };
+    if !shown {
+        //std::thread::sleep(Duration::from_millis(100));
+        //eval_clear_bounds(window);
+    }
+    drop(window.eval(eval.as_str()));
+}
+
+pub fn eval_draw_bounds(window: &Window, enabled: bool, bounds: Bounds) {
+    if !enabled {
+        return;
+    }
+    drop(
+        window.eval(
+            format!(
+                "drawBounds({0}, {1}, {2}, {3})",
+                bounds.x, bounds.y, bounds.w, bounds.h
+            )
+            .as_str(),
+        ),
+    );
+}
+
+pub fn eval_draw_groups(window: &Window, enabled: bool, bounds: Vec<Bounds>) {
+    if !enabled {
+        return;
+    }
+    let mut bounds_str = String::from("[");
+    for b in bounds.iter() {
+        bounds_str.push_str(&format!(
+            "{{x: {0}, y: {1}, w: {2}, h: {3}}},",
+            b.x, b.y, b.w, b.h
+        ));
+    }
+    bounds_str.push_str("]");
+    drop(window.eval(format!("drawGroups({0})", bounds_str).as_str()));
+}
+
+pub fn eval_clear_bounds(window: &Window) {
+    drop(window.eval("debugOverlay.boundsOverlay.clear()"));
 }

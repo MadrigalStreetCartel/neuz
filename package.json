@@ -26,6 +26,7 @@
     "tauri": "tauri",
     "tauri:build": "tauri build",
     "tauri:dev": "tauri dev",
+    "tauri:dev-release": "tauri dev --release",
     "fmt": "cd ./src-tauri && cargo fmt && cd .."
   },
   "eslintConfig": {
