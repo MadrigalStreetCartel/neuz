@@ -20,63 +20,98 @@ function drawBounds(x, y, w, h, duration = 1000) {
 
 }
 
+let drawnBounds = [];
+function drawGroups(bounds = [], duration = 1000) {
+    if (!DEBUG) return
+    clearDrawnBounds()
+    let color = 'violet';
+    for (let bound of bounds) {
+        const { x, y, w, h } = bound
+        const targetMarker = document.createElement('div')
+        const targetMarkerStyle = `position: fixed; width: ${w}px; height: ${h}px; border: 1px solid ${color};z-index: 9999;left: ${x}px;top: ${y}px;`
+        targetMarker.style = targetMarkerStyle
+        document.body.appendChild(targetMarker)
+        drawnBounds.push(targetMarker)
+        i++
+    }
+    setTimeout(() => {
+        clearDrawnBounds()
+    }, duration)
+}
+
+function clearDrawnBounds() {
+    drawnBounds.forEach((bound) => {
+        bound.remove()
+    })
+    drawnBounds = [];
+}
+
 
 function isMob() {
     return document.body.style.cursor.indexOf('curattack') > 0
 }
 
+let max_tries = 2
+let current_tries = 0
+
 let mobClicker = {
-    is_mob: false,
     waiting: null,
     queue: [],
-    click: function (x, y) {
+    click(x, y) {
         dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
         dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }))
         this.onClick(x, y)
     },
-    add: function (x, y) {
+    add(x, y) {
         this.queue.push({ x, y })
+        this.run()
     },
-    clear: function () {
-        this.waiting = null
+    clear() {
+        this.waiting = false
         this.queue = []
-        this.is_mob = false
     },
-    onClick: function (x, y) {
+    onClick(x, y) {
         console.log('click', x, y)
     },
-    onMove: function (x, y) {
+    onMove(x, y) {
         console.log('move', x, y)
     },
-    run: function () {
+    mobClick(x, y) {
+        if (!this.waiting) return
+        //_console.log('Mob click', x, y, 'tries:', current_tries, 'max:', max_tries, 'isMob:', isMob());
+        if (current_tries >= max_tries) {
+            this.waiting = false
+            current_tries = 0
+            mobClicker.run();
+            return
+        }
+        current_tries++
+        if (isMob()) {
+            mouseEvent('press', x, y)
+            this.waiting = false
+            current_tries = 0
+            this.clear();
+            return;
+        }
+        requestAnimationFrame(() => this.mobClick(x, y));
+    },
+    run() {
         if (!this.waiting) {
             if (this.queue.length > 0) {
-                this.is_mob = isMob()
                 let pos = this.queue.shift()
                 if (pos) {
-                    dispatchEvent(new MouseEvent('mousemove', { clientX: pos.x, clientY: pos.y }))
-                    this.onMove(pos.x, pos.y)
-                    this.waiting = pos
-                    setTimeout(() => {
-                        this.waiting = null
-                    }, 33)
+                    let { x, y } = pos;
+                    dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }))
+                    this.onMove(x, y)
+                    this.waiting = true
+                    requestAnimationFrame(() => this.mobClick(x, y));
+                    return;
                 }
             }
-        } else {
-            this.is_mob = isMob()
-            if (this.is_mob) {
-                this.click(this.waiting.x, this.waiting.y)
-                this.clear()
-            }
         }
+
     }
 }
-document.addEventListener('DOMContentLoaded', () => {
-    setInterval(() => {
-        mobClicker.run()
-
-    }, 0)
-})
 
 
 function sendSlot(slotBarIndex, slotIndex) {
@@ -99,13 +134,13 @@ function after(duration = 0, callback) {
 
 let checkMobTimeout = null;
 function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {}) {
-    function waitDuration(type) {
+    function waitDuration(type, props = {}) {
         if (duration) {
             after(duration, () => {
                 dispatchEvent(new MouseEvent(type ?? 'mouseup', { clientX: x, clientY: y }))
             })
         } else if (type) {
-            dispatchEvent(new MouseEvent(type, { key }))
+            dispatchEvent(new MouseEvent(type, props))
         }
     }
     switch (type) {
@@ -114,7 +149,7 @@ function mouseEvent(type, x, y, { checkMob = false, delay = 50, duration } = {})
             break;
         case 'press':
             dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))
-            waitDuration('mouseup')
+            waitDuration('mouseup', { clientX: x, clientY: y })
             break;
         case 'hold':
             dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y }))

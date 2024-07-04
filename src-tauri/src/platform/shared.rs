@@ -108,6 +108,21 @@ pub fn eval_draw_bounds(window: &Window, enabled: bool, bounds: Bounds) {
     );
 }
 
+pub fn eval_draw_groups(window: &Window, enabled: bool, bounds: Vec<Bounds>) {
+    if !enabled {
+        return;
+    }
+    let mut bounds_str = String::from("[");
+    for b in bounds.iter() {
+        bounds_str.push_str(&format!(
+            "{{x: {0}, y: {1}, w: {2}, h: {3}}},",
+            b.x, b.y, b.w, b.h
+        ));
+    }
+    bounds_str.push_str("]");
+    drop(window.eval(format!("drawGroups({0})", bounds_str).as_str()));
+}
+
 pub fn eval_clear_bounds(window: &Window) {
     drop(window.eval("debugOverlay.boundsOverlay.clear()"));
 }

@@ -38,11 +38,11 @@ let fpsElement = createOverlay("p", {
 let debugOverlay = createOverlay(null, {
     id: "debug-overlay",
     style: 'position: fixed; top: 0; left: 0; z-index: 9901; background-color: rgba(0, 0, 0, 0.0); color: white; padding: 5px; font-size: 12px; max-height: 100%;max-width: 100%; display:block;',
-    boundsOverlay,
+    //boundsOverlay,
     fpsElement,
 
-    hiddenOnScreenshot: ["boundsOverlay"],
-    children: [fpsElement, boundsOverlay],
+    hiddenOnScreenshot: [/* "boundsOverlay" */],
+    children: [fpsElement, /* boundsOverlay */],
 
     hideOverlays() {
         this.hiddenOnScreenshot.forEach(overlay => this[overlay].hide())
@@ -54,6 +54,6 @@ let debugOverlay = createOverlay(null, {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    console._log("init", document, document.readyState)
+    console.log("init", document, document.readyState)
     debugOverlay.mount(document.body)
 })
