@@ -418,7 +418,7 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
         send_info(&frontend_info.read());
 
         let frame_limiter_enabled = true;
-        let frame_limiter = 1.0 / 3.0;
+        let frame_limiter = 1.0 / 5.0;
         // Enter main loop
         loop {
             let timer = Timer::start_new("main_loop");
@@ -545,7 +545,10 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 }
                 let is_alive = image_analyzer.client_stats.is_alive;
                 let return_earlier = match is_alive {
-                    AliveState::StatsTrayClosed => true,
+                    AliveState::StatsTrayClosed => {
+                        std::thread::sleep(Duration::from_millis(100));
+                        true
+                    },
                     AliveState::Alive => {
                         if !frontend_info_mut.is_alive() {
                             frontend_info_mut.set_is_alive(true);
