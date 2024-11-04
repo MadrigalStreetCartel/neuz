@@ -2,6 +2,8 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+#[deny(clippy::pedantic)]
+#[deny(clippy::cargo)]
 
 mod behavior;
 mod data;
