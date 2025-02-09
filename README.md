@@ -1,3 +1,9 @@
+<div align=right>
+  <a href="README.中文.md">中文</a> | <a href="README.de.md">Deutsch</a>
+</div>
+
+&nbsp;&nbsp;&nbsp;&nbsp;
+
 ![banner]
 
 - [Download](#download)
@@ -7,8 +13,11 @@
   - [Farming Automation](#farming-automation)
     - [Requirements](#requirements)
     - [Slot Configuration](#slot-configuration)
-  - [Support Automation / AutoShout](#support-automation--autoshout)
+  - [Support Automation](#support-automation)
+  - [AutoShout](#autoshout)
 - [FAQ](#faq)
+
+>  `Neuz` is an enhanced Flyff Universe client & botting software using custom image recognition for a variety of automated actions. 
 
 # Download
 [![Build release](https://github.com/MadrigalStreetCartel/neuz/actions/workflows/main.yml/badge.svg)](https://github.com/MadrigalStreetCartel/neuz/actions/workflows/main.yml)
@@ -26,7 +35,7 @@ Planned Features for now:
 - Full Mac & Linux cross-platform support
 - Automatic deployment script with Docker containers for easy parallelism
 
-Join our Discord: https://discord.gg/cZr3X3mCnq
+Join our Discord: https://discord.gg/WR6FuNEYj6
 
 # Development
 
