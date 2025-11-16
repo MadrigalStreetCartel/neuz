@@ -1,0 +1,43 @@
+name: "Format and Lint (rustfmt & clippy)"
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  CI: true
+
+jobs:
+  rustfmt-clippy:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+
+      - name: Add rustfmt and clippy components
+        run: rustup component add rustfmt clippy
+
+      - name: Check Rust formatting (rustfmt)
+        run: |
+          # run inside Tauri crate
+          cd src-tauri
+          cargo +nightly fmt --all -- --check
+
+      - name: Run clippy (fail on warnings)
+        run: |
+          # run inside Tauri crate
+          cd src-tauri
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
