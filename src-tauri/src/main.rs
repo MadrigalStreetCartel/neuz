@@ -1,4 +1,7 @@
-#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
 
 mod behavior;
 mod data;
@@ -8,21 +11,26 @@ mod movement;
 mod platform;
 mod utils;
 
-use std::{ fs, io, os::windows::process, path::{ Path, PathBuf }, sync::Arc, time::Duration };
+use std::{
+    fs,
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
-use guard::guard;
 use ipc::FrontendInfo;
 use parking_lot::RwLock;
-use slog::{ Drain, Level, Logger };
-use tauri::{ LogicalSize, Manager, Size, Window };
+use slog::{Drain, Level, Logger};
+use tauri::{LogicalSize, Manager, Size, Window};
 
 use crate::{
-    behavior::{ Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior },
-    image_analyzer::ImageAnalyzer,
+    behavior::{Behavior, FarmingBehavior, ShoutBehavior, SupportBehavior},
     data::AliveState,
-    ipc::{ BotConfig, BotMode },
+    image_analyzer::ImageAnalyzer,
+    ipc::{BotConfig, BotMode},
     movement::MovementAccessor,
-    platform::{ eval_send_key, KeyMode },
+    platform::{eval_send_key, KeyMode},
     utils::Timer,
 };
 
@@ -35,7 +43,9 @@ fn main() {
     let context = tauri::generate_context!();
     let neuz_version = context
         .config()
-        .package.version.clone()
+        .package
+        .version
+        .clone()
         .unwrap_or_else(|| "unknown".to_string());
 
     // Setup logging
@@ -50,8 +60,7 @@ fn main() {
     ));
     let drain = {
         let decorator = slog_term::TermDecorator::new().stdout().build();
-        let drain = slog_term::CompactFormat
-            ::new(decorator)
+        let drain = slog_term::CompactFormat::new(decorator)
             .build()
             .filter_level(Level::Trace)
             .fuse();
@@ -61,24 +70,21 @@ fn main() {
     let logger = Logger::root(drain.fuse(), slog::o!());
 
     // Build app
-    tauri::Builder
-        ::default()
+    tauri::Builder::default()
         // .menu(tauri::Menu::os_default(&context.package_info().name))
         .manage(AppState { logger })
-        .invoke_handler(
-            tauri::generate_handler![
-                start_bot,
-                create_window,
-                get_profiles,
-                create_profile,
-                remove_profile,
-                rename_profile,
-                copy_profile,
-                reset_profile,
-                focus_client,
-                toggle_main_size
-            ]
-        )
+        .invoke_handler(tauri::generate_handler![
+            start_bot,
+            create_window,
+            get_profiles,
+            create_profile,
+            remove_profile,
+            rename_profile,
+            copy_profile,
+            reset_profile,
+            focus_client,
+            toggle_main_size
+        ])
         .run(context)
         .expect("error while running tauri application");
 }
@@ -88,7 +94,7 @@ fn toggle_main_size(
     size: [u32; 2],
     should_not_toggle: Option<bool>,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) -> bool {
     let window = app_handle.get_window("main").unwrap();
     let win_size = window.inner_size();
@@ -127,19 +133,26 @@ fn focus_client(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
 
 #[tauri::command]
 fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Vec<String> {
-    drop(
-        fs::create_dir(
-            format!(
-                r"{}\",
-                app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy()
-            ).clone()
+    drop(fs::create_dir(
+        format!(
+            r"{}\",
+            app_handle
+                .path_resolver()
+                .app_data_dir()
+                .unwrap()
+                .to_string_lossy()
         )
-    );
-    let paths = fs
-        ::read_dir(
-            format!(r"{}\", app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy())
-        )
-        .unwrap();
+        .clone(),
+    ));
+    let paths = fs::read_dir(format!(
+        r"{}\",
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .to_string_lossy()
+    ))
+    .unwrap();
     let mut profiles = vec![];
 
     for entry in paths.flatten() {
@@ -148,14 +161,17 @@ fn get_profiles(_state: tauri::State<AppState>, app_handle: tauri::AppHandle) ->
         }
     }
     if profiles.is_empty() {
-        drop(
-            fs::create_dir(
-                format!(
-                    r"{}\profile_DEFAULT",
-                    app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy()
-                ).clone()
+        drop(fs::create_dir(
+            format!(
+                r"{}\profile_DEFAULT",
+                app_handle
+                    .path_resolver()
+                    .app_data_dir()
+                    .unwrap()
+                    .to_string_lossy()
             )
-        );
+            .clone(),
+        ));
         profiles.push("profile_DEFAULT".to_string());
     }
 
@@ -178,14 +194,22 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
 fn config_folder_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
     format!(
         r"{}\profile_{}",
-        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .to_string_lossy(),
         profile_id
     )
 }
 fn config_file_path(app_handle: &tauri::AppHandle, profile_id: &String) -> String {
     format!(
         r"{}\.botconfig_{}",
-        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .to_string_lossy(),
         profile_id
     )
 }
@@ -194,27 +218,23 @@ fn copy_profile(
     profile_id: String,
     new_profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) {
-    drop(
-        fs::copy(
-            config_file_path(&app_handle, &profile_id),
-            config_file_path(&app_handle, &new_profile_id).clone()
-        )
-    );
-    drop(
-        copy_dir_all(
-            config_folder_path(&app_handle, &profile_id),
-            config_folder_path(&app_handle, &new_profile_id)
-        )
-    );
+    drop(fs::copy(
+        config_file_path(&app_handle, &profile_id),
+        config_file_path(&app_handle, &new_profile_id).clone(),
+    ));
+    drop(copy_dir_all(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id),
+    ));
 }
 
 #[tauri::command]
 fn create_profile(
     profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) {
     drop(fs::create_dir(config_folder_path(&app_handle, &profile_id)));
 }
@@ -223,9 +243,12 @@ fn create_profile(
 fn remove_profile(
     profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) {
-    drop(fs::remove_dir_all(config_folder_path(&app_handle, &profile_id)));
+    drop(fs::remove_dir_all(config_folder_path(
+        &app_handle,
+        &profile_id,
+    )));
     drop(fs::remove_file(config_file_path(&app_handle, &profile_id)));
 }
 
@@ -234,52 +257,54 @@ fn rename_profile(
     profile_id: String,
     new_profile_id: String,
     _state: tauri::State<AppState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) {
-    drop(
-        fs::rename(
-            config_folder_path(&app_handle, &profile_id),
-            config_folder_path(&app_handle, &new_profile_id)
-        )
-    );
-    drop(
-        fs::rename(
-            config_folder_path(&app_handle, &profile_id),
-            config_folder_path(&app_handle, &new_profile_id).clone()
-        )
-    );
+    drop(fs::rename(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id),
+    ));
+    drop(fs::rename(
+        config_folder_path(&app_handle, &profile_id),
+        config_folder_path(&app_handle, &new_profile_id).clone(),
+    ));
 }
 
 #[tauri::command]
 fn reset_profile(profile_id: String, _state: tauri::State<AppState>, app_handle: tauri::AppHandle) {
-    drop(fs::remove_dir_all(config_folder_path(&app_handle, &profile_id)));
-    drop(fs::remove_file(config_file_path(&app_handle, &profile_id).clone()));
-    drop(fs::create_dir(config_folder_path(&app_handle, &profile_id).clone()));
+    drop(fs::remove_dir_all(config_folder_path(
+        &app_handle,
+        &profile_id,
+    )));
+    drop(fs::remove_file(
+        config_file_path(&app_handle, &profile_id).clone(),
+    ));
+    drop(fs::create_dir(
+        config_folder_path(&app_handle, &profile_id).clone(),
+    ));
 }
 
 #[tauri::command]
 async fn create_window(profile_id: String, app_handle: tauri::AppHandle) {
-    let window = tauri::WindowBuilder
-        ::new(
-            &app_handle,
-            "client",
-            tauri::WindowUrl::External("https://universe.flyff.com/play".parse().unwrap())
-        )
-        .data_directory(
-            PathBuf::from(
-                format!(
-                    r"{}\profile_{}",
-                    app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
-                    profile_id
-                )
-            )
-        )
-        //.resizable(false)
-        .center()
-        .inner_size(800.0, 600.0)
-        .title(format!("{} | Flyff Universe", profile_id))
-        .build()
-        .unwrap();
+    let window = tauri::WindowBuilder::new(
+        &app_handle,
+        "client",
+        tauri::WindowUrl::External("https://universe.flyff.com/play".parse().unwrap()),
+    )
+    .data_directory(PathBuf::from(format!(
+        r"{}\profile_{}",
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .to_string_lossy(),
+        profile_id
+    )))
+    //.resizable(false)
+    .center()
+    .inner_size(800.0, 600.0)
+    .title(format!("{} | Flyff Universe", profile_id))
+    .build()
+    .unwrap();
     drop(window.show());
     // window.open_devtools();
 
@@ -300,17 +325,21 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
     let logger = state.logger.clone();
     let config_path = format!(
         r"{}\.botconfig_{}",
-        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .to_string_lossy(),
         profile_id
-    ).clone();
+    )
+    .clone();
 
     std::thread::spawn(move || {
         let logger = logger.clone();
 
         let mut last_config_change_id = 0;
-        let config: Arc<RwLock<BotConfig>> = Arc::new(
-            RwLock::new(BotConfig::deserialize_or_default(config_path))
-        );
+        let config: Arc<RwLock<BotConfig>> =
+            Arc::new(RwLock::new(BotConfig::deserialize_or_default(config_path)));
 
         // Listen for config changes from the UI
         let local_config = config.clone();
@@ -372,9 +401,8 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
 
         let mut last_mode: Option<BotMode> = None;
         let mut last_is_running: Option<bool> = None;
-        let mut frontend_info: Arc<RwLock<FrontendInfo>> = Arc::new(
-            RwLock::new(FrontendInfo::deserialize_or_default())
-        );
+        let mut frontend_info: Arc<RwLock<FrontendInfo>> =
+            Arc::new(RwLock::new(FrontendInfo::deserialize_or_default()));
         send_info(&frontend_info.read());
         // Enter main loop
         loop {
@@ -387,9 +415,14 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 config.serialize(
                     format!(
                         r"{}\.botconfig_{}",
-                        app_handle.path_resolver().app_data_dir().unwrap().to_string_lossy(),
+                        app_handle
+                            .path_resolver()
+                            .app_data_dir()
+                            .unwrap()
+                            .to_string_lossy(),
                         profile_id
-                    ).clone()
+                    )
+                    .clone(),
                 );
                 send_config(config);
                 last_config_change_id = config.change_id();
@@ -400,11 +433,11 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 support_behavior.update(config);
 
                 // Make sure an operation mode is set
-                guard!(let Some(mode) = config.mode() else {
+                let Some(mode) = config.mode() else {
                     std::thread::sleep(std::time::Duration::from_millis(100));
                     timer.silence();
                     continue;
-                });
+                };
 
                 // Interupt the current behavior if the bot is stopped
                 if !config.is_running() {
@@ -450,14 +483,10 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                 }
 
                 if !config.farming_config().is_stop_fighting() {
-                    drop(
-                        window.set_size(
-                            Size::Logical(LogicalSize {
-                                width: 800.0,
-                                height: 600.0,
-                            })
-                        )
-                    );
+                    drop(window.set_size(Size::Logical(LogicalSize {
+                        width: 800.0,
+                        height: 600.0,
+                    })));
                     drop(window.set_resizable(false));
                 }
             }
@@ -486,10 +515,12 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
             // Try capturing the window contents
             if image_analyzer.image_is_some() {
                 // Update stats
-                image_analyzer.client_stats.update(&image_analyzer.clone(), &logger);
+                image_analyzer
+                    .client_stats
+                    .update(&image_analyzer.clone(), &logger);
 
                 // Run the current behavior
-                guard!(let Some(mode) = config.mode() else { continue; });
+                let Some(mode) = config.mode() else { continue };
 
                 //Regardless if it's alive or not, if the bot is inactive should be dcd
                 if frontend_info_mut.is_afk_ready_to_disconnect() {
@@ -541,21 +572,21 @@ fn start_bot(profile_id: String, state: tauri::State<AppState>, app_handle: taur
                         farming_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer
+                            &mut image_analyzer,
                         );
                     }
                     BotMode::AutoShout => {
                         shout_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer
+                            &mut image_analyzer,
                         );
                     }
                     BotMode::Support => {
                         support_behavior.run_iteration(
                             &mut frontend_info_mut,
                             config,
-                            &mut image_analyzer
+                            &mut image_analyzer,
                         );
                     }
                 }

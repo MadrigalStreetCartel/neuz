@@ -1,16 +1,15 @@
-use std::time::{ Duration, Instant };
+use std::time::{Duration, Instant};
 
 use slog::Logger;
 use tauri::Window;
 
 use super::Behavior;
-
 use crate::{
     data::Point,
     image_analyzer::ImageAnalyzer,
-    ipc::{ BotConfig, FrontendInfo, SlotType, SupportConfig },
-    movement::{ prelude::*, MovementAccessor },
-    platform::{ eval_simple_click, send_slot_eval },
+    ipc::{BotConfig, FrontendInfo, SlotType, SupportConfig},
+    movement::{prelude::*, MovementAccessor},
+    platform::{eval_simple_click, send_slot_eval},
     play,
 };
 const HEAL_SKILL_CAST_TIME: u64 = 2000;
@@ -82,7 +81,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         &mut self,
         _frontend_info: &mut FrontendInfo,
         config: &BotConfig,
-        image: &mut ImageAnalyzer
+        image: &mut ImageAnalyzer,
     ) {
         let config = config.support_config();
         self.update_slots_usage(config);
@@ -92,7 +91,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.use_party_skills(config);
         self.check_self_restorations(config, image);
 
-        if self.has_target == false {
+        if !self.has_target {
             if config.is_in_party() {
                 self.select_party_leader(config);
             }
@@ -116,7 +115,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
         self.check_target_restorations(config, image);
         if image.client_stats.target_on_screen {
             let dist = self.is_target_in_range(config, image);
-            if dist == false {
+            if !dist {
                 return;
             }
         }
@@ -132,7 +131,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
                 None,
                 SlotType::BuffSkill,
                 false,
-                Some(self.self_buff_usage_last_time)
+                Some(self.self_buff_usage_last_time),
             );
 
             self.send_buff(config, self_buff, true);
@@ -140,7 +139,7 @@ impl<'a> Behavior<'a> for SupportBehavior<'a> {
 
         let target_buff = self.get_slot_for(config, None, SlotType::BuffSkill, false, None);
 
-        if self.self_buffing == false && image.client_stats.target_is_alive {
+        if !self.self_buffing && image.client_stats.target_is_alive {
             //slog::debug!(self.logger, "Buffing target");
             self.send_buff(config, target_buff, false);
         }
@@ -164,9 +163,9 @@ impl SupportBehavior<'_> {
     }
     fn get_target_distance(&mut self, image: &mut ImageAnalyzer) -> Option<i32> {
         if let Some(target_distance) = image.client_stats.target_distance {
-            return Some(target_distance);
+            Some(target_distance)
         } else {
-            return Some(9999);
+            Some(9999)
         }
     }
     fn move_circle_pattern(&mut self) {
@@ -182,7 +181,11 @@ impl SupportBehavior<'_> {
         ]);
 
         self.avoid_obstacle_direction = {
-            if self.avoid_obstacle_direction == "D" { "A".to_owned() } else { "D".to_owned() }
+            if self.avoid_obstacle_direction == "D" {
+                "A".to_owned()
+            } else {
+                "D".to_owned()
+            }
         };
     }
     fn is_target_in_range(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
@@ -197,18 +200,15 @@ impl SupportBehavior<'_> {
                 if let Some(last_target_distance) = self.last_target_distance {
                     if distance > (config.get_max_main_distance() as i32) * 2 {
                         self.move_circle_pattern();
-                    } else {
-                        if let Some(last_far_from_target) = self.last_far_from_target {
-                            if
-                                last_far_from_target.elapsed().as_millis() > 3000 &&
-                                last_target_distance < distance
-                            {
-                                self.last_far_from_target = Some(Instant::now());
-                                self.move_circle_pattern();
-                            }
-                        } else {
+                    } else if let Some(last_far_from_target) = self.last_far_from_target {
+                        if last_far_from_target.elapsed().as_millis() > 3000
+                            && last_target_distance < distance
+                        {
                             self.last_far_from_target = Some(Instant::now());
+                            self.move_circle_pattern();
                         }
+                    } else {
+                        self.last_far_from_target = Some(Instant::now());
                     }
                 }
                 self.last_target_distance = Some(distance);
@@ -220,28 +220,26 @@ impl SupportBehavior<'_> {
                 return true;
             }
         }
-        return false;
+        false
     }
     fn send_buff(
         &mut self,
         config: &SupportConfig,
         buff: Option<(usize, usize)>,
-        is_self_buff: bool
+        is_self_buff: bool,
     ) {
         if buff.is_some() {
             if is_self_buff {
-                if self.self_buffing == false {
+                if !self.self_buffing {
                     self.self_buffing = true;
                     slog::debug!(self.logger, "Starting self buffing");
                     self.buff_counter = 0;
                 }
                 self.lose_target();
-            } else {
-                if self.target_buffing == false {
-                    self.target_buffing = true;
-                    slog::debug!(self.logger, "Starting target buffing");
-                    self.buff_counter = 0;
-                }
+            } else if !self.target_buffing {
+                self.target_buffing = true;
+                slog::debug!(self.logger, "Starting target buffing");
+                self.buff_counter = 0;
             }
             let slot = buff.unwrap();
             self.send_slot(slot, is_self_buff);
@@ -253,13 +251,12 @@ impl SupportBehavior<'_> {
                 slog::debug!(self.logger, "Ending self buffing {}", self.buff_counter);
                 self.select_party_leader(config);
             }
-        } else if is_self_buff == false {
-            if self.target_buffing {
-                self.target_buffing = false;
-                slog::debug!(self.logger, "Ending target buffing {}", self.buff_counter);
-            }
+        } else if !is_self_buff && self.target_buffing {
+            self.target_buffing = false;
+            slog::debug!(self.logger, "Ending target buffing {}", self.buff_counter);
         }
     }
+
     fn wait_cooldown(&mut self) -> bool {
         if self.wait_duration.is_some() {
             if self.wait_start.elapsed() < self.wait_duration.unwrap() {
@@ -271,8 +268,9 @@ impl SupportBehavior<'_> {
                 //slog::debug!(self.logger, "Wait time finished");
             }
         }
-        return false;
+        false
     }
+
     fn wait(&mut self, duration: Duration) {
         self.wait_duration = {
             if self.wait_duration.is_some() {
@@ -285,19 +283,20 @@ impl SupportBehavior<'_> {
     }
 
     fn rez_target(&mut self, config: &SupportConfig, image: &mut ImageAnalyzer) -> bool {
-        if image.client_stats.target_is_mover && image.client_stats.target_is_alive == false {
+        if image.client_stats.target_is_mover && !image.client_stats.target_is_alive {
             self.get_slot_for(config, None, SlotType::RezSkill, true, None);
-            return true;
+            true
         } else {
-            return false;
+            false
         }
     }
+
     fn lose_target(&mut self) {
         if self.has_target {
             play!(self.movement => [
-               PressKey("Escape"),
-               Wait(dur::Random(200..250)),
-           ]);
+                PressKey("Escape"),
+                Wait(dur::Random(200..250)),
+            ]);
         }
     }
 
@@ -331,32 +330,28 @@ impl SupportBehavior<'_> {
     fn update_slots_usage(&mut self, config: &SupportConfig) {
         for (slotbar_index, slot_bars) in self.slots_usage_last_time.into_iter().enumerate() {
             for (slot_index, last_time) in slot_bars.into_iter().enumerate() {
-                let cooldown = config
+                let cooldown: u128 = config
                     .get_slot_cooldown(slotbar_index, slot_index)
                     .unwrap_or(100)
-                    .try_into();
+                    .into();
                 if let Some(last_time) = last_time {
-                    if let Ok(cooldown) = cooldown {
-                        let slot_last_time = last_time.elapsed().as_millis();
-                        if slot_last_time > cooldown {
-                            self.slots_usage_last_time[slotbar_index][slot_index] = None;
-                        }
+                    let slot_last_time = last_time.elapsed().as_millis();
+                    if slot_last_time > cooldown {
+                        self.slots_usage_last_time[slotbar_index][slot_index] = None;
                     }
                 }
             }
         }
         for (slotbar_index, slot_bars) in self.self_buff_usage_last_time.into_iter().enumerate() {
             for (slot_index, last_time) in slot_bars.into_iter().enumerate() {
-                let cooldown = config
+                let cooldown: u128 = config
                     .get_slot_cooldown(slotbar_index, slot_index)
                     .unwrap_or(100)
-                    .try_into();
+                    .into();
                 if let Some(last_time) = last_time {
-                    if let Ok(cooldown) = cooldown {
-                        let slot_last_time = last_time.elapsed().as_millis();
-                        if slot_last_time > cooldown {
-                            self.self_buff_usage_last_time[slotbar_index][slot_index] = None;
-                        }
+                    let slot_last_time = last_time.elapsed().as_millis();
+                    if slot_last_time > cooldown {
+                        self.self_buff_usage_last_time[slotbar_index][slot_index] = None;
                     }
                 }
             }
@@ -369,11 +364,9 @@ impl SupportBehavior<'_> {
         threshold: Option<u32>,
         slot_type: SlotType,
         send: bool,
-        last_slots_usage: Option<[[Option<Instant>; 10]; 9]>
+        last_slots_usage: Option<[[Option<Instant>; 10]; 9]>,
     ) -> Option<(usize, usize)> {
-        let is_self_buff = {
-            if let Some(_) = last_slots_usage { true } else { false }
-        };
+        let is_self_buff = last_slots_usage.is_some();
         let slot_usage = {
             if let Some(last_slots_usage) = last_slots_usage {
                 last_slots_usage
@@ -402,10 +395,8 @@ impl SupportBehavior<'_> {
     }
 
     fn use_party_skills(&mut self, config: &SupportConfig) {
-        let party_skills = config.get_all_usable_slot_for_type(
-            SlotType::PartySkill,
-            self.slots_usage_last_time
-        );
+        let party_skills =
+            config.get_all_usable_slot_for_type(SlotType::PartySkill, self.slots_usage_last_time);
         for slot_index in party_skills {
             self.send_slot(slot_index, false);
         }
@@ -417,14 +408,15 @@ impl SupportBehavior<'_> {
         let pill = self.get_slot_for(config, health_stat, SlotType::Pill, true, None);
         if pill.is_none() {
             let heal = self.get_slot_for(config, health_stat, SlotType::HealSkill, false, None);
-            if heal.is_none() {
-                let aoe_heal = self.get_slot_for(
-                    config,
-                    health_stat,
-                    SlotType::AOEHealSkill,
-                    true,
-                    None
-                );
+            if let Some(heal) = heal {
+                if config.is_in_party() {
+                    self.lose_target();
+                    self.send_slot(heal, true);
+                    //self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
+                }
+            } else {
+                let aoe_heal =
+                    self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
                 if aoe_heal.is_none() {
                     self.get_slot_for(config, health_stat, SlotType::Food, true, None);
                 } else {
@@ -432,12 +424,6 @@ impl SupportBehavior<'_> {
                     self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
                     std::thread::sleep(Duration::from_millis(AOE_SKILL_CAST_TIME));
                     self.get_slot_for(config, health_stat, SlotType::AOEHealSkill, true, None);
-                }
-            } else {
-                if config.is_in_party() {
-                    self.lose_target();
-                    self.send_slot(heal.unwrap(), true);
-                    //self.wait(Duration::from_millis(HEAL_SKILL_CAST_TIME));
                 }
             }
 
@@ -463,12 +449,24 @@ impl SupportBehavior<'_> {
                 target_health_stat,
                 SlotType::AOEHealSkill,
                 true,
-                None
+                None,
             );
             if aoe_heal.is_some() {
-                self.get_slot_for(config, target_health_stat, SlotType::AOEHealSkill, true, None);
+                self.get_slot_for(
+                    config,
+                    target_health_stat,
+                    SlotType::AOEHealSkill,
+                    true,
+                    None,
+                );
                 std::thread::sleep(Duration::from_millis(100));
-                self.get_slot_for(config, target_health_stat, SlotType::AOEHealSkill, true, None);
+                self.get_slot_for(
+                    config,
+                    target_health_stat,
+                    SlotType::AOEHealSkill,
+                    true,
+                    None,
+                );
                 std::thread::sleep(Duration::from_millis(100));
             }
         } else {
