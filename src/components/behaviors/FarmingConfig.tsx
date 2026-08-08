@@ -250,26 +250,60 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
             }/>
 
             <Modal isShowing={statsModal.isShown} hide={statsModal.close}
-            title={<h4>Stats - State: { botState }</h4>} body={
+            title={<h4>Stats</h4>} body={
                 <div className="stats">
-                    <div className="row">
-                        <div>Kills : {info?.enemy_kill_count}</div>
+                    <div className="stats__state">
+                        <span className={`stats__badge stats__badge--${botState}`}>{botState}</span>
                     </div>
-                    <div className="row">
-                        <div>Botting time: {botStopWatch?.toString()}</div>
+
+                    <div className="stats__section">
+                        <div className="stats__section-title">Session</div>
+                        <div className="stats__grid">
+                            <div className="stats__card">
+                                <span className="stats__label">Kills</span>
+                                <span className="stats__value">{info?.enemy_kill_count ?? 0}</span>
+                            </div>
+                            <div className="stats__card">
+                                <span className="stats__label">Botting Time</span>
+                                <span className="stats__value stats__value--time">{botStopWatch?.toString() ?? "00:00:00:000"}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="row">
-                        <div>Last search time: {searchMobStopWatch}</div>
+
+                    <div className="stats__section">
+                        <div className="stats__section-title">Last Kill</div>
+                        <div className="stats__grid">
+                            <div className="stats__card">
+                                <span className="stats__label">Search Time</span>
+                                <span className="stats__value stats__value--time">{searchMobStopWatch}</span>
+                            </div>
+                            <div className="stats__card">
+                                <span className="stats__label">Fight Time</span>
+                                <span className="stats__value stats__value--time">{fightStopWatch}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="row">
-                        <div>Last fight time: {fightStopWatch}</div>
-                    </div>
-                    <div className="row">
-                        <div>Last kill stats(approx): {info?.kill_min_avg}/min | {info?.kill_hour_avg}/hour</div>
-                    </div>
-                    <div className="row">
-                        <div>Global kills stats(approx): {globalKPM === "NaN" || globalKPM === "Infinity" ? 0 : globalKPM}/min
-                        | {globalKPH === "NaN" || globalKPH === "Infinity" ? 0 : globalKPH}/hour</div>
+
+                    <div className="stats__section">
+                        <div className="stats__section-title">Performance</div>
+                        <div className="stats__grid">
+                            <div className="stats__card">
+                                <span className="stats__label">Last KPM</span>
+                                <span className="stats__value">{info?.kill_min_avg?.toFixed(2) ?? 0}</span>
+                            </div>
+                            <div className="stats__card">
+                                <span className="stats__label">Last KPH</span>
+                                <span className="stats__value">{info?.kill_hour_avg?.toFixed(2) ?? 0}</span>
+                            </div>
+                            <div className="stats__card">
+                                <span className="stats__label">Global KPM</span>
+                                <span className="stats__value">{globalKPM === "NaN" || globalKPM === "Infinity" ? "0.00" : globalKPM}</span>
+                            </div>
+                            <div className="stats__card">
+                                <span className="stats__label">Global KPH</span>
+                                <span className="stats__value">{globalKPH === "NaN" || globalKPH === "Infinity" ? "0.00" : globalKPH}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             }/>

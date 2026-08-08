@@ -214,12 +214,99 @@ export default styled(MissionControl)`
     }
 
     & .stats {
-        & .row {
-            color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.25rem 0;
+
+        & .stats__state {
             display: flex;
-            align-items: center;
-            justify-content: space-around;
-            gap: 3rem;
+            justify-content: center;
+            margin-bottom: 0.25rem;
+        }
+
+        & .stats__badge {
+            display: inline-block;
+            padding: 0.2rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: white;
+            background: hsla(0, 0%, 50%, 0.4);
+
+            &--searching {
+                background: hsla(45, 100%, 45%, 0.5);
+                box-shadow: 0 0 8px hsla(45, 100%, 50%, 0.3);
+            }
+            &--fighting {
+                background: hsla(0, 80%, 45%, 0.5);
+                box-shadow: 0 0 8px hsla(0, 80%, 50%, 0.3);
+            }
+            &--dead {
+                background: hsla(0, 0%, 30%, 0.6);
+            }
+            &--idle {
+                background: hsla(210, 30%, 40%, 0.4);
+            }
+            &--ready {
+                background: hsla(140, 60%, 35%, 0.5);
+                box-shadow: 0 0 8px hsla(140, 60%, 40%, 0.3);
+            }
+        }
+
+        & .stats__section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        & .stats__section-title {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: hsla(0, 0%, 100%, 0.4);
+            border-bottom: 1px solid hsla(0, 0%, 100%, 0.1);
+            padding-bottom: 0.2rem;
+        }
+
+        & .stats__grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+        }
+
+        & .stats__card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            padding: 0.4rem 0.5rem;
+            background: hsla(0, 0%, 100%, 0.05);
+            border-radius: 0.3rem;
+            border: 1px solid hsla(0, 0%, 100%, 0.07);
+        }
+
+        & .stats__label {
+            font-size: 0.6rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: hsla(0, 0%, 100%, 0.45);
+        }
+
+        & .stats__value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+
+            &--time {
+                font-size: 0.85rem;
+                font-weight: 600;
+                font-family: monospace;
+                letter-spacing: 0.02em;
+            }
         }
     }
 
