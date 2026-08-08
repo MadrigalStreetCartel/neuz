@@ -274,8 +274,14 @@ export default styled(MissionControl)`
 
         & .stats__grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.4rem;
+        }
+
+        @media (max-width: 360px) {
+            & .stats__grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         & .stats__card {

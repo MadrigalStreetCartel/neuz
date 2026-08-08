@@ -74,7 +74,7 @@ const FarmingConfig = ({ className, info, config, onChange, botStopWatch, botSta
     }, [debugMode])
     // StopWatchs
     const searchMobStopWatch = MsFormat(info?.last_search_duration ?? 0),
-    fightStopWatch = MsFormat(info?.last_search_duration ?? 0)
+    fightStopWatch = MsFormat(info?.last_fight_duration ?? 0)
 
     const globalKPM = ((info?.enemy_kill_count?? 0) / Math.round(Number(botStopWatch?.timer ?? 0) / 60000)).toFixed(2)
     const globalKPH = (Number(globalKPM) * 60).toFixed(2)
